@@ -37,7 +37,7 @@ class User(Base):
     emergency_contacts = db_relationship("EmergencyContact", back_populates="user", cascade="all, delete-orphan")
     checkins = db_relationship("CheckIn", back_populates="user", cascade="all, delete-orphan")
     alerts = db_relationship("Alert", back_populates="user", cascade="all, delete-orphan")
-    # alert_settings = db_relationship("AlertSetting", back_populates="user", cascade="all, delete-orphan")  # 等待 AlertSetting 模型实现
+    alert_settings = db_relationship("AlertSetting", back_populates="user", cascade="all, delete-orphan", uselist=False)
     sos_requests = db_relationship("SOSRequest", back_populates="user", cascade="all, delete-orphan")
     devices = db_relationship("Device", back_populates="user", cascade="all, delete-orphan")
     # anomalies = db_relationship("Anomaly", back_populates="user", cascade="all, delete-orphan")  # 等待 Anomaly 模型修复

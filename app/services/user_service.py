@@ -64,6 +64,12 @@ class UserService:
             raise ValueError("用户不存在")
         if not verify_password(password, user.password_hash):
             raise ValueError("密码错误")
+        
+        # 更新最后登录时间
+        user.last_sign_in = datetime.now()
+        db.commit()
+        db.refresh(user)
+        
         return user
 
     @staticmethod
