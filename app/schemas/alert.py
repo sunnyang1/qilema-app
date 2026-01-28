@@ -8,7 +8,15 @@ from datetime import datetime
 
 class AlertSettingCreate(BaseModel):
     """创建预警配置"""
-    checkin_threshold_hours: int = Field(24, ge=1, le=168, description="未签到阈值(小时)")
+    checkin_threshold_hours: int = Field(24, description="未签到阈值(小时)")
+
+    @field_validator('checkin_threshold_hours')
+    @classmethod
+    def validate_threshold(cls, v):
+        """验证预警阈值"""
+        if v < 6 or v > 168:
+            raise ValueError("预警阈值必须是6到168之间的整数")
+        return v
     checkin_enabled: bool = Field(True, description="启用未签到预警")
     abnormal_enabled: bool = Field(True, description="启用生理异常预警")
     enable_notification: bool = Field(True, description="启用通知")
@@ -30,7 +38,20 @@ class AlertSettingCreate(BaseModel):
         if v is None:
             return None
         if isinstance(v, str):
-            return v.split(',') if v else None
+            channels = v.split(',') if v else None
+            # 验证通知渠道
+            valid_channels = {'push', 'sms', 'email'}
+            if channels:
+                for ch in channels:
+                    if ch not in valid_channels:
+                        raise ValueError(f"通知渠道必须是以下之一: {', '.join(valid_channels)}")
+            return channels
+        # 如果是列表,也要验证
+        if isinstance(v, list):
+            valid_channels = {'push', 'sms', 'email'}
+            for ch in v:
+                if ch not in valid_channels:
+                    raise ValueError(f"通知渠道必须是以下之一: {', '.join(valid_channels)}")
         return v
 
 
@@ -80,13 +101,17 @@ class AlertCreate(BaseModel):
     """创建预警"""
     user_id: str = Field(..., description="用户ID")
     alert_type: str = Field(..., description="预警类型")
+    severity: str = Field("medium", description="严重程度")
     trigger_time: datetime = Field(default_factory=datetime.now, description="触发时间")
     trigger_reason: Optional[str] = Field(None, description="触发原因")
+    missed_days: Optional[int] = Field(None, description="未签到天数")
+    threshold_hours: Optional[int] = Field(None, description="阈值小时数")
     abnormal_data: Optional[dict] = Field(None, description="异常数据")
 
 
 class AlertResolveRequest(BaseModel):
     """解决预警请求"""
+    resolved_reason: Optional[str] = Field(None, description="解决原因")
     resolve_note: Optional[str] = Field(None, description="解决备注")
 
 

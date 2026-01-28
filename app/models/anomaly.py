@@ -100,7 +100,7 @@ class Anomaly(Base):
             "anomaly_type": self.anomaly_type.value if self.anomaly_type else None,
             "severity": self.severity.value if self.severity else None,
             "status": self.status.value if self.status else None,
-            "device_data_id": self.device_data_id,
+            "device_data_id": None,
             "anomaly_value": self.anomaly_value,
             "threshold_value": self.threshold_value,
             "deviation_ratio": self.deviation_ratio,
@@ -117,13 +117,13 @@ class Anomaly(Base):
 class HealthTrend(Base):
     """健康数据趋势分析"""
     __tablename__ = "health_trends"
-    
+
     id = Column(Integer, primary_key=True, index=True, comment="趋势分析ID")
-    
+
     # 基本信息
-    user_id = Column(String(36), ForeignKey("users.user_id", ondelete="CASCADE"), 
+    user_id = Column(String(36), ForeignKey("users.user_id", ondelete="CASCADE"),
                      nullable=False, index=True, comment="用户ID")
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), 
+    device_id = Column(String(36), ForeignKey("devices.device_id", ondelete="SET NULL"),
                        nullable=True, comment="设备ID")
     
     # 趋势信息
@@ -188,11 +188,11 @@ class ActivityPattern(Base):
     __tablename__ = "activity_patterns"
     
     id = Column(Integer, primary_key=True, index=True, comment="活动模式ID")
-    
+
     # 基本信息
-    user_id = Column(String(36), ForeignKey("users.user_id", ondelete="CASCADE"), 
+    user_id = Column(String(36), ForeignKey("users.user_id", ondelete="CASCADE"),
                      nullable=False, index=True, comment="用户ID")
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), 
+    device_id = Column(String(36), ForeignKey("devices.device_id", ondelete="SET NULL"),
                        nullable=True, comment="设备ID")
     
     # 模式信息

@@ -12,14 +12,14 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
 from app.models.user import User, GenderEnum, BloodTypeEnum
-from app.models.emergency_center import (
-    EmergencyCenter, EmergencyCall, Ambulance, RescueRecord,
-    EmergencyCallStatus, AmbulanceStatus
+from app.models.emergency_center_model import (
+    EmergencyCenter, EmergencyCall
 )
 from app.models.sos_request import SOSRequest, SOSStatusEnum, SOSTypeEnum
 from app.models.emergency_contact import EmergencyContact
 from app.models.health_record import HealthRecord
-from app.models.device import Device, DeviceData
+from app.models.device import Device
+from app.models.device_data import DeviceData
 from app.models.anomaly import Anomaly, AnomalyTypeEnum, SeverityLevel
 from app.services.emergency_center_service import EmergencyCenterService
 from app.schemas.emergency_center import (

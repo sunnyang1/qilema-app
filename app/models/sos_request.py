@@ -59,7 +59,7 @@ class SOSRequest(Base):
     user = db_relationship("User", back_populates="sos_requests")
     location_histories = db_relationship("SOSLocationHistory", back_populates="sos_request", cascade="all, delete-orphan")
     # emergency_calls = db_relationship("EmergencyCall", back_populates="sos_request")  # 等待 EmergencyCall 模型实现
-    # anomalies = db_relationship("Anomaly", back_populates="sos_request")  # Anomaly 模型暂时未启用
+    anomalies = db_relationship("Anomaly", back_populates="sos_request")
     
     def to_dict(self):
         """转换为字典"""

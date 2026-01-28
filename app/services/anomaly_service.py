@@ -15,7 +15,8 @@ from app.models.anomaly import (
     Anomaly, AnomalyTypeEnum, SeverityLevel, AnomalyStatus,
     HealthTrend, ActivityPattern
 )
-from app.models.device import Device, DeviceData
+from app.models.device import Device
+from app.models.device_data import DeviceData
 from app.models.user import User
 from app.models.sos_request import SOSRequest
 from app.schemas.anomaly import (

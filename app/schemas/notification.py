@@ -285,3 +285,7 @@ class NotificationStatsQuery(BaseModel):
     start_date: Optional[str] = Field(None, description="开始日期(YYYY-MM-DD)")
     end_date: Optional[str] = Field(None, description="结束日期(YYYY-MM-DD)")
     period: Optional[Literal['day', 'week', 'month']] = Field(None, description="统计周期")
+
+
+# 别名定义,用于兼容性
+NotificationPriority = NotificationPriorityEnum

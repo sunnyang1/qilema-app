@@ -13,18 +13,17 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from app.models.user import User
-from app.models.user_setting import LoginRecord
+from app.models.login_record import LoginRecord
 from app.models.emergency_contact import EmergencyContact
 from app.models.checkin import CheckIn
 from app.models.alert import Alert
 from app.models.sos_request import SOSRequest, SOSStatusEnum
 from app.models.health_record import HealthRecord
 from app.models.device import Device
-from app.models.anomaly import Anomaly
-from app.models.emergency_resource import EmergencyResource
-from app.models.emergency_center import EmergencyCenter, EmergencyCall
-from app.models.notification import Notification
-from app.models.user_setting import UserSetting
+from app.models.emergency_resource_model import EmergencyResource
+from app.models.emergency_center_model import EmergencyCenter, EmergencyCall
+from app.models.notification_model import Notification
+from app.models.user_setting_model import UserSetting
 from app.services.user_service import UserService
 from app.services.emergency_contact_service import EmergencyContactService
 from app.services.checkin_service import CheckInService

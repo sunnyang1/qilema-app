@@ -22,12 +22,17 @@ Base = declarative_base()
 
 
 def get_db():
-    """获取数据库会话"""
+    """获取数据库会话(依赖注入使用)"""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
+def get_db_session():
+    """获取数据库会话(直接使用)"""
+    return SessionLocal()
 
 
 def init_db():

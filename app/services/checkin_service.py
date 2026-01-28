@@ -127,13 +127,13 @@ class CheckInService:
         
         # 计算当前连续签到天数
         current_streak = CheckInService._calculate_streak(db, user_id, from_date=date.today())
-        
+
         # 计算最长连续签到天数
         longest_streak = CheckInService._calculate_longest_streak(db, user_id, days)
-        
+
         # 计算签到率
         checkin_rate = (total_checkins / days) * 100 if days > 0 else 0
-        
+
         return CheckInStatsResponse(
             total_checkins=total_checkins,
             current_streak=current_streak,

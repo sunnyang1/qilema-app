@@ -11,9 +11,9 @@ from sqlalchemy import func, and_, or_, desc
 import math
 import requests
 
-from app.models.emergency_resource import (
+from app.models.emergency_resource_model import (
     EmergencyResource, ResourceFacility, ResourceDepartment,
-    ResourceUsageLog, NavigationRoute, ResourceType, ResourceStatus
+    ResourceUsageLog, NavigationRoute
 )
 from app.models.user import User
 from app.schemas.emergency_resource import (

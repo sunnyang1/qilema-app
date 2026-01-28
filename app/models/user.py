@@ -40,13 +40,14 @@ class User(Base):
     alert_settings = db_relationship("AlertSetting", back_populates="user", cascade="all, delete-orphan", uselist=False)
     sos_requests = db_relationship("SOSRequest", back_populates="user", cascade="all, delete-orphan")
     devices = db_relationship("Device", back_populates="user", cascade="all, delete-orphan")
-    # anomalies = db_relationship("Anomaly", back_populates="user", cascade="all, delete-orphan")  # 等待 Anomaly 模型修复
-    # health_trends = db_relationship("HealthTrend", back_populates="user", cascade="all, delete-orphan")  # 等待 HealthTrend 模型实现
-    # activity_patterns = db_relationship("ActivityPattern", back_populates="user", cascade="all, delete-orphan")  # 等待 ActivityPattern 模型实现
-    # notifications = db_relationship("Notification", back_populates="user", cascade="all, delete-orphan")  # 等待 Notification 模型实现
-    # notification_preference = db_relationship("NotificationPreference", back_populates="user", cascade="all, delete-orphan", uselist=False)  # 等待 NotificationPreference 模型实现
-    # login_records = db_relationship("LoginRecord", back_populates="user", cascade="all, delete-orphan")  # 等待 LoginRecord 模型实现
-    # user_setting = db_relationship("UserSetting", back_populates="user", cascade="all, delete-orphan", uselist=False)  # 等待 UserSetting 模型实现
+    login_records = db_relationship("LoginRecord", back_populates="user", cascade="all, delete-orphan")
+    user_setting = db_relationship("UserSetting", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    emergency_calls = db_relationship("EmergencyCall", back_populates="user", cascade="all, delete-orphan")
+    notifications = db_relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    anomalies = db_relationship("Anomaly", back_populates="user", cascade="all, delete-orphan")
+    health_trends = db_relationship("HealthTrend", back_populates="user", cascade="all, delete-orphan")
+    activity_patterns = db_relationship("ActivityPattern", back_populates="user", cascade="all, delete-orphan")
+    health_record = db_relationship("HealthRecord", back_populates="user", cascade="all, delete-orphan", uselist=False)
     
     def to_dict(self):
         return {

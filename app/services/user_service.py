@@ -25,6 +25,14 @@ except Exception:
 class UserService:
     """用户服务类"""
 
+    def __init__(self, db: Session = None):
+        """初始化用户服务
+        
+        Args:
+            db: 数据库会话(可选),为空时使用静态方法模式
+        """
+        self.db = db
+
     @staticmethod
     def register_user(db: Session, user_data: dict) -> User:
         """用户注册"""
@@ -55,6 +63,30 @@ class UserService:
         db.commit()
         db.refresh(user)
         return user
+
+    def login(self, phone: str, password: str) -> dict:
+        """用户登录(实例方法)"""
+        db = self.db
+        user = db.query(User).filter(User.phone == phone).first()
+        if not user:
+            raise ValueError("用户不存在")
+        if not verify_password(password, user.password_hash):
+            raise ValueError("密码错误")
+
+        # 更新最后登录时间
+        user.last_sign_in = datetime.now()
+        db.commit()
+        db.refresh(user)
+
+        # 生成JWT token
+        from app.core.security import create_access_token
+        access_token = create_access_token(data={"sub": user.user_id})
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": user.to_dict()
+        }
 
     @staticmethod
     def login_user(db: Session, phone: str, password: str) -> Optional[User]:

@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc
 import json
 
-from app.models.device import Device, DeviceData, DeviceThreshold
+from app.models.device import Device
+from app.models.device_data import DeviceData, DeviceThreshold
 from app.schemas.device import (
     DeviceBind, DeviceUpdate, DeviceDataUpload, DeviceDataQuery,
     DeviceThresholdCreate, DeviceThresholdUpdate, DeviceStatusUpdate, DeviceAlert

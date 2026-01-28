@@ -82,22 +82,26 @@ class AlertService:
         return setting
 
     @staticmethod
-    def create_alert(db: Session, user_id: str, alert_data: AlertCreate) -> Alert:
+    def create_alert(db: Session, alert_data: AlertCreate) -> Alert:
         """创建预警"""
-        # 映射字符串类型到整数类型
-        type_mapping = {
-            "checkin_absent": 1,
-            "physiological_abnormal": 2,
-            "sos_missed": 3
-        }
-        alert_type_int = type_mapping.get(alert_data.alert_type, 1)  # 默认为1
+        # 检查是否已存在相同类型的活动预警
+        existing_alert = db.query(Alert).filter(
+            Alert.user_id == alert_data.user_id,
+            Alert.alert_type == alert_data.alert_type,
+            Alert.status == "active"
+        ).first()
+
+        if existing_alert:
+            return existing_alert
 
         alert = Alert(
             alert_id=str(uuid.uuid4()),
-            user_id=alert_data.user_id if alert_data.user_id else user_id,
-            alert_type=alert_type_int,
+            user_id=alert_data.user_id,
+            alert_type=alert_data.alert_type,
+            severity=alert_data.severity,
             trigger_time=alert_data.trigger_time,
-            status=0,
+            trigger_reason=alert_data.trigger_reason,
+            status="active",
             abnormal_data=alert_data.abnormal_data,
             created_at=datetime.now()
         )
@@ -107,17 +111,116 @@ class AlertService:
         return alert
 
     @staticmethod
-    def resolve_alert(db: Session, alert_id: str, resolve_note: Optional[str] = None) -> Optional[Alert]:
+    def resolve_alert(db: Session, alert_id: Union[str, int], user_id: str, resolve_request: AlertResolveRequest) -> Optional[Alert]:
         """解决预警"""
-        alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
+        # 支持 id 和 alert_id 两种查找方式
+        if isinstance(alert_id, int):
+            alert = db.query(Alert).filter(Alert.id == alert_id).first()
+        else:
+            alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
+
         if not alert:
             return None
-        
-        alert.status = 1
+
+        alert.status = "resolved"
         alert.resolved_at = datetime.now()
+        alert.resolved_reason = resolve_request.resolved_reason if resolve_request.resolved_reason else resolve_request.resolve_note
+        alert.resolved_by = "manual_dismiss"
         db.commit()
         db.refresh(alert)
         return alert
+
+    @staticmethod
+    def auto_resolve_by_checkin(db: Session, user_id: str) -> int:
+        """签到后自动解除所有活动预警"""
+        setting = AlertService.get_setting(db, user_id)
+        if not setting or not setting.auto_resolve:
+            return 0
+
+        # 查找所有活动预警
+        active_alerts = db.query(Alert).filter(
+            Alert.user_id == user_id,
+            Alert.status == "active"
+        ).all()
+
+        # 自动解除所有活动预警
+        count = 0
+        for alert in active_alerts:
+            alert.status = "resolved"
+            alert.resolved_at = datetime.now()
+            alert.resolved_reason = "用户已签到"
+            alert.resolved_by = "auto_checkin"
+            count += 1
+
+        db.commit()
+        return count
+
+    @staticmethod
+    def get_alerts(db: Session, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> tuple[List[Alert], int]:
+        """获取用户预警列表"""
+        query = db.query(Alert).filter(Alert.user_id == user_id)
+        if status:
+            query = query.filter(Alert.status == status)
+        total = query.count()
+        alerts = query.order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
+        return alerts, total
+
+    @staticmethod
+    def get_alert_stats(db: Session, user_id: str) -> dict:
+        """获取预警统计"""
+        total = db.query(Alert).filter(Alert.user_id == user_id).count()
+        active = db.query(Alert).filter(Alert.user_id == user_id, Alert.status == "active").count()
+        resolved = db.query(Alert).filter(Alert.user_id == user_id, Alert.status == "resolved").count()
+        dismissed = db.query(Alert).filter(Alert.user_id == user_id, Alert.status == "dismissed").count()
+
+        return {
+            'total_alerts': total,
+            'active_alerts': active,
+            'resolved_alerts': resolved,
+            'dismissed_alerts': dismissed
+        }
+
+    @staticmethod
+    def get_contacts_for_notification(db: Session, user_id: str) -> List[EmergencyContact]:
+        """获取用于通知的紧急联系人"""
+        setting = AlertService.get_setting(db, user_id)
+        if setting and not setting.emergency_contact_notify:
+            return []
+
+        return AlertService.get_user_emergency_contacts(db, user_id)
+
+    @staticmethod
+    def check_all_users_and_create_alerts(db: Session) -> List[Alert]:
+        """检查所有用户并创建预警"""
+        created_alerts = []
+
+        # 获取所有启用了预警的用户配置
+        settings = db.query(AlertSetting).filter(
+            AlertSetting.checkin_enabled == True,
+            AlertSetting.enable_notification == True
+        ).all()
+
+        for setting in settings:
+            # 检查签到状态
+            status = AlertService.check_user_checkin_status(db, setting.user_id)
+            if status and status['trigger_alert']:
+                # 计算严重程度
+                severity = AlertService._calculate_severity(int(status['missed_hours']))
+
+                # 创建预警
+                alert_data = AlertCreate(
+                    user_id=setting.user_id,
+                    alert_type="checkin_absent",
+                    severity=severity,
+                    trigger_reason=f"用户连续{int(status['missed_days'])}天未签到",
+                    missed_days=int(status['missed_days']),
+                    threshold_hours=status['threshold_hours']
+                )
+                alert = AlertService.create_alert(db, alert_data)
+                if alert:
+                    created_alerts.append(alert)
+
+        return created_alerts
 
     @staticmethod
     def get_alert(db: Session, alert_id: str) -> Optional[Alert]:
@@ -225,3 +328,52 @@ class AlertService:
         return db.query(EmergencyContact).filter(
             EmergencyContact.user_id == user_id
         ).order_by(EmergencyContact.priority).all()
+
+    @staticmethod
+    def _calculate_severity(missed_hours: int) -> str:
+        """计算严重程度"""
+        if missed_hours >= 96:
+            return 'critical'
+        elif missed_hours >= 48:
+            return 'high'
+        elif missed_hours >= 30:
+            return 'medium'
+        else:
+            return 'low'
+
+    @staticmethod
+    def check_user_checkin_status(db: Session, user_id: str) -> Optional[dict]:
+        """检查用户签到状态"""
+        setting = AlertService.get_setting(db, user_id)
+        if not setting or not setting.checkin_enabled or not setting.enable_notification:
+            return None
+
+        # 获取最后签到时间
+        last_checkin = db.query(CheckIn).filter(CheckIn.user_id == user_id).order_by(CheckIn.checkin_time.desc()).first()
+
+        if not last_checkin:
+            # 从未签到过
+            return {
+                'trigger_alert': True,
+                'last_checkin_time': None,
+                'missed_hours': 999,
+                'missed_days': 999,
+                'reason': '从未签到'
+            }
+
+        # 计算未签到时间
+        now = datetime.now()
+        time_since_last_checkin = now - last_checkin.checkin_time
+        missed_hours = time_since_last_checkin.total_seconds() / 3600
+        missed_days = missed_hours / 24
+
+        # 检查是否超过阈值
+        trigger_alert = missed_hours >= setting.checkin_threshold_hours
+
+        return {
+            'trigger_alert': trigger_alert,
+            'last_checkin_time': last_checkin.checkin_time,
+            'missed_hours': missed_hours,
+            'missed_days': missed_days,
+            'threshold_hours': setting.checkin_threshold_hours
+        }

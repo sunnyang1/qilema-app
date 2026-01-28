@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from app.models.user import User
-from app.models.user_setting import LoginRecord
+from app.models.login_record import LoginRecord
 from app.models.emergency_contact import EmergencyContact
 from app.models.checkin import CheckIn
 from app.models.alert import Alert
@@ -457,7 +457,7 @@ class TestRegressionSuite:
     def test_regression_emergency_resource_search(self, db_session):
         """回归测试: 急救资源搜索"""
         from app.services.emergency_resource_service import EmergencyResourceService
-        from app.models.emergency_resource import ResourceType
+        from app.schemas.emergency_center import ResourceType
 
         resource_service = EmergencyResourceService(db_session)
 

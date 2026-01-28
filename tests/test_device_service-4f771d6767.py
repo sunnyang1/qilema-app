@@ -9,10 +9,11 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.models.device import Device, DeviceData, DeviceThreshold
+from app.models.device import Device
+from app.models.device_data import DeviceData, DeviceThreshold
 from app.schemas.device import (
     DeviceBind, DeviceDataUpload, DeviceThresholdCreate,
-    DeviceThresholdUpdate, DeviceStatusUpdate, DeviceType
+    DeviceThresholdUpdate, DeviceStatusUpdate
 )
 from app.services.device_service import DeviceService
 
@@ -68,7 +69,7 @@ class TestDeviceService:
         device_data = DeviceBind(
             device_id="band_test_001",
             device_name="小米手环6",
-            device_type=DeviceType.SMART_BAND,
+            device_type="smartband",
             device_brand="小米",
             device_model="Band 6"
         )
@@ -119,7 +120,7 @@ class TestDeviceService:
             device_data = DeviceBind(
                 device_id=f"device_{i}",
                 device_name=f"设备{i}",
-                device_type=DeviceType.SMART_BAND
+                device_type="smartband"
             )
             device_service.bind_device(db_session, test_user.user_id, device_data)
         

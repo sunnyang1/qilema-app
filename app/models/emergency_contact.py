@@ -11,14 +11,15 @@ class EmergencyContact(Base):
     __tablename__ = "emergency_contacts"
 
     id = Column(Integer, primary_key=True, index=True)
-    contact_id = Column(String(36), nullable=False, unique=True, index=True)
+    contact_id = Column(String(36), nullable=False, unique=True, index=True, default=lambda: str(__import__('uuid').uuid4()))
     user_id = Column(String(36), ForeignKey("users.user_id"), nullable=False, index=True)
     name = Column(String(50), nullable=False, comment="联系人姓名")
     phone = Column(String(20), nullable=False, comment="联系人电话")
     relationship = Column(String(20), nullable=True, comment="与用户关系")
+    is_primary = Column(Integer, nullable=False, default=0, comment="是否主要联系人: 0=否 1=是")
     priority = Column(Integer, nullable=False, default=1, comment="通知优先级")
     notify_channels = Column(JSON, nullable=True, comment="通知渠道")
-    created_at = Column(DateTime, nullable=False, comment="创建时间")
+    created_at = Column(DateTime, nullable=False, default=lambda: __import__('datetime').datetime.now(), comment="创建时间")
     updated_at = Column(DateTime, nullable=True, comment="更新时间")
 
     # 关系

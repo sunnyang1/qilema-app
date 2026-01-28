@@ -11,7 +11,7 @@ from sqlalchemy import func, and_, desc
 import json
 import requests
 
-from app.models.emergency_center import (
+from app.models.emergency_center_model import (
     EmergencyCenter, EmergencyCall, Ambulance, RescueRecord,
     EmergencyCallStatus, AmbulanceStatus
 )
@@ -19,7 +19,8 @@ from app.models.user import User
 from app.models.sos_request import SOSRequest
 from app.models.emergency_contact import EmergencyContact
 from app.models.health_record import HealthRecord
-from app.models.device import DeviceData
+from app.models.device_data import DeviceData
+from app.models.device import Device
 from app.models.anomaly import Anomaly
 from app.schemas.emergency_center import (
     EmergencyCenterCreate, EmergencyCenterUpdate,

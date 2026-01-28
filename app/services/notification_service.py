@@ -10,17 +10,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
 import logging
 
-from app.models.notification import (
-    Notification, NotificationTemplate, NotificationPreference, NotificationStatistics,
-    NotificationType, NotificationChannel, NotificationPriority, NotificationStatus
-)
+from app.models.notification_model import Notification
 from app.models.user import User
 from app.models.emergency_contact import EmergencyContact
 from app.schemas.notification import (
     NotificationCreate, NotificationUpdate, NotificationQuery, NotificationStatistics as NotificationStatisticsSchema,
     SendNotificationRequest, BatchSendNotificationRequest, MarkAsReadRequest,
     NotificationPreferenceCreate, NotificationPreferenceUpdate,
-    NotificationTemplateCreate, NotificationTemplateUpdate
+    NotificationTemplateCreate, NotificationTemplateUpdate,
+    NotificationPriority
 )
 
 logger = logging.getLogger(__name__)

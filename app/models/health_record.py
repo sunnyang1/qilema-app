@@ -27,11 +27,12 @@ class HealthRecord(Base):
     
     # 加密存储标识
     is_encrypted = Column(Integer, default=0, comment="是否加密:0-否 1-是")
-    
+
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
-    
+
     # 关联关系
+    user = db_relationship("User", back_populates="health_record")
     medical_histories = db_relationship("MedicalHistory", back_populates="health_record", cascade="all, delete-orphan", lazy="dynamic")
     medications = db_relationship("Medication", back_populates="health_record", cascade="all, delete-orphan", lazy="dynamic")
     allergies = db_relationship("Allergy", back_populates="health_record", cascade="all, delete-orphan", lazy="dynamic")

@@ -20,7 +20,7 @@ from app.models.user import User
 from app.models.checkin import CheckIn
 from app.models.alert import Alert
 from app.models.sos_request import SOSRequest
-from app.models.notification import Notification
+from app.models.notification_model import Notification
 from app.services.user_service import UserService
 from app.services.checkin_service import CheckInService
 from app.services.alert_service import AlertService

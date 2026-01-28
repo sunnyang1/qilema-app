@@ -5,6 +5,8 @@ Models包初始化文件
 
 # 基础模型（无外部依赖）
 from .user import User
+from .emergency_center_model import EmergencyCenter
+from .emergency_resource_model import EmergencyResource, ResourceFacility, ResourceDepartment, ResourceUsageLog, NavigationRoute
 
 # 关联模型（依赖User）
 from .emergency_contact import EmergencyContact
@@ -13,9 +15,17 @@ from .alert import Alert
 from .sos_request import SOSRequest
 from .device import Device
 from .health_record import HealthRecord
+from .device_data import DeviceData, DeviceThreshold
+from .login_record import LoginRecord
+from .user_setting_model import UserSetting
+from .emergency_center_model import EmergencyCall, Ambulance, RescueRecord
+from .notification_model import Notification
 # from .anomaly import Anomaly  # 暂时注释,等待修复外键引用
 
 __all__ = [
-    'User', 'EmergencyContact', 'CheckIn', 'Alert',
-    'SOSRequest', 'Device', 'HealthRecord',  # 'Anomaly',
+    'User', 'EmergencyCenter', 'EmergencyResource', 'EmergencyContact', 'CheckIn', 'Alert',
+    'SOSRequest', 'Device', 'HealthRecord',
+    'DeviceData', 'DeviceThreshold', 'LoginRecord', 'UserSetting',
+    'EmergencyCall', 'Ambulance', 'RescueRecord', 'Notification',
+    'ResourceFacility', 'ResourceDepartment', 'ResourceUsageLog', 'NavigationRoute',  # 'Anomaly',
 ]
