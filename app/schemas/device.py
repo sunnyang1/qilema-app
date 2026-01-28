@@ -4,6 +4,15 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any
 from datetime import datetime
+from enum import Enum
+
+
+class DeviceType(str, Enum):
+    """设备类型枚举"""
+    SMART_WATCH = "smartwatch"
+    SMART_BAND = "smartband"
+    HEALTH_MONITOR = "health_monitor"
+    OTHER = "other"
 
 
 class DeviceCreate(BaseModel):
@@ -79,8 +88,10 @@ class DeviceDataQuery(BaseModel):
 
 class DeviceBind(BaseModel):
     """绑定设备"""
+    device_id: str = Field(..., description="设备ID")
     device_name: str = Field(..., min_length=1, max_length=50, description="设备名称")
     device_type: str = Field(..., min_length=1, max_length=20, description="设备类型")
+    device_brand: Optional[str] = Field(None, max_length=50, description="设备品牌")
     device_model: Optional[str] = Field(None, max_length=50, description="设备型号")
     firmware_version: Optional[str] = Field(None, max_length=20, description="固件版本")
     settings: Optional[Dict[str, Any]] = Field(None, description="设备设置")

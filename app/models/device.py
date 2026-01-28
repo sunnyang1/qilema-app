@@ -9,14 +9,17 @@ from app.core.database import Base
 class Device(Base):
     """设备模型"""
     __tablename__ = "devices"
-    
-    device_id = Column(String(36), primary_key=True, index=True)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    device_id = Column(String(36), unique=True, index=True, comment="设备ID")
     user_id = Column(String(36), ForeignKey("users.user_id"), nullable=False, index=True)
     device_name = Column(String(50), nullable=False, comment="设备名称")
     device_type = Column(String(20), nullable=False, comment="设备类型")
+    device_brand = Column(String(50), nullable=True, comment="设备品牌")
     device_model = Column(String(50), nullable=True, comment="设备型号")
     firmware_version = Column(String(20), nullable=True, comment="固件版本")
     status = Column(String(20), nullable=False, default="active", comment="状态: active/inactive/offline")
+    is_active = Column(Boolean, default=True, comment="是否激活")
     settings = Column(JSON, nullable=True, comment="设备设置")
     data = Column(JSON, nullable=True, comment="设备数据")
     last_sync_time = Column(DateTime, nullable=True, comment="最后同步时间")

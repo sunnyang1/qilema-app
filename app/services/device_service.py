@@ -47,15 +47,11 @@ class DeviceService:
             user_id=user_id,
             device_id=device_data.device_id,
             device_name=device_data.device_name,
-            device_type=device_data.device_type.value,
-            device_brand=device_data.device_brand,
+            device_type=device_data.device_type,
             device_model=device_data.device_model,
             firmware_version=device_data.firmware_version,
-            hardware_version=device_data.hardware_version,
-            notes=device_data.notes,
-            is_active=True,
-            is_online=False,
-            bound_at=datetime.utcnow()
+            status="active",
+            is_active=True
         )
         
         db.add(device)
@@ -552,22 +548,26 @@ class DeviceService:
     
     def _create_default_threshold(self, db: Session, device_id: int) -> DeviceThreshold:
         """创建默认阈值配置"""
+        # 需要获取user_id，从device关联获取
+        device = db.query(Device).filter(Device.id == device_id).first()
+        user_id = device.user_id if device else None
+
         threshold = DeviceThreshold(
             device_id=device_id,
+            user_id=user_id,
             heart_rate_min=60,
             heart_rate_max=100,
-            systolic_pressure_max=140,
-            diastolic_pressure_max=90,
+            blood_pressure_systolic_max=140,
+            blood_pressure_diastolic_max=90,
             blood_oxygen_min=95,
-            body_temperature_min=36.0,
-            body_temperature_max=37.5,
-            steps_min_per_day=1000,
-            alert_enabled=True,
-            alert_cooldown_minutes=30
+            temperature_min=36.0,
+            temperature_max=37.5,
+            steps_min=1000,
+            enabled=1
         )
-        
+
         db.add(threshold)
         db.commit()
         db.refresh(threshold)
-        
+
         return threshold
