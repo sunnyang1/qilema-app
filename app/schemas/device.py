@@ -40,6 +40,7 @@ class DeviceUpdate(BaseModel):
     firmware_version: Optional[str] = Field(None, max_length=20)
     status: Optional[str] = Field(None)
     settings: Optional[Dict[str, Any]] = Field(None)
+    notes: Optional[str] = Field(None, description="备注")
 
     @field_validator('status')
     @classmethod
@@ -77,7 +78,7 @@ class DeviceDataCreate(BaseModel):
 
 class DeviceDataQuery(BaseModel):
     """查询设备数据"""
-    device_id: str = Field(..., description="设备ID")
+    device_id: Optional[str] = Field(None, description="设备ID")
     start_time: Optional[datetime] = Field(None, description="开始时间")
     end_time: Optional[datetime] = Field(None, description="结束时间")
     data_type: Optional[str] = Field(None, description="数据类型")
@@ -100,9 +101,21 @@ class DeviceBind(BaseModel):
 class DeviceDataUpload(BaseModel):
     """上传设备数据"""
     device_id: str = Field(..., description="设备ID")
-    data_type: str = Field(..., description="数据类型")
-    data_value: Dict[str, Any] = Field(..., description="数据值")
+    data_type: Optional[str] = Field(None, description="数据类型")
+    data_value: Optional[Dict[str, Any]] = Field(None, description="数据值")
+    data_timestamp: Optional[datetime] = Field(default_factory=datetime.now, description="数据时间戳")
     upload_time: Optional[datetime] = Field(default_factory=datetime.now, description="上传时间")
+    # 兼容旧 API 的字段
+    heart_rate: Optional[int] = Field(None, description="心率(bpm)")
+    steps: Optional[int] = Field(None, description="步数")
+    calories: Optional[float] = Field(None, description="卡路里")
+    distance: Optional[float] = Field(None, description="距离(km)")
+    sleep_duration: Optional[float] = Field(None, description="睡眠时长(小时)")
+    deep_sleep_duration: Optional[float] = Field(None, description="深度睡眠时长(小时)")
+    systolic_pressure: Optional[int] = Field(None, description="收缩压(mmHg)")
+    diastolic_pressure: Optional[int] = Field(None, description="舒张压(mmHg)")
+    blood_oxygen: Optional[float] = Field(None, description="血氧(%)")
+    body_temperature: Optional[float] = Field(None, description="体温(℃)")
 
 
 class DeviceDataResponse(BaseModel):
@@ -120,7 +133,7 @@ class DeviceDataResponse(BaseModel):
 
 class DeviceThresholdCreate(BaseModel):
     """创建设备阈值"""
-    device_id: str = Field(..., description="设备ID")
+    device_id: str | int = Field(..., description="设备ID")
     heart_rate_min: Optional[int] = Field(None, ge=30, le=200)
     heart_rate_max: Optional[int] = Field(None, ge=30, le=200)
     blood_pressure_systolic_min: Optional[int] = Field(None, ge=60, le=200)
@@ -133,6 +146,15 @@ class DeviceThresholdCreate(BaseModel):
     steps_min: Optional[int] = Field(None, ge=0)
     steps_max: Optional[int] = Field(None, ge=0)
     sleep_duration_min: Optional[float] = Field(None, ge=0, le=24)
+    alert_enabled: Optional[bool] = Field(None, description="是否启用预警")
+
+    @field_validator('device_id', mode='before')
+    @classmethod
+    def validate_device_id(cls, v):
+        """接受 int 或 str 类型的 device_id"""
+        if isinstance(v, int):
+            return str(v)
+        return v
 
 
 class DeviceThresholdUpdate(BaseModel):
@@ -149,6 +171,7 @@ class DeviceThresholdUpdate(BaseModel):
     steps_min: Optional[int] = Field(None, ge=0)
     steps_max: Optional[int] = Field(None, ge=0)
     sleep_duration_min: Optional[float] = Field(None, ge=0, le=24)
+    alert_enabled: Optional[bool] = Field(None, description="是否启用预警")
 
 
 class DeviceThresholdResponse(BaseModel):
@@ -169,16 +192,28 @@ class DeviceThresholdResponse(BaseModel):
     steps_max: Optional[int]
     sleep_duration_min: Optional[float]
     enabled: int
+    alert_enabled: Optional[bool] = None
     created_at: datetime
     updated_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
 
+    @field_validator('alert_enabled', mode='before')
+    @classmethod
+    def convert_enabled_to_alert_enabled(cls, v):
+        """将 enabled 转换为 alert_enabled"""
+        if v is None:
+            return None
+        if isinstance(v, int):
+            return v == 1
+        return v
+
 
 class DeviceStatusUpdate(BaseModel):
     """更新设备状态"""
-    status: str = Field(..., description="状态: active/inactive/offline")
+    status: Optional[str] = Field(None, description="状态: active/inactive/offline")
     battery_level: Optional[int] = Field(None, ge=0, le=100, description="电池电量")
+    is_online: Optional[bool] = Field(None, description="是否在线")
 
 
 class DeviceStatistics(BaseModel):

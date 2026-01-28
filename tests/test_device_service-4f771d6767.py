@@ -13,7 +13,7 @@ from app.models.device import Device
 from app.models.device_data import DeviceData, DeviceThreshold
 from app.schemas.device import (
     DeviceBind, DeviceDataUpload, DeviceThresholdCreate,
-    DeviceThresholdUpdate, DeviceStatusUpdate
+    DeviceThresholdUpdate, DeviceStatusUpdate, DeviceType
 )
 from app.services.device_service import DeviceService
 
