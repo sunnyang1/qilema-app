@@ -6,7 +6,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
 
@@ -80,10 +80,9 @@ class EmergencyCenterResponse(EmergencyCenterBase):
     has_ambulance_tracking: bool
     has_auto_dispatch: bool
     created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
+    updated_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
 
 
 # ========== 120急救呼叫相关 ==========
@@ -136,10 +135,9 @@ class EmergencyCallResponse(BaseModel):
     is_successful: bool
     failure_reason: Optional[str]
     created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
+    updated_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
 
 
 # ========== 救护车相关 ==========
@@ -197,10 +195,9 @@ class AmbulanceResponse(BaseModel):
     contact_phone: Optional[str]
     eta_minutes: Optional[int]
     created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
+    updated_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
 
 
 class AmbulanceLocation(BaseModel):
@@ -209,7 +206,7 @@ class AmbulanceLocation(BaseModel):
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     address: Optional[str] = Field(None, description="当前地址")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=datetime.now, description="更新时间")
 
 
 # ========== 救援记录相关 ==========
@@ -270,10 +267,9 @@ class RescueRecordResponse(BaseModel):
     user_feedback: Optional[str]
     user_rating: Optional[int]
     created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
+    updated_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
 
 
 # ========== 120拨号请求 ==========
@@ -307,24 +303,24 @@ class HealthSummary(BaseModel):
     user_name: Optional[str] = Field(None, description="用户姓名")
     age: Optional[int] = Field(None, description="年龄")
     blood_type: Optional[str] = Field(None, description="血型")
-    
+
     # 健康状况
     chronic_diseases: Optional[List[str]] = Field(None, description="慢性病史")
     allergies: Optional[List[str]] = Field(None, description="过敏史")
     current_medications: Optional[List[str]] = Field(None, description="当前用药")
-    
+
     # 最新健康数据
     latest_heart_rate: Optional[float] = Field(None, description="最新心率")
     latest_blood_pressure: Optional[str] = Field(None, description="最新血压")
     latest_blood_oxygen: Optional[float] = Field(None, description="最新血氧")
-    
+
     # 紧急联系人
     emergency_contacts: Optional[List[dict]] = Field(None, description="紧急联系人列表")
-    
+
     # 最近设备异常
     recent_anomalies: Optional[List[dict]] = Field(None, description="最近异常记录")
-    
-    generated_at: datetime = Field(default_factory=datetime.utcnow, description="生成时间")
+
+    generated_at: datetime = Field(default_factory=datetime.now, description="生成时间")
 
 
 # ========== 救护车追踪 ==========
