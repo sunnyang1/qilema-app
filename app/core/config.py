@@ -90,8 +90,64 @@ class Settings(BaseSettings):
             raise ValueError("生产环境不能开启DEBUG模式")
         return v
 
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v: str, info) -> str:
+        """验证SECRET_KEY是否安全
+
+        Args:
+            v: SECRET_KEY值
+            info: Pydantic验证信息对象
+
+        Returns:
+            str: 验证通过的SECRET_KEY值
+
+        Raises:
+            ValueError: 当SECRET_KEY不安全时抛出
+        """
+        # 检查是否是默认值
+        default_key = "your-secret-key-change-in-production"
+        if v == default_key:
+            raise ValueError(
+                "SECRET_KEY不能使用默认值。"
+                f"请使用以下命令生成强随机密钥: python scripts/generate_secret_key.py"
+            )
+
+        # 检查最小长度（64字节）
+        min_length = 64
+        key_bytes = v.encode('utf-8')
+        if len(key_bytes) < min_length:
+            raise ValueError(
+                f"SECRET_KEY长度至少{min_length}字节，"
+                f"当前{len(key_bytes)}字节。"
+                f"请使用以下命令生成强随机密钥: python scripts/generate_secret_key.py"
+            )
+
+        # 生产环境额外检查
+        if info.data.get("ENVIRONMENT") == "production":
+            # 确保密钥强度足够
+            import re
+            has_upper = bool(re.search(r'[A-Z]', v))
+            has_lower = bool(re.search(r'[a-z]', v))
+            has_digit = bool(re.search(r'\d', v))
+            has_special = bool(re.search(r'[^A-Za-z0-9]', v))
+
+            char_types = sum([has_upper, has_lower, has_digit, has_special])
+            if char_types < 3:
+                raise ValueError(
+                    f"生产环境SECRET_KEY强度不足，"
+                    f"应该包含多种字符类型，当前满足{char_types}种。"
+                    f"请使用以下命令生成强随机密钥: python scripts/generate_secret_key.py"
+                )
+
+        return v
+
     class Config:
-        env_file = ".env"
+        # 优先使用测试环境的.env文件
+        if os.path.exists(".env.testing"):
+            env_file = ".env.testing"
+        else:
+            env_file = ".env"
         case_sensitive = True
 
 
