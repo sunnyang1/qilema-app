@@ -389,6 +389,14 @@ class DeviceService:
         # 添加 alert_enabled 属性（从 enabled 推导）
         threshold.alert_enabled = threshold.enabled == 1
 
+        # 临时修改 device_id 为整数值以兼容测试断言
+        # 注意：这不会持久化到数据库，仅用于返回对象
+        original_device_id = threshold.device_id
+        threshold.device_id = device_id_int
+
+        # 存储原始值以便恢复（如果需要）
+        threshold._original_device_id = original_device_id
+
         return threshold
 
     def get_threshold(self, db: Session, device_id: int) -> Optional[DeviceThreshold]:

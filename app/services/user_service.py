@@ -11,13 +11,18 @@ from app.core.security import get_password_hash, verify_password
 from app.core.config import settings
 
 # Redis客户端
+redis_client = None
 try:
     redis_client = redis.Redis(
         host=settings.REDIS_HOST if hasattr(settings, 'REDIS_HOST') else 'localhost',
         port=settings.REDIS_PORT if hasattr(settings, 'REDIS_PORT') else 6379,
         db=settings.REDIS_DB if hasattr(settings, 'REDIS_DB') else 0,
-        decode_responses=True
+        decode_responses=True,
+        socket_connect_timeout=2,
+        socket_timeout=2
     )
+    # 测试连接
+    redis_client.ping()
 except Exception:
     redis_client = None
 
@@ -34,8 +39,20 @@ class UserService:
         self.db = db
 
     @staticmethod
-    def register_user(db: Session, user_data: dict) -> User:
-        """用户注册"""
+    def _register_user_impl(db: Session, user_data: dict) -> User:
+        """用户注册实现（内部静态方法）
+
+        Args:
+            db: 数据库会话
+            user_data: 用户数据字典
+
+        Returns:
+            User: 创建的用户对象
+        """
+        # 兼容不同参数名
+        if 'verification_code' in user_data:
+            user_data['verify_code'] = user_data.pop('verification_code')
+
         # 检查手机号是否已存在
         existing_user = db.query(User).filter(User.phone == user_data.get("phone")).first()
         if existing_user:
@@ -63,6 +80,42 @@ class UserService:
         db.commit()
         db.refresh(user)
         return user
+
+    @staticmethod
+    def register_user(db: Session, user_data: dict = None, **kwargs) -> User:
+        """用户注册（静态方法）
+
+        Args:
+            db: 数据库会话
+            user_data: 用户数据字典
+            **kwargs: 支持直接传入 phone, password, nickname 等参数
+
+        Returns:
+            User: 创建的用户对象
+        """
+        # 支持 keyword arguments 调用方式
+        if user_data is None:
+            user_data = kwargs
+
+        return UserService._register_user_impl(db, user_data)
+
+    def register_user(self, user_data: dict = None, **kwargs) -> User:
+        """用户注册（实例方法）
+
+        Args:
+            user_data: 用户数据字典
+            **kwargs: 支持直接传入 phone, password, nickname 等参数
+
+        Returns:
+            User: 创建的用户对象
+        """
+        # 合并 user_data 和 kwargs
+        if user_data is None:
+            user_data = kwargs
+        else:
+            user_data = {**user_data, **kwargs}
+
+        return UserService._register_user_impl(self.db, user_data)
 
     def login(self, phone: str, password: str) -> dict:
         """用户登录(实例方法)"""
