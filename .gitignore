@@ -67,3 +67,5 @@ tmp/
 
 # Test reports
 test_reports/
+# 测试环境配置文件
+.env.testing

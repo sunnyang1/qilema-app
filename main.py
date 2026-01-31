@@ -20,8 +20,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=settings.CORS_ALLOW_METHODS,
+    allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
 # 注册API路由
@@ -31,6 +31,13 @@ app.include_router(api_router)
 @app.on_event("startup")
 async def startup_event():
     """应用启动事件"""
+    # 验证配置
+    config_errors = settings.validate_configuration()
+    if config_errors:
+        error_message = "配置错误:\n" + "\n".join(f"- {error}" for error in config_errors)
+        raise RuntimeError(error_message)
+
+    # 初始化数据库
     init_db()
 
 
@@ -47,7 +54,21 @@ async def root():
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    return {"status": "healthy"}
+    from app.core.database import check_database_health
+    from app.core.redis import check_redis_health
+
+    # 检查数据库健康状态
+    db_healthy = check_database_health()
+    redis_healthy = check_redis_health()
+
+    # 整体健康状态
+    all_healthy = db_healthy and redis_healthy
+
+    return {
+        "status": "healthy" if all_healthy else "unhealthy",
+        "database": "connected" if db_healthy else "disconnected",
+        "redis": "connected" if redis_healthy else "disconnected"
+    }
 
 
 if __name__ == "__main__":

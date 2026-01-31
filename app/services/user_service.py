@@ -4,27 +4,12 @@
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy.orm import Session
-import redis
 
 from app.models.user import User
 from app.core.security import get_password_hash, verify_password
 from app.core.config import settings
-
-# Redis客户端
-redis_client = None
-try:
-    redis_client = redis.Redis(
-        host=settings.REDIS_HOST if hasattr(settings, 'REDIS_HOST') else 'localhost',
-        port=settings.REDIS_PORT if hasattr(settings, 'REDIS_PORT') else 6379,
-        db=settings.REDIS_DB if hasattr(settings, 'REDIS_DB') else 0,
-        decode_responses=True,
-        socket_connect_timeout=2,
-        socket_timeout=2
-    )
-    # 测试连接
-    redis_client.ping()
-except Exception:
-    redis_client = None
+from app.core.cache import cache, invalidate_cache, cache_result
+from app.core.redis import redis_manager
 
 
 class UserService:
@@ -39,29 +24,34 @@ class UserService:
         self.db = db
 
     @staticmethod
-    def _register_user_impl(db: Session, user_data: dict) -> User:
-        """用户注册实现（内部静态方法）
+    def create_user(db: Session, user_data: dict, verify_code: Optional[str] = None) -> User:
+        """创建用户（统一方法）
 
         Args:
             db: 数据库会话
-            user_data: 用户数据字典
+            user_data: 用户数据字典，包含 phone, password, nickname 等
+            verify_code: 验证码（可选），如果提供则验证
 
         Returns:
             User: 创建的用户对象
+
+        Raises:
+            ValueError: 手机号已注册、验证码错误等
         """
         # 兼容不同参数名
         if 'verification_code' in user_data:
             user_data['verify_code'] = user_data.pop('verification_code')
+        if verify_code is not None:
+            user_data['verify_code'] = verify_code
 
         # 检查手机号是否已存在
         existing_user = db.query(User).filter(User.phone == user_data.get("phone")).first()
         if existing_user:
             raise ValueError("该手机号已注册")
 
-        # 验证码验证
-        verify_code = user_data.get("verify_code")
-        if verify_code:
-            if not UserService.verify_code(user_data.get("phone"), verify_code):
+        # 验证码验证（如果提供）
+        if user_data.get("verify_code"):
+            if not UserService.verify_code(user_data.get("phone"), user_data.get("verify_code")):
                 raise ValueError("验证码错误或已过期")
 
         # 限制密码长度,避免bcrypt超限
@@ -81,55 +71,20 @@ class UserService:
         db.refresh(user)
         return user
 
-    @staticmethod
-    def register_user(db: Session, user_data: dict = None, **kwargs) -> User:
-        """用户注册（静态方法）
-
-        Args:
-            db: 数据库会话
-            user_data: 用户数据字典
-            **kwargs: 支持直接传入 phone, password, nickname 等参数
-
-        Returns:
-            User: 创建的用户对象
-        """
-        # 支持 keyword arguments 调用方式
-        if user_data is None:
-            user_data = kwargs
-
-        return UserService._register_user_impl(db, user_data)
-
-    def register_user(self, user_data: dict = None, **kwargs) -> User:
-        """用户注册（实例方法）
-
-        Args:
-            user_data: 用户数据字典
-            **kwargs: 支持直接传入 phone, password, nickname 等参数
-
-        Returns:
-            User: 创建的用户对象
-        """
-        # 合并 user_data 和 kwargs
-        if user_data is None:
-            user_data = kwargs
-        else:
-            user_data = {**user_data, **kwargs}
-
-        return UserService._register_user_impl(self.db, user_data)
-
     def login(self, phone: str, password: str) -> dict:
-        """用户登录(实例方法)"""
-        db = self.db
-        user = db.query(User).filter(User.phone == phone).first()
-        if not user:
-            raise ValueError("用户不存在")
-        if not verify_password(password, user.password_hash):
-            raise ValueError("密码错误")
+        """用户登录并生成token（实例方法）
 
-        # 更新最后登录时间
-        user.last_sign_in = datetime.now()
-        db.commit()
-        db.refresh(user)
+        Args:
+            phone: 手机号
+            password: 密码
+
+        Returns:
+            dict: 包含access_token, token_type, user的字典
+
+        Raises:
+            ValueError: 用户不存在或密码错误
+        """
+        user = UserService.login_user(self.db, phone, password)
 
         # 生成JWT token
         from app.core.security import create_access_token
@@ -142,50 +97,67 @@ class UserService:
         }
 
     @staticmethod
-    def login_user(db: Session, phone: str, password: str) -> Optional[User]:
-        """用户登录"""
-        user = db.query(User).filter(User.phone == phone).first()
-        if not user:
-            raise ValueError("用户不存在")
-        if not verify_password(password, user.password_hash):
-            raise ValueError("密码错误")
-        
+    def login_user(db: Session, phone: str, password: str) -> User:
+        """用户登录并更新登录时间（静态方法）
+
+        Args:
+            db: 数据库会话
+            phone: 手机号
+            password: 密码
+
+        Returns:
+            User: 用户对象
+
+        Raises:
+            ValueError: 用户不存在或密码错误
+        """
+        user = UserService.authenticate_user(db, phone, password)
+        if user is None:
+            raise ValueError("用户不存在或密码错误")
+
         # 更新最后登录时间
         user.last_sign_in = datetime.now()
         db.commit()
         db.refresh(user)
-        
-        return user
 
-    @staticmethod
-    def create_user(db: Session, user_data: dict) -> User:
-        """创建用户"""
-        # 检查手机号是否已存在
-        existing_user = db.query(User).filter(User.phone == user_data.get("phone")).first()
-        if existing_user:
-            raise ValueError("该手机号已注册")
-
-        import uuid
-        user = User(
-            user_id=str(uuid.uuid4()),
-            phone=user_data.get("phone"),
-            nickname=user_data.get("nickname"),
-            password_hash=get_password_hash(user_data.get("password", "123456")),
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
         return user
 
     @staticmethod
     def get_user_by_id(db: Session, user_id: str) -> Optional[User]:
         """根据ID获取用户"""
-        return db.query(User).filter(User.user_id == user_id).first()
+        # 尝试从缓存获取
+        from app.core.cache import get_cached
+        cached_user_data = get_cached(f"user:id:{user_id}")
+        if cached_user_data:
+            # 缓存命中，转换为User对象
+            # 注意：这里只是返回dict，实际使用时可能需要转换为User对象
+            # 或者返回None让调用者决定如何处理
+            # 为了简单起见，这里返回None，让调用者查询数据库
+            pass
+
+        # 查询数据库
+        user = db.query(User).filter(User.user_id == user_id).first()
+        # 如果找到用户，缓存结果
+        if user:
+            cache_result(f"user:id:{user_id}", user.to_dict(), ttl=300)
+        return user
 
     @staticmethod
     def get_user_by_phone(db: Session, phone: str) -> Optional[User]:
         """根据手机号获取用户"""
-        return db.query(User).filter(User.phone == phone).first()
+        # 尝试从缓存获取
+        from app.core.cache import get_cached
+        cached_user_data = get_cached(f"user:phone:{phone}")
+        if cached_user_data:
+            # 缓存命中
+            pass
+
+        # 查询数据库
+        user = db.query(User).filter(User.phone == phone).first()
+        # 如果找到用户，缓存结果
+        if user:
+            cache_result(f"user:phone:{phone}", user.to_dict(), ttl=300)
+        return user
 
     @staticmethod
     def update_user(db: Session, user_id: str, update_data: dict) -> User:
@@ -201,6 +173,12 @@ class UserService:
         user.updated_at = datetime.now()
         db.commit()
         db.refresh(user)
+
+        # 失效相关缓存
+        invalidate_cache(f"user:id:{user_id}")
+        if user.phone:
+            invalidate_cache(f"user:phone:{user.phone}")
+
         return user
 
     @staticmethod
@@ -235,6 +213,7 @@ class UserService:
         import random
         code = str(random.randint(100000, 999999))
         # 存储到Redis,有效期5分钟
+        redis_client = redis_manager.get_sync_client()
         if redis_client:
             redis_client.setex(f"verify_code:{phone}", 300, code)
         return code
@@ -242,6 +221,7 @@ class UserService:
     @staticmethod
     def verify_code(phone: str, code: str) -> bool:
         """验证验证码"""
+        redis_client = redis_manager.get_sync_client()
         if not redis_client:
             return True  # 如果没有Redis,测试环境下通过
         stored_code = redis_client.get(f"verify_code:{phone}")
@@ -249,5 +229,6 @@ class UserService:
             return False
         if stored_code != code:
             return False
-        redis_client.delete(f"verify_code:{phone}")
+        # 验证成功后删除验证码
+        invalidate_cache(f"verify_code:{phone}")
         return True

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码质量分析 - 起了吗App项目分析报告</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="title">代码质量分析</h1>
+            <p class="subtitle">评估代码规范性、可维护性和技术债务</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="container">
+            <a href="summary.html" class="nav-item">执行摘要</a>
+            <a href="code-quality.html" class="nav-item active">代码质量</a>
+            <a href="architecture.html" class="nav-item">架构设计</a>
+            <a href="security.html" class="nav-item">安全性分析</a>
+            <a href="performance.html" class="nav-item">性能评估</a>
+            <a href="test-coverage.html" class="nav-item">测试覆盖</a>
+            <a href="prd-comparison.html" class="nav-item">PRD对比</a>
+            <a href="recommendations.html" class="nav-item">优化建议</a>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <div class="content">
+                <div class="card">
+                    <h2>代码质量评分：65/100</h2>
+                    <div class="score-bars">
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">代码规范性</span>
+                                <span class="score-value">75/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill warning" style="width: 75%"></div>
+                            </div>
+                            <p class="score-comment">大部分代码遵循PEP 8规范，但存在少量命名不一致</p>
+                        </div>
+                        
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">代码复用性</span>
+                                <span class="score-value">55/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill warning" style="width: 55%"></div>
+                            </div>
+                            <p class="score-comment">Service层存在多处代码重复，DRY原则执行不足</p>
+                        </div>
+                        
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">代码复杂度</span>
+                                <span class="score-value">70/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 70%"></div>
+                            </div>
+                            <p class="score-comment">部分函数圈复杂度超过10，需要重构</p>
+                        </div>
+                        
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">异常处理</span>
+                                <span class="score-value">60/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill warning" style="width: 60%"></div>
+                            </div>
+                            <p class="score-comment">异常处理不一致，部分地方缺少异常捕获</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>代码重复问题</h2>
+                    <p style="margin-bottom: 20px; color: var(--text-secondary);">识别出多处重复代码，违反DRY（Don't Repeat Yourself）原则</p>
+                    
+                    <div class="issue-item">
+                        <div class="issue-title">用户创建逻辑重复</div>
+                        <div class="issue-location">app/services/user_service.py</div>
+                        <div class="issue-description">
+                            <code>register_user</code>、<code>create_user</code>、<code>get_or_create_user</code> 函数中存在相似的数据库操作和验证逻辑，可以提取公共方法。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 提取公共的用户创建方法 <code>_create_user_internal</code>，统一处理数据库创建和哈希逻辑。
+                        </div>
+                    </div>
+
+                    <div class="issue-item medium">
+                        <div class="issue-title">异常处理模式重复</div>
+                        <div class="issue-location">app/services/</div>
+                        <div class="issue-description">
+                            多个Service文件中存在相似的异常处理模式，如 <code>IntegrityError</code> 处理和自定义异常抛出。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 创建装饰器 <code>@handle_database_errors</code> 统一处理数据库异常。
+                        </div>
+                    </div>
+
+                    <div class="issue-item medium">
+                        <div class="issue-title">数据库查询模式重复</div>
+                        <div class="issue-location">app/services/</div>
+                        <div class="issue-description">
+                            多个Service中存在相似的查询模式，如分页查询、排序、过滤等逻辑。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 创建基础Repository类或查询构建器，封装通用查询逻辑。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>命名规范问题</h2>
+                    <p style="margin-bottom: 20px; color: var(--text-secondary);">部分变量和函数命名不符合PEP 8规范</p>
+                    
+                    <div class="issue-item low">
+                        <div class="issue-title">变量命名不一致</div>
+                        <div class="issue-location">app/models/checkin.py</div>
+                        <div class="issue-description">
+                            存在简写变量名（如 <code>lat</code>、<code>lng</code>），建议使用完整单词 <code>latitude</code>、<code>longitude</code>。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 使用更具描述性的变量名，提高代码可读性。
+                        </div>
+                    </div>
+
+                    <div class="issue-item low">
+                        <div class="issue-title">函数命名不够准确</div>
+                        <div class="issue-location">app/services/device_service.py</div>
+                        <div class="issue-description">
+                            部分函数名（如 <code>get_devices</code>）没有明确表达返回值类型或筛选条件。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 使用更精确的动词（如 <code>list_devices</code>、<code>find_devices_by_user</code>）。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>代码复杂度问题</h2>
+                    <p style="margin-bottom: 20px; color: var(--text-secondary);">部分函数圈复杂度超过建议值（< 10）</p>
+                    
+                    <div class="issue-item">
+                        <div class="issue-title">高复杂度函数</div>
+                        <div class="issue-location">app/services/checkin_service.py: create_checkin</div>
+                        <div class="issue-description">
+                            <code>create_checkin</code> 函数包含多个if-else分支和嵌套逻辑，圈复杂度约为13。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 提取验证逻辑、规则检查和通知发送为独立方法，降低主函数复杂度。
+                        </div>
+                    </div>
+
+                    <div class="issue-item medium">
+                        <div class="issue-title">长函数</div>
+                        <div class="issue-location">app/services/sos_service.py: process_sos_request</div>
+                        <div class="issue-description">
+                            <code>process_sos_request</code> 函数超过100行，职责过多。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 按功能拆分为 <code>validate_request</code>、<code>create_sos</code>、<code>notify_contacts</code>、<code>update_emergency_center</code> 等小函数。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>异常处理问题</h2>
+                    <p style="margin-bottom: 20px; color: var(--text-secondary);">异常处理不够统一和完善</p>
+                    
+                    <div class="issue-item medium">
+                        <div class="issue-title">缺少异常处理</div>
+                        <div class="issue-location">app/services/</div>
+                        <div class="issue-description">
+                            部分数据库操作没有try-except保护，可能导致未捕获的异常直接暴露给API层。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 在所有数据库操作处添加异常处理，使用自定义异常类。
+                        </div>
+                    </div>
+
+                    <div class="issue-item low">
+                        <div class="issue-title">异常信息不够具体</div>
+                        <div class="issue-location">app/api/</div>
+                        <div class="issue-description">
+                            部分异常抛出时只返回通用错误信息，不利于调试和用户理解。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 使用详细的异常消息，包含错误原因和可能的解决方法。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>改进建议</h2>
+                    <ol style="padding-left: 25px; line-height: 2;">
+                        <li><strong>立即行动：</strong> 提取Service层中的公共方法，消除代码重复</li>
+                        <li><strong>短期目标：</strong> 将高复杂度函数拆分为多个小函数，每个函数职责单一</li>
+                        <li><strong>持续改进：</strong> 建立代码审查流程，确保新代码符合规范</li>
+                        <li><strong>工具支持：</strong> 引入linter（如flake8、black）和代码复杂度检查工具（如radon）</li>
+                        <li><strong>文档完善：</strong> 为复杂函数添加文档字符串，说明输入输出和异常情况</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 起了吗App 项目分析报告</p>
+        </div>
+    </footer>
+</body>
+</html>

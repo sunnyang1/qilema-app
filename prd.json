@@ -1,0 +1,265 @@
+{
+  "project": "qilema-app-refactoring",
+  "branchName": "ralph/security-database-cache-quality",
+  "description": "起了吗App全面重构：安全配置、数据库迁移、Redis缓存、代码质量提升",
+  "userStories": [
+    {
+      "id": "US-SEC-001",
+      "title": "实现环境变量配置管理",
+      "description": "作为开发人员，我希望能够通过环境变量管理不同环境的配置，以便安全地部署到不同环境。",
+      "acceptanceCriteria": [
+        "创建.env.example文件，包含所有需要的环境变量",
+        "修改Settings类支持从.env文件加载配置",
+        "添加环境变量验证逻辑",
+        "支持开发、测试、生产三种环境配置"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "已实现：创建了.env.example，添加ENVIRONMENT字段，实现环境验证和DEBUG验证"
+    },
+    {
+      "id": "US-SEC-002",
+      "title": "生成强随机SECRET_KEY",
+      "description": "作为安全专家，我希望应用使用强随机的SECRET_KEY，以防止JWT Token被伪造。",
+      "acceptanceCriteria": [
+        "SECRET_KEY不再使用默认值",
+        "生成至少64字节的强随机密钥",
+        "提供密钥生成脚本",
+        "更新文档说明如何配置SECRET_KEY"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "已实现：密钥生成脚本、验证逻辑、安全文档"
+    },
+    {
+      "id": "US-SEC-003",
+      "title": "根据环境配置DEBUG模式",
+      "description": "作为运维人员，我希望在生产环境自动关闭DEBUG模式，以防止敏感信息泄露。",
+      "acceptanceCriteria": [
+        "DEBUG模式通过环境变量ENVIRONMENT配置",
+        "生产环境（ENVIRONMENT=production）自动设置DEBUG=False",
+        "开发和测试环境可开启DEBUG",
+        "添加配置验证，防止生产环境意外开启DEBUG"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "已实现：根据ENVIRONMENT自动配置DEBUG，生产环境强制关闭DEBUG，开发和测试环境默认开启DEBUG"
+    },
+    {
+      "id": "US-SEC-004",
+      "title": "优化CORS配置",
+      "description": "作为安全专家，我希望CORS配置更加严格，以防止跨域攻击。",
+      "acceptanceCriteria": [
+        "CORS允许的来源通过环境变量配置",
+        "生产环境只允许特定域名",
+        "避免使用\"*\"通配符",
+        "限制允许的HTTP方法和头部"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "已实现：CORS_ORIGINS/CORS_ALLOW_METHODS/CORS_ALLOW_HEADERS通过环境变量配置，生产环境验证通配符，默认值不再使用通配符"
+    },
+    {
+      "id": "US-SEC-005",
+      "title": "添加环境配置验证",
+      "description": "作为开发人员，我希望应用启动时能验证配置的正确性，以便及早发现问题。",
+      "acceptanceCriteria": [
+        "实现配置验证函数",
+        "应用启动时自动验证关键配置",
+        "配置错误时提供清晰的错误提示",
+        "支持可选配置和必选配置的区分"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "已实现：validate_configuration方法，应用启动时自动验证，清晰错误消息，区分必选和可选配置"
+    },
+    {
+      "id": "US-DB-001",
+      "title": "添加PostgreSQL支持",
+      "description": "作为开发人员，我希望应用支持PostgreSQL数据库，以满足PRD要求和提升性能。",
+      "acceptanceCriteria": [
+        "DATABASE_URL支持PostgreSQL连接字符串",
+        "数据库引擎自动识别数据库类型",
+        "SQLite和PostgreSQL可切换",
+        "更新requirements.txt添加psycopg2依赖"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "已实现：DATABASE_URL支持PostgreSQL，get_engine函数自动识别类型，SQLite和PostgreSQL可切换，requirements.txt添加psycopg2-binary"
+    },
+    {
+      "id": "US-DB-002",
+      "title": "创建数据库迁移脚本",
+      "description": "作为运维人员，我希望有数据库迁移脚本，以便从SQLite迁移到PostgreSQL。",
+      "acceptanceCriteria": [
+        "创建SQLite到PostgreSQL的迁移脚本",
+        "迁移脚本保持数据完整性",
+        "支持增量迁移",
+        "提供迁移回滚功能"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "已实现：migrate_sqlite_to_postgresql.py脚本，支持pgloader自动迁移和手动迁移指南，备份功能，帮助文档"
+    },
+    {
+      "id": "US-DB-003",
+      "title": "优化数据库配置",
+      "description": "作为开发人员，我希望数据库配置更加灵活，以便适应不同环境。",
+      "acceptanceCriteria": [
+        "支持通过环境变量配置数据库连接",
+        "添加数据库连接池配置",
+        "优化数据库会话管理",
+        "添加数据库健康检查"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "已实现：环境变量DATABASE_URL配置，SQLite使用NullPool/PostgreSQL使用QueuePool，check_database_health函数，/health端点增强"
+    },
+    {
+      "id": "US-REDIS-001",
+      "title": "实现Redis连接管理",
+      "description": "作为开发人员，我希望有统一的Redis连接管理，以便在各个服务中使用缓存。",
+      "acceptanceCriteria": [
+        "创建Redis连接池",
+        "实现Redis客户端单例",
+        "支持Redis连接配置",
+        "添加Redis健康检查",
+        "支持Redis连接异常处理"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "已实现：RedisManager单例类，同步/异步客户端支持，check_redis_health函数，RedisConnectionError异常处理，/health端点包含Redis状态"
+    },
+    {
+      "id": "US-REDIS-002",
+      "title": "实现通用缓存装饰器",
+      "description": "作为开发人员，我希望有通用的缓存装饰器，以便快速为函数添加缓存功能。",
+      "acceptanceCriteria": [
+        "创建@cache装饰器",
+        "支持缓存TTL配置",
+        "支持缓存键自定义",
+        "支持缓存失效",
+        "支持条件缓存"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "已实现：@cache装饰器，支持TTL、自定义key_builder、condition条件缓存、cache_result/get_cached/invalidate_cache/cache_clear函数、CacheInvalidator类"
+    },
+    {
+      "id": "US-REDIS-003",
+      "title": "为用户服务添加缓存",
+      "description": "作为开发人员，我希望用户服务能使用缓存，以减少数据库查询。",
+      "acceptanceCriteria": [
+        "用户查询结果缓存（TTL: 5分钟）",
+        "用户登录状态缓存",
+        "验证码缓存（TTL: 5分钟）",
+        "缓存键设计合理",
+        "缓存更新策略正确"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "已实现：get_user_by_id和get_user_by_phone使用get_cached/cache_result，verify_code使用Redis缓存（300秒TTL），update_user失效相关缓存，Redis异常降级处理"
+    },
+    {
+      "id": "US-REDIS-004",
+      "title": "为签到服务添加缓存",
+      "description": "作为开发人员，我希望签到服务能使用缓存，以提升查询性能。",
+      "acceptanceCriteria": [
+        "签到记录缓存（TTL: 1小时）",
+        "用户签到状态缓存（TTL: 10分钟）",
+        "签到统计缓存（TTL: 30分钟）",
+        "缓存失效逻辑正确"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "已实现：get_user_checkins缓存（TTL: 1小时），get_checkin_status缓存（TTL: 10分钟），get_checkin_stats缓存（TTL: 30分钟），create_checkin时失效相关缓存"
+    },
+    {
+      "id": "US-CQ-001",
+      "title": "重构UserService代码重复",
+      "description": "作为开发人员，我希望消除UserService中的代码重复，以提高代码可维护性。",
+      "acceptanceCriteria": [
+        "合并重复的用户注册逻辑",
+        "统一登录方法实现",
+        "消除冗余的查询方法",
+        "保持现有测试通过"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "已实现：合并_register_user_impl和create_user为统一的create_user方法，统一登录方法实现（login、login_user、authenticate_user分层调用），删除冗余的register_user实例方法"
+    },
+    {
+      "id": "US-CQ-002",
+      "title": "重构DeviceService代码重复",
+      "description": "作为开发人员，我希望消除DeviceService中的代码重复，以提高代码可维护性。",
+      "acceptanceCriteria": [
+        "合并重复的更新逻辑（461-465行）",
+        "统一设备查询方法",
+        "优化异常检测代码",
+        "保持现有测试通过"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-CQ-003",
+      "title": "建立统一的异常处理",
+      "description": "作为开发人员，我希望有统一的异常处理机制，以便更好地处理错误和提供友好的错误信息。",
+      "acceptanceCriteria": [
+        "创建app/core/exceptions.py模块",
+        "定义业务异常类",
+        "创建异常处理中间件",
+        "统一错误响应格式",
+        "添加异常日志记录"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-CQ-004",
+      "title": "建立统一的日志规范",
+      "description": "作为开发人员，我希望有统一的日志记录规范，以便更好地追踪问题和分析系统运行情况。",
+      "acceptanceCriteria": [
+        "配置Python logging模块",
+        "定义日志级别和格式",
+        "在关键操作处添加日志",
+        "添加请求ID追踪",
+        "日志输出到文件和控制台"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-CQ-005",
+      "title": "提升测试覆盖率",
+      "description": "作为质量工程师，我希望测试覆盖率能达到80%以上，以保证代码质量。",
+      "acceptanceCriteria": [
+        "编写缺失的测试用例",
+        "测试覆盖率达到80%+",
+        "核心业务逻辑100%覆盖",
+        "测试执行时间 < 30秒",
+        "所有测试通过"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-CQ-006",
+      "title": "优化复杂方法",
+      "description": "作为开发人员，我希望优化复杂方法，将圈复杂度降低到10以下，以提高代码可读性。",
+      "acceptanceCriteria": [
+        "识别复杂方法（圈复杂度 > 10）",
+        "拆分复杂方法为小方法",
+        "提取重复逻辑为工具函数",
+        "保持现有测试通过"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

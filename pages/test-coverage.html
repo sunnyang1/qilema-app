@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试覆盖评估 - 起了吗App项目分析报告</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="title">测试覆盖评估</h1>
+            <p class="subtitle">分析测试覆盖率、测试质量和缺失的测试模块</p>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="container">
+            <a href="summary.html" class="nav-item">执行摘要</a>
+            <a href="code-quality.html" class="nav-item">代码质量</a>
+            <a href="architecture.html" class="nav-item">架构设计</a>
+            <a href="security.html" class="nav-item">安全性分析</a>
+            <a href="performance.html" class="nav-item">性能评估</a>
+            <a href="test-coverage.html" class="nav-item active">测试覆盖</a>
+            <a href="prd-comparison.html" class="nav-item">PRD对比</a>
+            <a href="recommendations.html" class="nav-item">优化建议</a>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <div class="content">
+                <div class="card">
+                    <h2>测试覆盖率评分：45/100</h2>
+                    <div class="score-bars">
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">整体覆盖率</span>
+                                <span class="score-value">19/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill danger" style="width: 19%"></div>
+                            </div>
+                            <p class="score-comment">测试覆盖率仅约19%，远低于目标80%</p>
+                        </div>
+                        
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">单元测试</span>
+                                <span class="score-value">35/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill warning" style="width: 35%"></div>
+                            </div>
+                            <p class="score-comment">部分Service有测试，但覆盖不全面</p>
+                        </div>
+                        
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">集成测试</span>
+                                <span class="score-value">40/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill warning" style="width: 40%"></div>
+                            </div>
+                            <p class="score-comment">API集成测试部分完成，缺少完整流程测试</p>
+                        </div>
+                        
+                        <div class="score-item">
+                            <div class="score-header">
+                                <span class="label">测试质量</span>
+                                <span class="score-value">50/100</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill warning" style="width: 50%"></div>
+                            </div>
+                            <p class="score-comment">测试用例缺少边界条件和异常场景</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>测试覆盖统计</h2>
+                    <table style="margin-top: 20px;">
+                        <thead>
+                            <tr>
+                                <th>模块</th>
+                                <th>文件数</th>
+                                <th>有测试的文件</th>
+                                <th>覆盖率</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>app/api</td>
+                                <td>8</td>
+                                <td>3</td>
+                                <td>37%</td>
+                                <td><span class="severity-medium">中等</span></td>
+                            </tr>
+                            <tr>
+                                <td>app/services</td>
+                                <td>13</td>
+                                <td>5</td>
+                                <td>38%</td>
+                                <td><span class="severity-medium">中等</span></td>
+                            </tr>
+                            <tr>
+                                <td>app/models</td>
+                                <td>15</td>
+                                <td>2</td>
+                                <td>13%</td>
+                                <td><span class="severity-high">严重</span></td>
+                            </tr>
+                            <tr>
+                                <td>app/core</td>
+                                <td>4</td>
+                                <td>1</td>
+                                <td>25%</td>
+                                <td><span class="severity-high">严重</span></td>
+                            </tr>
+                            <tr>
+                                <td>总计</td>
+                                <td>40</td>
+                                <td>11</td>
+                                <td>~19%</td>
+                                <td><span class="severity-high">严重</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h2>已有测试分析</h2>
+                    
+                    <div style="background-color: #F0FDF4; padding: 20px; border-radius: 8px; border-left: 4px solid var(--success); margin-bottom: 20px;">
+                        <h4 style="color: var(--success);">✓ 优点</h4>
+                        <ul style="padding-left: 20px; margin-top: 10px; font-size: 13px;">
+                            <li>使用pytest框架，配置完善</li>
+                            <li>使用fixtures进行测试数据管理</li>
+                            <li>包含性能测试和压力测试配置</li>
+                            <li>有测试脚本自动化执行测试</li>
+                        </ul>
+                    </div>
+
+                    <div class="issue-item medium">
+                        <div class="issue-title">测试用例覆盖不全面</div>
+                        <div class="issue-location">tests/</div>
+                        <div class="issue-description">
+                            已有的测试用例主要覆盖"正常流程"，缺少以下场景：
+                            <ul style="margin: 10px 0 10px 20px; font-size: 13px;">
+                                <li>边界条件测试（如空值、超长字符串、特殊字符）</li>
+                                <li>异常场景测试（如数据库连接失败、网络超时）</li>
+                                <li>并发操作测试（如同时创建相同用户）</li>
+                                <li>性能边界测试（如大批量数据查询）</li>
+                            </ul>
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 为每个API端点和Service方法补充完整测试用例，包括正常、异常和边界场景。
+                        </div>
+                    </div>
+
+                    <div class="issue-item medium">
+                        <div class="issue-title">Mock使用不规范</div>
+                        <div class="issue-location">tests/</div>
+                        <div class="issue-description">
+                            部分测试直接使用真实数据库，导致测试慢且不可靠。
+                            应该使用mock隔离依赖，提高测试速度和可靠性。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 使用unittest.mock或pytest-mock隔离外部依赖：<br>
+                            <code>@patch('app.services.user_service.get_db')</code>
+                        </div>
+                    </div>
+
+                    <div class="issue-item low">
+                        <div class="issue-title">缺少测试文档</div>
+                        <div class="issue-location">tests/</div>
+                        <div class="issue-description">
+                            测试用例缺少文档说明，不清楚测试的目的和覆盖的场景。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 为测试函数添加docstring，说明测试目的和覆盖场景。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>缺失的测试模块</h2>
+                    <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                        以下模块完全没有测试覆盖：
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        <div style="background-color: #FEF2F2; padding: 20px; border-radius: 8px; border-left: 4px solid var(--danger);">
+                            <h4>API层（缺失5个）</h4>
+                            <ul style="margin-top: 10px; padding-left: 20px; font-size: 13px;">
+                                <li>alerts.py</li>
+                                <li>devices.py</li>
+                                <li>emergency_contacts.py</li>
+                                <li>health_records.py</li>
+                                <li>notifications.py</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: #FEF2F2; padding: 20px; border-radius: 8px; border-left: 4px solid var(--danger);">
+                            <h4>Service层（缺失8个）</h4>
+                            <ul style="margin-top: 10px; padding-left: 20px; font-size: 13px;">
+                                <li>alert_service.py</li>
+                                <li>device_service.py</li>
+                                <li>emergency_contact_service.py</li>
+                                <li>emergency_center_service.py</li>
+                                <li>emergency_resource_service.py</li>
+                                <li>health_record_service.py</li>
+                                <li>location_service.py</li>
+                                <li>notification_service.py</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: #FEF2F2; padding: 20px; border-radius: 8px; border-left: 4px solid var(--danger);">
+                            <h4>Model层（缺失13个）</h4>
+                            <ul style="margin-top: 10px; padding-left: 20px; font-size: 13px;">
+                                <li>alert.py</li>
+                                <li>device.py</li>
+                                <li>emergency_contact.py</li>
+                                <li>emergency_center.py</li>
+                                <li>emergency_resource.py</li>
+                                <li>health_record.py</li>
+                                <li>location.py</li>
+                                <li>notification.py</li>
+                                <li>sos_contact.py</li>
+                                <li>sos_event.py</li>
+                                <li>checkin_history.py</li>
+                                <li>device_binding.py</li>
+                                <li>user_preference.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>测试质量评估</h2>
+                    
+                    <div class="issue-item">
+                        <div class="issue-title">缺少集成测试</div>
+                        <div class="issue-location">tests/</div>
+                        <div class="issue-description">
+                            当前主要是单元测试，缺少端到端的集成测试。
+                            例如：
+                            <ul style="margin: 10px 0 10px 20px; font-size: 13px;">
+                                <li>完整的签到→检测→预警→通知流程</li>
+                                <li>SOS求救→联系人通知→紧急中心响应流程</li>
+                                <li>用户注册→登录→设置紧急联系人→绑定设备流程</li>
+                            </ul>
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 使用pytest编写端到端集成测试，模拟完整业务流程。
+                        </div>
+                    </div>
+
+                    <div class="issue-item medium">
+                        <div class="issue-title">缺少性能测试用例</div>
+                        <div class="issue-location">tests/</div>
+                        <div class="issue-description">
+                            虽然有压力测试配置（tests/load_test/），但缺少实际的性能测试用例。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 使用locust或pytest-benchmark编写性能测试：
+                            <ul style="margin: 10px 0 10px 20px; font-size: 13px;">
+                                <li>测试API响应时间（P50, P95, P99）</li>
+                                <li>测试数据库查询性能</li>
+                                <li>测试并发用户数</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="issue-item low">
+                        <div class="issue-title">缺少安全测试</div>
+                        <div class="issue-location">tests/</div>
+                        <div class="issue-description">
+                            没有专门的安全测试用例，如SQL注入、XSS、CSRF等。
+                        </div>
+                        <div class="issue-recommendation">
+                            <strong>建议：</strong> 使用OWASP ZAP或编写安全测试脚本。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>测试补充计划</h2>
+                    <div style="display: grid; gap: 20px; margin-top: 20px;">
+                        <div style="background-color: #FEE2E2; padding: 20px; border-radius: 8px; border-left: 4px solid var(--danger);">
+                            <h4 style="color: var(--danger);">第一阶段（1周）：核心模块测试</h4>
+                            <ul style="padding-left: 20px; margin-top: 10px; line-height: 1.8;">
+                                <li>为UserService、CheckinService补充完整测试</li>
+                                <li>覆盖正常流程、异常场景、边界条件</li>
+                                <li>使用mock隔离数据库依赖</li>
+                                <li>目标：覆盖率达到60%</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: #FEF3C7; padding: 20px; border-radius: 8px; border-left: 4px solid var(--warning);">
+                            <h4 style="color: var(--warning);">第二阶段（2周）：全部模块测试</h4>
+                            <ul style="padding-left: 20px; margin-top: 10px; line-height: 1.8;">
+                                <li>为所有Service补充测试用例</li>
+                                <li>为所有API端点补充集成测试</li>
+                                <li>为Model层添加验证测试</li>
+                                <li>目标：覆盖率达到75%</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: #E0F2FE; padding: 20px; border-radius: 8px; border-left: 4px solid var(--info);">
+                            <h4 style="color: var(--info);">第三阶段（3周）：端到端和性能测试</h4>
+                            <ul style="padding-left: 20px; margin-top: 10px; line-height: 1.8;">
+                                <li>编写端到端业务流程测试</li>
+                                <li>编写性能和压力测试</li>
+                                <li>编写安全测试用例</li>
+                                <li>目标：覆盖率达到85%，满足PRD要求</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: #F0FDF4; padding: 20px; border-radius: 8px; border-left: 4px solid var(--success);">
+                            <h4 style="color: var(--success);">第四阶段（持续）：测试自动化和CI集成</h4>
+                            <ul style="padding-left: 20px; margin-top: 10px; line-height: 1.8;">
+                                <li>配置CI/CD流水线，自动运行测试</li>
+                                <li>集成测试覆盖率报告（如codecov）</li>
+                                <li>建立测试用例维护机制</li>
+                                <li>定期进行测试用例审查</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>测试最佳实践</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="background-color: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                            <h4>测试金字塔</h4>
+                            <ul style="margin-top: 10px; padding-left: 20px; font-size: 13px;">
+                                <li>70% 单元测试：快速、独立、隔离</li>
+                                <li>20% 集成测试：验证模块交互</li>
+                                <li>10% 端到端测试：验证业务流程</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                            <h4>AAA原则</h4>
+                            <ul style="margin-top: 10px; padding-left: 20px; font-size: 13px;">
+                                <li>Arrange：准备测试数据和环境</li>
+                                <li>Act：执行被测试的操作</li>
+                                <li>Assert：验证结果是否符合预期</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                            <h4>测试命名规范</h4>
+                            <ul style="margin-top: 10px; padding-left: 20px; font-size: 13px;">
+                                <li>使用<code>test_</code>前缀</li>
+                                <li>名称应描述测试场景</li>
+                                <li>如：<code>test_login_success</code></li>
+                                <li>如：<code>test_login_invalid_password</code></li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: var(--bg-secondary); padding: 20px; border-radius: 8px;">
+                            <h4>测试隔离</h4>
+                            <ul style="margin-top: 10px; padding-left: 20px; font-size: 13px;">
+                                <li>每个测试独立运行</li>
+                                <li>使用fixtures准备数据</li>
+                                <li>使用mock隔离依赖</li>
+                                <li>测试后清理数据</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 起了吗App 项目分析报告</p>
+        </div>
+    </footer>
+</body>
+</html>

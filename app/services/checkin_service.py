@@ -11,11 +11,12 @@ from app.models.checkin import CheckIn
 from app.models.user import User
 from app.models.emergency_contact import EmergencyContact
 from app.schemas.checkin import (
-    CheckInCreate, 
-    CheckInResponse, 
+    CheckInCreate,
+    CheckInResponse,
     CheckInStatsResponse,
     CheckInStatusResponse
 )
+from app.core.cache import get_cached, cache_result, invalidate_cache
 
 
 class CheckInService:
@@ -66,6 +67,11 @@ class CheckInService:
         db.commit()
         db.refresh(db_checkin)
         
+        # 失效相关缓存
+        invalidate_cache(f"checkin:list:{user_id}:*")
+        invalidate_cache(f"checkin:status:{user_id}:*")
+        invalidate_cache(f"checkin:stats:{user_id}:*")
+        
         return db_checkin
 
     @staticmethod
@@ -78,22 +84,29 @@ class CheckInService:
     ) -> List[CheckIn]:
         """
         获取用户签到历史记录
-        
+
         Args:
             db: 数据库会话
             user_id: 用户ID
             days: 查询天数(默认30天)
             start_date: 开始日期
             end_date: 结束日期
-            
+
         Returns:
             签到记录列表
         """
+        # 尝试从缓存获取（缓存10分钟）
+        cache_key = f"checkin:list:{user_id}:{days}:{start_date or ''}:{end_date or ''}"
+        cached_checkins = get_cached(cache_key)
+        if cached_checkins:
+            # 缓存命中
+            return cached_checkins
+
         if start_date is None:
             start_date = date.today() - timedelta(days=days)
         if end_date is None:
             end_date = date.today()
-        
+
         checkins = db.query(CheckIn).filter(
             and_(
                 CheckIn.user_id == user_id,
@@ -101,22 +114,31 @@ class CheckInService:
                 CheckIn.checkin_date <= end_date.strftime('%Y-%m-%d')
             )
         ).order_by(desc(CheckIn.checkin_date)).all()
-        
+
+        # 缓存结果（1小时）
+        cache_result(cache_key, checkins, ttl=3600)
+
         return checkins
 
     @staticmethod
     def get_checkin_stats(db: Session, user_id: str, days: int = 30) -> CheckInStatsResponse:
         """
         获取用户签到统计信息
-        
+
         Args:
             db: 数据库会话
             user_id: 用户ID
             days: 统计天数(默认30天)
-            
+
         Returns:
             签到统计信息
         """
+        # 尝试从缓存获取（缓存30分钟）
+        cache_key = f"checkin:stats:{user_id}:{days}"
+        cached_stats = get_cached(cache_key)
+        if cached_stats:
+            return cached_stats
+
         # 计算总签到次数
         total_checkins = db.query(func.count(CheckIn.id)).filter(
             and_(
@@ -124,7 +146,7 @@ class CheckInService:
                 CheckIn.checkin_date >= (date.today() - timedelta(days=days)).strftime('%Y-%m-%d')
             )
         ).scalar()
-        
+
         # 计算当前连续签到天数
         current_streak = CheckInService._calculate_streak(db, user_id, from_date=date.today())
 
@@ -134,48 +156,58 @@ class CheckInService:
         # 计算签到率
         checkin_rate = (total_checkins / days) * 100 if days > 0 else 0
 
-        return CheckInStatsResponse(
+        stats = CheckInStatsResponse(
             total_checkins=total_checkins,
             current_streak=current_streak,
             longest_streak=longest_streak,
             checkin_rate=round(checkin_rate, 2)
         )
 
+        # 缓存结果（30分钟）
+        cache_result(cache_key, stats, ttl=1800)
+
+        return stats
+
     @staticmethod
     def get_checkin_status(db: Session, user_id: str, target_date: Optional[date] = None) -> CheckInStatusResponse:
         """
         查询指定日期的签到状态
-        
+
         Args:
             db: 数据库会话
             user_id: 用户ID
             target_date: 目标日期(默认今天)
-            
+
         Returns:
             签到状态
         """
         if target_date is None:
             target_date = date.today()
-        
+
         date_str = target_date.strftime('%Y-%m-%d')
-        
+
+        # 尝试从缓存获取（缓存10分钟）
+        cache_key = f"checkin:status:{user_id}:{date_str}"
+        cached_status = get_cached(cache_key)
+        if cached_status:
+            return cached_status
+
         checkin = db.query(CheckIn).filter(
             and_(
                 CheckIn.user_id == user_id,
                 CheckIn.checkin_date == date_str
             )
         ).first()
-        
-        if checkin:
-            return CheckInStatusResponse(
-                is_checked_in=True,
-                checkin_time=checkin.checkin_time
-            )
-        else:
-            return CheckInStatusResponse(
-                is_checked_in=False,
-                checkin_time=None
-            )
+
+        status = CheckInStatusResponse(
+            is_checked_in=bool(checkin),
+            checkin_time=checkin.checkin_time if checkin else None
+        )
+
+        # 缓存结果（10分钟）
+        cache_result(cache_key, status, ttl=600)
+
+        return status
 
     @staticmethod
     def get_emergency_contacts_for_notification(db: Session, user_id: str) -> List[EmergencyContact]:

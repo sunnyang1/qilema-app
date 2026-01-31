@@ -28,11 +28,14 @@ def db():
 @pytest.fixture
 def mock_redis():
     """Mock Redis客户端"""
-    with patch('app.services.user_service.redis_client') as mock:
-        mock.get.return_value = None
-        mock.setex.return_value = True
-        mock.delete.return_value = True
-        yield mock
+    with patch('app.services.user_service.redis_manager') as mock_redis_mgr:
+        with patch('app.services.user_service.redis_manager.check_health', return_value=True):
+            mock_client = Mock()
+            mock_client.get.return_value = None
+            mock_client.setex.return_value = True
+            mock_client.delete.return_value = True
+            mock_redis_mgr.get_sync_client.return_value = mock_client
+            yield mock_client
 
 class TestUserService:
     """用户服务测试"""
@@ -49,7 +52,7 @@ class TestUserService:
             nickname="测试用户"
         )
 
-        user = UserService.register_user(db, register_data.model_dump())
+        user = UserService.create_user(db, register_data.model_dump())
 
         assert user.phone == "13800138000"
         assert user.nickname == "测试用户"
@@ -67,11 +70,11 @@ class TestUserService:
         )
 
         # 第一次注册成功
-        UserService.register_user(db, register_data.model_dump())
+        UserService.create_user(db, register_data.model_dump())
 
         # 第二次注册应该失败
         with pytest.raises(ValueError, match="手机号已注册"):
-            UserService.register_user(db, register_data.model_dump())
+            UserService.create_user(db, register_data.model_dump())
     
     def test_register_user_invalid_code(self, db, mock_redis):
         """测试注册时验证码错误"""
@@ -84,7 +87,7 @@ class TestUserService:
         )
 
         with pytest.raises(ValueError, match="验证码错误或已过期"):
-            UserService.register_user(db, register_data.model_dump())
+            UserService.create_user(db, register_data.model_dump())
     
     def test_login_user_success(self, db, mock_redis):
         """测试用户登录成功"""
@@ -96,7 +99,7 @@ class TestUserService:
             password="123456",
             verify_code="123456"
         )
-        UserService.register_user(db, register_data.model_dump())
+        UserService.create_user(db, register_data.model_dump())
 
         # 登录
         user = UserService.login_user(db, phone="13800138003", password="123456")
@@ -114,7 +117,7 @@ class TestUserService:
             password="123456",
             verify_code="123456"
         )
-        UserService.register_user(db, register_data.model_dump())
+        UserService.create_user(db, register_data.model_dump())
 
         # 使用错误密码登录
         with pytest.raises(ValueError, match="密码错误"):
@@ -137,11 +140,13 @@ class TestUserService:
     def test_verify_code_success(self, mock_redis):
         """测试验证码验证成功"""
         mock_redis.get.return_value = "123456"
-        
-        result = UserService.verify_code("13800138007", "123456")
-        
-        assert result is True
-        mock_redis.delete.assert_called_once()
+
+        with patch('app.services.user_service.invalidate_cache') as mock_invalidate:
+            result = UserService.verify_code("13800138007", "123456")
+
+            assert result is True
+            # verify_code 应该调用 invalidate_cache
+            mock_invalidate.assert_called_once_with("verify_code:13800138007")
     
     def test_verify_code_failure(self, mock_redis):
         """测试验证码验证失败"""
