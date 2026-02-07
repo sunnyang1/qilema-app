@@ -28,8 +28,8 @@ class CheckInService(BaseService[CheckIn]):
     cache_prefix = CacheConfig.PREFIX_CHECKIN
     cache_ttl = CacheConfig.TTL_CHECKIN_LIST
 
-    
-    def create_checkin(self, db: Session, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
+    @staticmethod
+    def create_checkin(db: Session, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
         """
         创建签到记录
         
@@ -78,9 +78,8 @@ class CheckInService(BaseService[CheckIn]):
         
         return db_checkin
 
-    
+    @staticmethod
     def get_user_checkins(
-        cls,
         db: Session, 
         user_id: str, 
         days: int = 30,
@@ -124,8 +123,8 @@ class CheckInService(BaseService[CheckIn]):
 
         return checkins
 
-    
-    def get_checkin_stats(self, db: Session, user_id: str, days: int = 30) -> CheckInStatsResponse:
+    @staticmethod
+    def get_checkin_stats(db: Session, user_id: str, days: int = 30) -> CheckInStatsResponse:
         """
         获取用户签到统计信息
 
@@ -172,8 +171,8 @@ class CheckInService(BaseService[CheckIn]):
 
         return stats
 
-    
-    def get_checkin_status(self, db: Session, user_id: str, target_date: Optional[date] = None) -> CheckInStatusResponse:
+    @staticmethod
+    def get_checkin_status(db: Session, user_id: str, target_date: Optional[date] = None) -> CheckInStatusResponse:
         """
         查询指定日期的签到状态
 
@@ -213,8 +212,8 @@ class CheckInService(BaseService[CheckIn]):
 
         return status
 
-    
-    def get_emergency_contacts_for_notification(self, db: Session, user_id: str) -> List[EmergencyContact]:
+    @staticmethod
+    def get_emergency_contacts_for_notification(db: Session, user_id: str) -> List[EmergencyContact]:
         """
         获取用户的紧急联系人(用于签到通知)
         

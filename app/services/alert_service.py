@@ -108,7 +108,7 @@ class AlertService(BaseService[Alert]):
 
         return setting
 
-    def create_alert(self, db: Session, alert_data: AlertCreate) -> Alert:
+    def create_alert(db: Session, alert_data: AlertCreate) -> Alert:
         """创建预警"""
         # 检查是否已存在相同类型的活动预警
         existing_alert = db.query(Alert).filter(
@@ -142,7 +142,7 @@ class AlertService(BaseService[Alert]):
         return alert
 
     
-    def resolve_alert(self, db: Session, alert_id: Union[str, int], user_id: str, resolve_request: AlertResolveRequest) -> Optional[Alert]:
+    def resolve_alert(db: Session, alert_id: Union[str, int], user_id: str, resolve_request: AlertResolveRequest) -> Optional[Alert]:
         """解决预警"""
         # 支持 id 和 alert_id 两种查找方式
         if isinstance(alert_id, int):
@@ -168,7 +168,7 @@ class AlertService(BaseService[Alert]):
         return alert
 
     
-    def auto_resolve_by_checkin(self, db: Session, user_id: str) -> int:
+    def auto_resolve_by_checkin(db: Session, user_id: str) -> int:
         """签到后自动解除所有活动预警"""
         setting = AlertService.get_setting(db, user_id)
         if not setting or not setting.auto_resolve:
@@ -198,7 +198,7 @@ class AlertService(BaseService[Alert]):
         return count
 
     
-    def get_alerts(self, db: Session, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> tuple[List[Alert], int]:
+    def get_alerts(db: Session, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> tuple[List[Alert], int]:
         """获取用户预警列表"""
         # 尝试从缓存获取
         cache_key = CacheConfig.make_key(CacheConfig.PREFIX_ALERT_LIST, user_id, status or 'all', skip, limit)
@@ -220,7 +220,7 @@ class AlertService(BaseService[Alert]):
         return result
 
     
-    def get_alert_stats(self, db: Session, user_id: str) -> dict:
+    def get_alert_stats(db: Session, user_id: str) -> dict:
         """获取预警统计"""
         # 尝试从缓存获取
         cache_key = CacheConfig.make_key(CacheConfig.PREFIX_ALERT_STATS, user_id)
@@ -255,7 +255,7 @@ class AlertService(BaseService[Alert]):
         return AlertService.get_user_emergency_contacts(db, user_id)
 
     
-    def check_all_users_and_create_alerts(self, db: Session) -> List[Alert]:
+    def check_all_users_and_create_alerts(db: Session) -> List[Alert]:
         """检查所有用户并创建预警"""
         created_alerts = []
 
@@ -288,7 +288,7 @@ class AlertService(BaseService[Alert]):
         return created_alerts
 
     
-    def get_alert(self, db: Session, alert_id: str) -> Optional[Alert]:
+    def get_alert(db: Session, alert_id: str) -> Optional[Alert]:
         """获取预警详情"""
         # 尝试从缓存获取
         cache_key = CacheConfig.make_key(CacheConfig.PREFIX_ALERT_DETAIL, alert_id)
@@ -305,17 +305,17 @@ class AlertService(BaseService[Alert]):
         return alert
 
     
-    def get_user_alerts(self, db: Session, user_id: str, skip: int = 0, limit: int = 100) -> List[Alert]:
+    def get_user_alerts(db: Session, user_id: str, skip: int = 0, limit: int = 100) -> List[Alert]:
         """获取用户预警列表"""
         return db.query(Alert).filter(Alert.user_id == user_id).order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
 
     
-    def get_pending_alerts(self, db: Session) -> List[Alert]:
+    def get_pending_alerts(db: Session) -> List[Alert]:
         """获取待处理的预警"""
         return db.query(Alert).filter(Alert.status == 0).order_by(Alert.trigger_time).all()
 
     
-    def check_missed_checkin(self, db: Session, user_id: str) -> Optional[Alert]:
+    def check_missed_checkin(db: Session, user_id: str) -> Optional[Alert]:
         """检查是否未签到"""
         setting = AlertService.get_setting(db, user_id)
         if not setting or not setting.checkin_enabled:
@@ -353,7 +353,7 @@ class AlertService(BaseService[Alert]):
         return None
 
     
-    def check_abnormal_data(self, db: Session, user_id: str, health_data: dict) -> Optional[Alert]:
+    def check_abnormal_data(db: Session, user_id: str, health_data: dict) -> Optional[Alert]:
         """检查生理数据异常"""
         setting = AlertService.get_setting(db, user_id)
         if not setting or not setting.abnormal_enabled:
@@ -432,7 +432,7 @@ class AlertService(BaseService[Alert]):
             return 'low'
 
     
-    def check_user_checkin_status(self, db: Session, user_id: str) -> Optional[dict]:
+    def check_user_checkin_status(db: Session, user_id: str) -> Optional[dict]:
         """检查用户签到状态"""
         setting = AlertService.get_setting(db, user_id)
         if not setting or not setting.checkin_enabled or not setting.enable_notification:
