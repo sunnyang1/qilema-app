@@ -17,10 +17,15 @@ from app.schemas.device import (
     DeviceThresholdCreate, DeviceThresholdUpdate, DeviceStatusUpdate, DeviceAlert
 )
 from app.models.user import User
+from app.services.base_service import BaseService
 
 
-class DeviceService:
+class DeviceService(BaseService[Device]):
     """智能设备服务类"""
+    
+    model_class = Device
+    cache_prefix = "device"
+    cache_ttl = 300
 
     def __init__(self):
         """初始化设备服务"""
@@ -49,18 +54,25 @@ class DeviceService:
         return query.first()
 
     @staticmethod
-    def _get_device_by_id(db: Session, device_id: int, user_id: str = None) -> Optional[Device]:
-        """根据数据库ID获取设备（通用查询方法）
+    def _get_device_by_id(db: Session, device_id, user_id: str = None) -> Optional[Device]:
+        """根据设备ID获取设备（通用查询方法）
 
         Args:
             db: 数据库会话
-            device_id: 设备数据库ID
+            device_id: 设备ID（字符串或整数，自动判断）
             user_id: 用户ID（可选）
 
         Returns:
             Device: 设备对象，不存在则返回None
         """
-        query = db.query(Device).filter(Device.id == device_id)
+        # 根据 device_id 类型决定查询方式
+        if isinstance(device_id, int):
+            # 传入的是整数主键ID
+            query = db.query(Device).filter(Device.id == device_id)
+        else:
+            # 传入的是字符串 device_id
+            query = db.query(Device).filter(Device.device_id == device_id)
+
         if user_id:
             query = query.filter(Device.user_id == user_id)
         return query.first()
@@ -111,7 +123,7 @@ class DeviceService:
             DeviceAlert: 预警对象
         """
         return DeviceAlert(
-            device_id=device.id,
+            device_id=device.device_id,
             device_name=device.device_name,
             alert_type=alert_type,
             alert_message=alert_message,
@@ -232,7 +244,54 @@ class DeviceService:
         if not device:
             raise ValueError("设备不存在或未绑定")
 
-        # 检查是否至少有一个数据字段
+        # 验证数据
+        self._validate_has_data(data)
+
+        # 构建数据值字典
+        data_value = self._build_data_value_dict(data)
+
+        # 推断数据类型
+        data_type = data.data_type or self._infer_data_type(data)
+
+        # 创建数据记录
+        import uuid
+        device_data = DeviceData(
+            data_id=str(uuid.uuid4()),
+            device_id=device.device_id,
+            user_id=user_id,
+            data_type=data_type,
+            data_value=data_value,
+            upload_time=data.upload_time or datetime.utcnow(),
+            # 设置独立字段以便于查询和索引
+            heart_rate=data.heart_rate,
+            steps=data.steps,
+            calories=int(data.calories) if data.calories else None,
+            distance=data.distance,
+            sleep_duration=data.sleep_duration,
+            systolic_pressure=data.systolic_pressure,
+            diastolic_pressure=data.diastolic_pressure,
+            blood_oxygen=data.blood_oxygen,
+            body_temperature=data.body_temperature,
+            data_timestamp=data.data_timestamp
+        )
+
+        db.add(device_data)
+
+        # 更新设备最后同步时间
+        device.last_sync_time = datetime.utcnow()
+
+        db.commit()
+        db.refresh(device_data)
+
+        # 检查异常并触发预警
+        alerts = self._check_abnormal_data(db, device, device_data)
+        if alerts:
+            self._send_alerts(db, alerts)
+
+        return device_data
+
+    def _validate_has_data(self, data: DeviceDataUpload) -> None:
+        """验证是否至少有一个数据字段"""
         has_data = any([
             data.heart_rate is not None,
             data.steps is not None,
@@ -251,75 +310,52 @@ class DeviceService:
         if not has_data:
             raise ValueError("至少需要提供一个生理数据字段")
 
-        # 构建数据值
+    def _build_data_value_dict(self, data: DeviceDataUpload) -> dict:
+        """构建数据值字典"""
         data_value = {}
-        if data.heart_rate is not None:
-            data_value['heart_rate'] = data.heart_rate
-        if data.steps is not None:
-            data_value['steps'] = data.steps
-        if data.calories is not None:
-            data_value['calories'] = data.calories
-        if data.distance is not None:
-            data_value['distance'] = data.distance
-        if data.sleep_duration is not None:
-            data_value['sleep_duration'] = data.sleep_duration
-        if data.deep_sleep_duration is not None:
-            data_value['deep_sleep_duration'] = data.deep_sleep_duration
-        if data.systolic_pressure is not None:
-            data_value['systolic_pressure'] = data.systolic_pressure
-        if data.diastolic_pressure is not None:
-            data_value['diastolic_pressure'] = data.diastolic_pressure
-        if data.blood_oxygen is not None:
-            data_value['blood_oxygen'] = data.blood_oxygen
-        if data.body_temperature is not None:
-            data_value['body_temperature'] = data.body_temperature
+
+        # 字段映射
+        field_mapping = [
+            ('heart_rate', data.heart_rate),
+            ('steps', data.steps),
+            ('calories', data.calories),
+            ('distance', data.distance),
+            ('sleep_duration', data.sleep_duration),
+            ('deep_sleep_duration', data.deep_sleep_duration),
+            ('systolic_pressure', data.systolic_pressure),
+            ('diastolic_pressure', data.diastolic_pressure),
+            ('blood_oxygen', data.blood_oxygen),
+            ('body_temperature', data.body_temperature),
+        ]
+
+        # 填充数据值
+        for field_name, value in field_mapping:
+            if value is not None:
+                data_value[field_name] = value
+
+        # 合并自定义数据值
         if data.data_value:
             data_value.update(data.data_value)
 
-        # 确定数据类型
-        data_type = data.data_type
-        if data_type is None and data_value:
-            # 根据数据自动推断类型
-            if data.heart_rate is not None:
-                data_type = 'heart_rate'
-            elif data.steps is not None:
-                data_type = 'steps'
-            elif data.sleep_duration is not None:
-                data_type = 'sleep'
-            elif data.systolic_pressure is not None:
-                data_type = 'blood_pressure'
-            elif data.blood_oxygen is not None:
-                data_type = 'blood_oxygen'
-            elif data.body_temperature is not None:
-                data_type = 'temperature'
-            else:
-                data_type = 'other'
+        return data_value
 
-        # 创建数据记录
-        import uuid
-        device_data = DeviceData(
-            data_id=str(uuid.uuid4()),
-            device_id=device.device_id,
-            user_id=user_id,
-            data_type=data_type or 'other',
-            data_value=data_value,
-            upload_time=data.upload_time or datetime.utcnow()
-        )
+    def _infer_data_type(self, data: DeviceDataUpload) -> str:
+        """根据数据自动推断类型"""
+        type_mapping = [
+            ('heart_rate', 'heart_rate'),
+            ('steps', 'steps'),
+            ('sleep_duration', 'sleep'),
+            ('systolic_pressure', 'blood_pressure'),
+            ('blood_oxygen', 'blood_oxygen'),
+            ('body_temperature', 'temperature'),
+        ]
 
-        db.add(device_data)
+        for field_name, data_type in type_mapping:
+            field_value = getattr(data, field_name, None)
+            if field_value is not None:
+                return data_type
 
-        # 更新设备最后同步时间
-        device.last_sync_time = datetime.utcnow()
-
-        db.commit()
-        db.refresh(device_data)
-
-        # 检查异常并触发预警
-        alerts = self._check_abnormal_data(db, device, device_data)
-        if alerts:
-            self._send_alerts(db, alerts)
-
-        return device_data
+        return 'other'
 
     def get_device_data(self, db: Session, user_id: str, query_params: DeviceDataQuery) -> List[DeviceData]:
         """获取设备数据"""
@@ -355,7 +391,7 @@ class DeviceService:
                              start_time: datetime, end_time: datetime) -> Dict[str, Any]:
         """获取设备数据统计"""
         # 获取设备
-        device = db.query(Device).filter(Device.id == device_id).first()
+        device = db.query(Device).filter(Device.device_id == device_id).first()
         if not device:
             raise ValueError("设备不存在")
 
@@ -493,7 +529,7 @@ class DeviceService:
 
         return threshold
 
-    def get_threshold(self, db: Session, device_id: int) -> Optional[DeviceThreshold]:
+    def get_threshold(self, db: Session, device_id: str) -> Optional[DeviceThreshold]:
         """获取设备阈值"""
         device = self._get_device_by_id(db, device_id)
         if not device:
@@ -551,12 +587,12 @@ class DeviceService:
         alerts = []
 
         # 获取阈值配置
-        threshold = self.get_threshold(db, device.id)
+        threshold = self.get_threshold(db, device.device_id)
         if not threshold or not threshold.alert_enabled:
             return alerts
 
         # 检查预警冷却
-        cache_key = f"{device.id}_{device_data.data_timestamp.strftime('%Y%m%d%H%M')}"
+        cache_key = f"{device.device_id}_{device_data.data_timestamp.strftime('%Y%m%d%H%M')}"
         if cache_key in self.alert_cooldown_cache:
             return alerts
 

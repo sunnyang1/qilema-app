@@ -17,7 +17,30 @@ class DeviceData(Base):
     data_type = Column(String(50), nullable=False, comment="数据类型: heart_rate/steps/sleep/blood_pressure/blood_oxygen/temperature")
     data_value = Column(JSON, nullable=False, comment="数据值")
     upload_time = Column(DateTime, nullable=False, comment="上传时间")
+    data_timestamp = Column(DateTime, nullable=True, comment="数据时间戳（用于时间序列分析）")
     created_at = Column(DateTime, nullable=False, default=lambda: __import__('datetime').datetime.now(), comment="创建时间")
+
+    # 独立字段（用于方便查询和索引）
+    # 心率相关
+    heart_rate = Column(Integer, nullable=True, comment="心率(bpm)")
+
+    # 血压相关
+    systolic_pressure = Column(Integer, nullable=True, comment="收缩压(mmHg)")
+    diastolic_pressure = Column(Integer, nullable=True, comment="舒张压(mmHg)")
+
+    # 血氧相关
+    blood_oxygen = Column(Float, nullable=True, comment="血氧(%)")
+
+    # 体温相关
+    body_temperature = Column(Float, nullable=True, comment="体温(℃)")
+
+    # 运动相关
+    steps = Column(Integer, nullable=True, comment="步数")
+    calories = Column(Integer, nullable=True, comment="卡路里")
+    distance = Column(Float, nullable=True, comment="距离")
+
+    # 睡眠相关
+    sleep_duration = Column(Float, nullable=True, comment="睡眠时长")
 
     # 关系
     device = db_relationship("Device", back_populates="device_data")

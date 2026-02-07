@@ -1,9 +1,10 @@
 """健康档案API路由"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
+from app.core.exceptions import ValidationException, NotFoundException, InternalServerException
 from app.services.health_record_service import HealthRecordService
 from app.schemas.health_record import (
     HealthRecordCreate, HealthRecordUpdate, HealthRecordResponse, HealthRecordSummary,
@@ -46,9 +47,9 @@ def create_health_record(
             "data": health_record.to_dict()
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"创建健康档案失败: {str(e)}")
+        raise InternalServerException(detail=f"创建健康档案失败: {str(e)}")
 
 
 @router.get("/{user_id}", response_model=dict, summary="获取健康档案")
@@ -62,7 +63,7 @@ def get_health_record(
     try:
         health_record = health_service.get_health_record(db, user_id)
         if not health_record:
-            raise HTTPException(status_code=404, detail="健康档案不存在")
+            raise NotFoundException("健康档案不存在")
         
         # 获取关联数据
         medical_histories = health_record.medical_histories.all()
@@ -78,10 +79,10 @@ def get_health_record(
                 "allergies": [allg.to_dict() for allg in allergies]
             }
         }
-    except HTTPException:
+    except (ValidationException, NotFoundException):
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取健康档案失败: {str(e)}")
+        raise InternalServerException(detail=f"获取健康档案失败: {str(e)}")
 
 
 @router.put("/{user_id}", response_model=dict, summary="更新健康档案")
@@ -99,9 +100,9 @@ def update_health_record(
             "data": health_record.to_dict()
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"更新健康档案失败: {str(e)}")
+        raise InternalServerException(detail=f"更新健康档案失败: {str(e)}")
 
 
 @router.post("/{user_id}/medical-histories", response_model=dict, summary="添加病史记录")
@@ -123,7 +124,7 @@ def add_medical_history(
         # 获取健康档案ID
         health_record = health_service.get_health_record(db, user_id)
         if not health_record:
-            raise HTTPException(status_code=404, detail="健康档案不存在")
+            raise NotFoundException("健康档案不存在")
         
         data.health_record_id = health_record.id
         medical_history = health_service.add_medical_history(db, health_record.id, data)
@@ -133,10 +134,10 @@ def add_medical_history(
             "message": "病史记录添加成功",
             "data": medical_history.to_dict()
         }
-    except HTTPException:
+    except (ValidationException, NotFoundException):
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"添加病史记录失败: {str(e)}")
+        raise InternalServerException(detail=f"添加病史记录失败: {str(e)}")
 
 
 @router.get("/{user_id}/medical-histories", response_model=dict, summary="获取病史记录列表")
@@ -148,7 +149,7 @@ def get_medical_histories(
     try:
         health_record = health_service.get_health_record(db, user_id)
         if not health_record:
-            raise HTTPException(status_code=404, detail="健康档案不存在")
+            raise NotFoundException("健康档案不存在")
         
         medical_histories = health_service.get_medical_histories(db, health_record.id)
         
@@ -156,10 +157,10 @@ def get_medical_histories(
             "success": True,
             "data": [mh.to_dict() for mh in medical_histories]
         }
-    except HTTPException:
+    except (ValidationException, NotFoundException):
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取病史记录失败: {str(e)}")
+        raise InternalServerException(detail=f"获取病史记录失败: {str(e)}")
 
 
 @router.put("/medical-histories/{history_id}", response_model=dict, summary="更新病史记录")
@@ -177,9 +178,9 @@ def update_medical_history(
             "data": medical_history.to_dict()
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"更新病史记录失败: {str(e)}")
+        raise InternalServerException(detail=f"更新病史记录失败: {str(e)}")
 
 
 @router.delete("/medical-histories/{history_id}", response_model=dict, summary="删除病史记录")
@@ -195,9 +196,9 @@ def delete_medical_history(
             "message": "病史记录删除成功"
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"删除病史记录失败: {str(e)}")
+        raise InternalServerException(detail=f"删除病史记录失败: {str(e)}")
 
 
 @router.post("/{user_id}/medications", response_model=dict, summary="添加用药信息")
@@ -220,7 +221,7 @@ def add_medication(
     try:
         health_record = health_service.get_health_record(db, user_id)
         if not health_record:
-            raise HTTPException(status_code=404, detail="健康档案不存在")
+            raise NotFoundException("健康档案不存在")
         
         data.health_record_id = health_record.id
         medication = health_service.add_medication(db, health_record.id, data)
@@ -230,10 +231,10 @@ def add_medication(
             "message": "用药信息添加成功",
             "data": medication.to_dict()
         }
-    except HTTPException:
+    except (ValidationException, NotFoundException):
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"添加用药信息失败: {str(e)}")
+        raise InternalServerException(detail=f"添加用药信息失败: {str(e)}")
 
 
 @router.get("/{user_id}/medications", response_model=dict, summary="获取用药信息列表")
@@ -250,7 +251,7 @@ def get_medications(
     try:
         health_record = health_service.get_health_record(db, user_id)
         if not health_record:
-            raise HTTPException(status_code=404, detail="健康档案不存在")
+            raise NotFoundException("健康档案不存在")
         
         medications = health_service.get_medications(db, health_record.id, current_only)
         
@@ -258,10 +259,10 @@ def get_medications(
             "success": True,
             "data": [med.to_dict() for med in medications]
         }
-    except HTTPException:
+    except (ValidationException, NotFoundException):
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取用药信息失败: {str(e)}")
+        raise InternalServerException(detail=f"获取用药信息失败: {str(e)}")
 
 
 @router.put("/medications/{medication_id}", response_model=dict, summary="更新用药信息")
@@ -279,9 +280,9 @@ def update_medication(
             "data": medication.to_dict()
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"更新用药信息失败: {str(e)}")
+        raise InternalServerException(detail=f"更新用药信息失败: {str(e)}")
 
 
 @router.delete("/medications/{medication_id}", response_model=dict, summary="删除用药信息")
@@ -297,9 +298,9 @@ def delete_medication(
             "message": "用药信息删除成功"
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"删除用药信息失败: {str(e)}")
+        raise InternalServerException(detail=f"删除用药信息失败: {str(e)}")
 
 
 @router.post("/{user_id}/allergies", response_model=dict, summary="添加过敏史")
@@ -320,7 +321,7 @@ def add_allergy(
     try:
         health_record = health_service.get_health_record(db, user_id)
         if not health_record:
-            raise HTTPException(status_code=404, detail="健康档案不存在")
+            raise NotFoundException("健康档案不存在")
         
         data.health_record_id = health_record.id
         allergy = health_service.add_allergy(db, health_record.id, data)
@@ -330,10 +331,10 @@ def add_allergy(
             "message": "过敏史添加成功",
             "data": allergy.to_dict()
         }
-    except HTTPException:
+    except (ValidationException, NotFoundException):
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"添加过敏史失败: {str(e)}")
+        raise InternalServerException(detail=f"添加过敏史失败: {str(e)}")
 
 
 @router.get("/{user_id}/allergies", response_model=dict, summary="获取过敏史列表")
@@ -345,7 +346,7 @@ def get_allergies(
     try:
         health_record = health_service.get_health_record(db, user_id)
         if not health_record:
-            raise HTTPException(status_code=404, detail="健康档案不存在")
+            raise NotFoundException("健康档案不存在")
         
         allergies = health_service.get_allergies(db, health_record.id)
         
@@ -353,10 +354,10 @@ def get_allergies(
             "success": True,
             "data": [allg.to_dict() for allg in allergies]
         }
-    except HTTPException:
+    except (ValidationException, NotFoundException):
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取过敏史失败: {str(e)}")
+        raise InternalServerException(detail=f"获取过敏史失败: {str(e)}")
 
 
 @router.put("/allergies/{allergy_id}", response_model=dict, summary="更新过敏史")
@@ -374,9 +375,9 @@ def update_allergy(
             "data": allergy.to_dict()
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"更新过敏史失败: {str(e)}")
+        raise InternalServerException(detail=f"更新过敏史失败: {str(e)}")
 
 
 @router.delete("/allergies/{allergy_id}", response_model=dict, summary="删除过敏史")
@@ -392,9 +393,9 @@ def delete_allergy(
             "message": "过敏史删除成功"
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"删除过敏史失败: {str(e)}")
+        raise InternalServerException(detail=f"删除过敏史失败: {str(e)}")
 
 
 @router.get("/{user_id}/summary", response_model=dict, summary="生成健康档案摘要")
@@ -423,6 +424,6 @@ def generate_summary(
             }
         }
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise NotFoundException(detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"生成健康档案摘要失败: {str(e)}")
+        raise InternalServerException(detail=f"生成健康档案摘要失败: {str(e)}")

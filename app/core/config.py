@@ -2,7 +2,11 @@
 应用配置模块
 """
 import os
-from typing import List, Union
+import logging
+import sys
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from typing import List, Union, Optional
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 
@@ -20,6 +24,16 @@ class Settings(BaseSettings):
 
     # ========== 调试模式 ==========
     DEBUG: bool = False  # 默认False，根据ENVIRONMENT自动设置
+
+    # ========== 日志配置 ==========
+    LOG_LEVEL: str = "INFO"  # 日志级别: DEBUG, INFO, WARNING, ERROR, CRITICAL
+    LOG_FORMAT: str = "%(asctime)s | %(levelname)s | %(request_id)s | %(user_id)s | %(name)s | %(message)s"
+    LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
+    LOG_DIR: str = "logs"  # 日志目录
+    LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024  # 10MB
+    LOG_FILE_BACKUP_COUNT: int = 5  # 保留5个备份文件
+    LOG_TO_CONSOLE: bool = True  # 是否输出到控制台
+    LOG_TO_FILE: bool = True  # 是否输出到文件
 
     # ========== API配置 ==========
     API_V1_PREFIX: str = "/api/v1"
@@ -60,6 +74,40 @@ class Settings(BaseSettings):
 
     # ========== 紧急求助配置 ==========
     SOS_CONTACT_NOTIFY_CHANNELS: List[str] = ["push", "sms"]
+
+    # ========== 通知服务配置 ==========
+
+    # 推送通知配置
+    NOTIFICATION_PUSH_ENABLED: bool = True
+    NOTIFICATION_PUSH_SUCCESS_RATE: float = 100.0
+    NOTIFICATION_PUSH_DELAY_MS: int = 0
+    NOTIFICATION_PUSH_MAX_RETRIES: int = 3
+    NOTIFICATION_PUSH_RETRY_INTERVAL_MS: int = 1000
+
+    # 短信通知配置
+    NOTIFICATION_SMS_ENABLED: bool = True
+    NOTIFICATION_SMS_SUCCESS_RATE: float = 100.0
+    NOTIFICATION_SMS_DELAY_MS: int = 0
+    NOTIFICATION_SMS_MAX_RETRIES: int = 3
+    NOTIFICATION_SMS_RETRY_INTERVAL_MS: int = 1000
+
+    # 电话通知配置
+    NOTIFICATION_PHONE_ENABLED: bool = True
+    NOTIFICATION_PHONE_SUCCESS_RATE: float = 100.0
+    NOTIFICATION_PHONE_DELAY_MS: int = 0
+    NOTIFICATION_PHONE_MAX_RETRIES: int = 3
+    NOTIFICATION_PHONE_RETRY_INTERVAL_MS: int = 1000
+
+    # 邮件通知配置
+    NOTIFICATION_EMAIL_ENABLED: bool = True
+    NOTIFICATION_EMAIL_SUCCESS_RATE: float = 100.0
+    NOTIFICATION_EMAIL_DELAY_MS: int = 0
+    NOTIFICATION_EMAIL_MAX_RETRIES: int = 3
+    NOTIFICATION_EMAIL_RETRY_INTERVAL_MS: int = 1000
+
+    # 通知降级策略配置
+    NOTIFICATION_DEGRADATION_ENABLED: bool = True
+    NOTIFICATION_CHANNEL_PRIORITY: List[str] = ["phone", "sms", "push", "email"]
 
     @field_validator("ENVIRONMENT")
     @classmethod
@@ -332,6 +380,123 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
         # 环境变量覆盖.env文件中的值
         env_prefix = ""
+
+
+# ========== 日志配置 ==========
+
+class RequestIDFilter(logging.Filter):
+    """请求ID过滤器
+
+    从logging.LogRecord中提取request_id和user_id，添加到日志中
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """过滤日志记录
+
+        Args:
+            record: 日志记录对象
+
+        Returns:
+            bool: 总是返回True（不过滤）
+        """
+        # 从请求上下文中获取request_id和user_id
+        request_id = getattr(record, 'request_id', 'N/A')
+        user_id = getattr(record, 'user_id', 'N/A')
+
+        # 添加到日志记录
+        record.request_id = request_id
+        record.user_id = user_id
+
+        return True
+
+
+def setup_logging(settings_obj: Optional[Settings] = None) -> None:
+    """配置应用日志系统
+
+    Args:
+        settings_obj: 配置对象，如果为None则使用默认配置
+    """
+    if settings_obj is None:
+        settings_obj = settings
+
+    # 创建日志目录
+    if settings_obj.LOG_TO_FILE:
+        log_dir = Path(settings_obj.LOG_DIR)
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+    # 获取根日志记录器
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, settings_obj.LOG_LEVEL.upper()))
+
+    # 清除已有的处理器
+    root_logger.handlers.clear()
+
+    # 创建格式化器
+    formatter = logging.Formatter(
+        fmt=settings_obj.LOG_FORMAT,
+        datefmt=settings_obj.LOG_DATE_FORMAT
+    )
+
+    # 添加请求ID过滤器
+    request_id_filter = RequestIDFilter()
+
+    # 控制台处理器
+    if settings_obj.LOG_TO_CONSOLE:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(getattr(logging, settings_obj.LOG_LEVEL.upper()))
+        console_handler.setFormatter(formatter)
+        console_handler.addFilter(request_id_filter)
+        root_logger.addHandler(console_handler)
+
+    # 文件处理器（按大小轮转）
+    if settings_obj.LOG_TO_FILE:
+        # 应用日志文件
+        app_log_file = log_dir / f"{settings_obj.APP_NAME}.log"
+        app_handler = RotatingFileHandler(
+            filename=app_log_file,
+            maxBytes=settings_obj.LOG_FILE_MAX_BYTES,
+            backupCount=settings_obj.LOG_FILE_BACKUP_COUNT,
+            encoding='utf-8'
+        )
+        app_handler.setLevel(getattr(logging, settings_obj.LOG_LEVEL.upper()))
+        app_handler.setFormatter(formatter)
+        app_handler.addFilter(request_id_filter)
+        root_logger.addHandler(app_handler)
+
+        # 错误日志文件（只记录ERROR及以上）
+        error_log_file = log_dir / f"{settings_obj.APP_NAME}_error.log"
+        error_handler = RotatingFileHandler(
+            filename=error_log_file,
+            maxBytes=settings_obj.LOG_FILE_MAX_BYTES,
+            backupCount=settings_obj.LOG_FILE_BACKUP_COUNT,
+            encoding='utf-8'
+        )
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(formatter)
+        error_handler.addFilter(request_id_filter)
+        root_logger.addHandler(error_handler)
+
+    # 配置第三方库日志级别
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+    logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    # 记录日志系统启动
+    logging.info(f"日志系统已初始化 - 级别: {settings_obj.LOG_LEVEL}, "
+                f"控制台: {settings_obj.LOG_TO_CONSOLE}, 文件: {settings_obj.LOG_TO_FILE}")
+
+
+def get_logger(name: str) -> logging.Logger:
+    """获取日志记录器
+
+    Args:
+        name: 日志记录器名称（通常使用__name__）
+
+    Returns:
+        logging.Logger: 配置好的日志记录器
+    """
+    return logging.getLogger(name)
 
 
 # 创建配置实例

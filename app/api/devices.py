@@ -6,11 +6,14 @@
 
 from typing import List
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.exceptions import (
+    ValidationException, DeviceNotFoundException, ThresholdNotFoundException
+)
 from app.models.user import User
 from app.schemas.device import (
     DeviceBind, DeviceUpdate, DeviceResponse, DeviceDataUpload,
@@ -38,15 +41,15 @@ def bind_device(
     支持绑定智能手环、智能手表等健康监测设备
     """
     try:
-        device = device_service.bind_device(db, current_user.id, device_data)
+        device = device_service.bind_device(db, current_user.user_id, device_data)
         return device
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.post("/{device_id}/unbind", status_code=status.HTTP_200_OK)
 def unbind_device(
-    device_id: int,
+    device_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -56,10 +59,10 @@ def unbind_device(
     解绑后设备将无法上传数据,但历史数据保留
     """
     try:
-        device_service.unbind_device(db, device_id, current_user.id)
+        device_service.unbind_device(db, device_id, current_user.user_id)
         return {"message": "设备解绑成功"}
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.get("", response_model=List[DeviceResponse])
@@ -73,28 +76,28 @@ def get_user_devices(
     
     include_inactive: 是否包含已解绑设备
     """
-    devices = device_service.get_user_devices(db, current_user.id, include_inactive)
+    devices = device_service.get_user_devices(db, current_user.user_id, include_inactive)
     return devices
 
 
 @router.get("/{device_id}", response_model=DeviceResponse)
 def get_device(
-    device_id: int,
+    device_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     获取设备详细信息
     """
-    device = device_service.get_device(db, device_id, current_user.id)
+    device = device_service.get_device(db, device_id, current_user.user_id)
     if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="设备不存在")
+        raise DeviceNotFoundException(device_id)
     return device
 
 
 @router.put("/{device_id}", response_model=DeviceResponse)
 def update_device(
-    device_id: int,
+    device_id: str,
     device_data: DeviceUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -105,15 +108,15 @@ def update_device(
     支持修改设备名称和备注信息
     """
     try:
-        device = device_service.update_device(db, device_id, current_user.id, device_data)
+        device = device_service.update_device(db, device_id, current_user.user_id, device_data)
         return device
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.patch("/{device_id}/status", response_model=DeviceResponse)
 def update_device_status(
-    device_id: int,
+    device_id: str,
     status_data: DeviceStatusUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -124,10 +127,10 @@ def update_device_status(
     更新设备在线状态和电池电量
     """
     try:
-        device = device_service.update_device_status(db, device_id, current_user.id, status_data)
+        device = device_service.update_device_status(db, device_id, current_user.user_id, status_data)
         return device
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 设备数据管理 ==========
@@ -144,10 +147,10 @@ def upload_device_data(
     支持上传心率、步数、睡眠、血压、血氧、体温等数据
     """
     try:
-        device_data = device_service.upload_device_data(db, current_user.id, data)
+        device_data = device_service.upload_device_data(db, current_user.user_id, data)
         return device_data
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.post("/data/query", response_model=List[DeviceDataResponse])
@@ -161,13 +164,13 @@ def query_device_data(
     
     支持按设备ID、时间范围、数据类型筛选
     """
-    device_data_list = device_service.get_device_data(db, current_user.id, query_params)
+    device_data_list = device_service.get_device_data(db, current_user.user_id, query_params)
     return device_data_list
 
 
 @router.get("/{device_id}/statistics")
 def get_device_statistics(
-    device_id: int,
+    device_id: str,
     data_type: str,
     start_time: datetime,
     end_time: datetime,
@@ -181,16 +184,16 @@ def get_device_statistics(
     """
     try:
         # 验证设备归属
-        device = device_service.get_device(db, device_id, current_user.id)
+        device = device_service.get_device(db, device_id, current_user.user_id)
         if not device:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="设备不存在")
-        
+            raise DeviceNotFoundException(device_id)
+
         statistics = device_service.get_device_statistics(
             db, device_id, data_type, start_time, end_time
         )
         return statistics
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 阈值配置管理 ==========
@@ -208,19 +211,19 @@ def create_threshold(
     """
     try:
         # 验证设备归属
-        device = device_service.get_device(db, threshold_data.device_id, current_user.id)
+        device = device_service.get_device(db, threshold_data.device_id, current_user.user_id)
         if not device:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="设备不存在")
-        
+            raise DeviceNotFoundException(threshold_data.device_id)
+
         threshold = device_service.create_threshold(db, threshold_data)
         return threshold
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.get("/{device_id}/threshold", response_model=DeviceThresholdResponse)
 def get_threshold(
-    device_id: int,
+    device_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -228,20 +231,20 @@ def get_threshold(
     获取设备异常阈值配置
     """
     # 验证设备归属
-    device = device_service.get_device(db, device_id, current_user.id)
+    device = device_service.get_device(db, device_id, current_user.user_id)
     if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="设备不存在")
-    
+        raise DeviceNotFoundException(device_id)
+
     threshold = device_service.get_threshold(db, device_id)
     if not threshold:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="阈值配置不存在")
-    
+        raise ThresholdNotFoundException()
+
     return threshold
 
 
 @router.put("/{device_id}/threshold", response_model=DeviceThresholdResponse)
 def update_threshold(
-    device_id: int,
+    device_id: str,
     threshold_data: DeviceThresholdUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -251,14 +254,14 @@ def update_threshold(
     """
     try:
         # 验证设备归属
-        device = device_service.get_device(db, device_id, current_user.id)
+        device = device_service.get_device(db, device_id, current_user.user_id)
         if not device:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="设备不存在")
-        
+            raise DeviceNotFoundException(device_id)
+
         threshold = device_service.update_threshold(db, device_id, threshold_data)
         return threshold
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 设备监控 ==========

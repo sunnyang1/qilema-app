@@ -1,10 +1,13 @@
 """
 FastAPI应用主入口
 """
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
+from app.core.config import settings, setup_logging
 from app.core.database import init_db
+from app.core.middleware import setup_middleware
+from app.core.error_handlers import register_exception_handlers
 from app.api import api_router
 
 # 创建FastAPI应用
@@ -24,6 +27,12 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
+# 设置自定义中间件（异常处理、请求日志、请求ID）
+setup_middleware(app)
+
+# 注册全局异常处理器
+register_exception_handlers(app)
+
 # 注册API路由
 app.include_router(api_router)
 
@@ -31,14 +40,21 @@ app.include_router(api_router)
 @app.on_event("startup")
 async def startup_event():
     """应用启动事件"""
+    # 初始化日志系统
+    setup_logging(settings)
+    logger = logging.getLogger(__name__)
+    logger.info(f"启动{settings.APP_NAME} v{settings.APP_VERSION}")
+
     # 验证配置
     config_errors = settings.validate_configuration()
     if config_errors:
         error_message = "配置错误:\n" + "\n".join(f"- {error}" for error in config_errors)
+        logger.error(error_message)
         raise RuntimeError(error_message)
 
     # 初始化数据库
     init_db()
+    logger.info("数据库初始化完成")
 
 
 @app.get("/")

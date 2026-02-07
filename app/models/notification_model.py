@@ -1,7 +1,7 @@
 """
 消息通知SQLAlchemy模型
 """
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, JSON, Boolean
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
 
@@ -40,3 +40,50 @@ class Notification(Base):
 
     # 关系
     user = db_relationship("User", back_populates="notifications")
+
+
+class NotificationPreference(Base):
+    """通知偏好设置模型"""
+    __tablename__ = "notification_preferences"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="自增ID")
+    user_id = Column(String(36), ForeignKey("users.user_id"), nullable=False, unique=True, index=True, comment="用户ID")
+
+    # 推送通知设置
+    push_enabled = Column(Boolean, nullable=False, default=True, comment="是否启用推送通知")
+    push_mute_enabled = Column(Boolean, nullable=False, default=False, comment="是否启用推送免打扰")
+    push_mute_start = Column(String(5), nullable=True, comment="免打扰开始时间 HH:MM")
+    push_mute_end = Column(String(5), nullable=True, comment="免打扰结束时间 HH:MM")
+
+    # 短信通知设置
+    sms_enabled = Column(Boolean, nullable=False, default=True, comment="是否启用短信通知")
+    sms_mute_enabled = Column(Boolean, nullable=False, default=False, comment="是否启用短信免打扰")
+    sms_mute_start = Column(String(5), nullable=True, comment="免打扰开始时间 HH:MM")
+    sms_mute_end = Column(String(5), nullable=True, comment="免打扰结束时间 HH:MM")
+
+    # 电话通知设置
+    phone_enabled = Column(Boolean, nullable=False, default=True, comment="是否启用电话通知")
+    phone_mute_enabled = Column(Boolean, nullable=False, default=False, comment="是否启用电话免打扰")
+    phone_mute_start = Column(String(5), nullable=True, comment="免打扰开始时间 HH:MM")
+    phone_mute_end = Column(String(5), nullable=True, comment="免打扰结束时间 HH:MM")
+
+    # 邮件通知设置
+    email_enabled = Column(Boolean, nullable=False, default=True, comment="是否启用邮件通知")
+    email_mute_enabled = Column(Boolean, nullable=False, default=False, comment="是否启用邮件免打扰")
+    email_mute_start = Column(String(5), nullable=True, comment="免打扰开始时间 HH:MM")
+    email_mute_end = Column(String(5), nullable=True, comment="免打扰结束时间 HH:MM")
+
+    # 微信通知设置
+    wechat_enabled = Column(Boolean, nullable=False, default=True, comment="是否启用微信通知")
+    wechat_mute_enabled = Column(Boolean, nullable=False, default=False, comment="是否启用微信免打扰")
+    wechat_mute_start = Column(String(5), nullable=True, comment="免打扰开始时间 HH:MM")
+    wechat_mute_end = Column(String(5), nullable=True, comment="免打扰结束时间 HH:MM")
+
+    # 紧急通知设置（不受免打扰限制）
+    urgent_enabled = Column(Boolean, nullable=False, default=True, comment="是否启用紧急通知")
+
+    created_at = Column(DateTime, nullable=False, default=lambda: __import__('datetime').datetime.now(), comment="创建时间")
+    updated_at = Column(DateTime, nullable=True, comment="更新时间")
+
+    # 关系
+    user = db_relationship("User", back_populates="notification_preferences")

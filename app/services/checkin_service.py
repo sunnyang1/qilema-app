@@ -221,10 +221,19 @@ class CheckInService:
         Returns:
             紧急联系人列表
         """
+        # 尝试从缓存获取（缓存10分钟）
+        cache_key = f"checkin:contacts:{user_id}"
+        cached_contacts = get_cached(cache_key)
+        if cached_contacts:
+            return cached_contacts
+
         contacts = db.query(EmergencyContact).filter(
             EmergencyContact.user_id == user_id
         ).order_by(EmergencyContact.priority).all()
-        
+
+        # 缓存结果（10分钟）
+        cache_result(cache_key, contacts, ttl=600)
+
         return contacts
 
     @staticmethod

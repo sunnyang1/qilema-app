@@ -1,7 +1,7 @@
 """
 健康档案相关的Schema验证
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -18,6 +18,22 @@ class HealthRecordCreate(BaseModel):
     emergency_contact_name: Optional[str] = Field(None, max_length=50, description="紧急医疗联系人姓名")
     emergency_contact_phone: Optional[str] = Field(None, max_length=20, description="紧急医疗联系人电话")
     emergency_contact_relation: Optional[str] = Field(None, max_length=20, description="紧急医疗联系人关系")
+
+    @field_validator('gender')
+    @classmethod
+    def validate_gender(cls, v):
+        """验证性别字段"""
+        if v not in ['男', '女', '其他', 'male', 'female', 'other', 'Male', 'Female', 'Other']:
+            raise ValueError('性别必须是男、女或其他')
+        return v
+
+    @field_validator('blood_type')
+    @classmethod
+    def validate_blood_type(cls, v):
+        """验证血型字段"""
+        if v is not None and v not in ['A', 'B', 'O', 'AB', 'a', 'b', 'o', 'ab', '其他', 'other', 'Other']:
+            raise ValueError('血型必须是A、B、O、AB或其他')
+        return v
 
 
 class HealthRecordUpdate(BaseModel):

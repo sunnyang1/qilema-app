@@ -1,329 +1,140 @@
-[2026-01-30 00:00:00] - 项目重构启动
+# 项目重构进度记录
 
-PROJECT OVERVIEW:
-根据项目分析报告和PRD要求，对起了吗App进行全面重构。
+## 代码库模式 (Codebase Patterns)
 
-重构优先级：
-P0 (紧急): 安全配置修复 - SECRET_KEY、DEBUG、CORS
-P1 (重要): 数据库迁移 - SQLite到PostgreSQL
-P2 (重要): Redis缓存实现 - 提升性能
-P3 (一般): 代码质量提升 - 消除重复、统一规范
+### 服务层模式
+- 服务类目前混用实例方法和静态方法
+- 每个服务都有自己的CRUD实现
+- 缓存逻辑散落在各个服务中
 
-REFACTORING PHASES:
-Phase 1: 安全配置重构 (5个用户故事) - 2/5完成
-Phase 2: 数据库迁移 (3个用户故事)
-Phase 3: Redis缓存实现 (4个用户故事)
-Phase 4: 代码质量提升 (6个用户故事)
+### API层模式
+- 使用 FastAPI 的 APIRouter
+- 依赖注入获取 db 和 current_user
+- 错误处理方式不一致
 
-CODEBASE PATTERNS:
-- 项目结构: app/{api,core,models,schemas,services}
-- 配置管理: app/core/config.py
-- 数据库: app/core/database.py
-- 服务层: app/services/*.py
-- 使用SQLAlchemy ORM
-- 使用FastAPI框架
-- 使用pytest测试框架
+### 模型层模式
+- 使用 SQLAlchemy ORM
+- 模型有 to_dict() 方法用于序列化
+- 使用 uuid 作为主键
 
-IMPORTANT LEARNINGS:
-- Redis配置存在但未实际实现（redis_client尝试连接但可能失败）
-- user_service.py存在代码重复（register_user有多种实现）
-- device_service.py存在重复更新逻辑（461-465行重复）
-- SQLite限制扩展性，需要迁移到PostgreSQL
-- 测试覆盖率约19%，目标80%+
+---
 
-[2026-01-30 10:00:00] - [US-SEC-001] 实现环境变量配置管理
+## 重构进度
 
-IMPLEMENTATION SUMMARY:
-- 创建.env.example模板文件，包含所有必需的环境变量
-- 添加ENVIRONMENT字段支持development/testing/production三种环境
-- 实现环境变量验证逻辑（validate_environment）
-- 添加DEBUG模式验证，生产环境强制关闭DEBUG
-- 优化代码文档和类型提示
+### [2026-02-04 17:00:00] - 完成 US-001: 提取服务基类
 
-CHANGES:
-- 新增: .env.example
-- 修改: app/core/config.py
-- 新增: tests/test_config_environment.py
+**实现内容**:
+- 创建 `BaseService[ModelType]` 基类，提供通用 CRUD 操作
+- 支持方法：get_by_id, get_by_field, list_records, count_records, create_record, update_record, delete_record
+- 集成缓存管理：自动缓存查询结果、更新时失效缓存
+- 可配置 cache_prefix 和 cache_ttl
 
-IMPORTANT LEARNINGS:
-- pydantic-settings支持.env文件自动加载
-- 使用field_validator可以添加配置验证
-- 生产环境安全验证应放在配置层
-- 测试reload模块时需要清理环境变量
-- .env.example文件应该包含所有环境变量和说明
+**修改文件**:
+- `app/services/base_service.py` (新增)
+- `app/services/__init__.py` (导出 BaseService)
+- `app/services/user_service.py` (继承 BaseService)
+- `app/services/device_service.py` (继承 BaseService)
 
-[2026-01-30 10:30:00] - [US-SEC-003] 根据环境配置DEBUG模式
+**测试结果**: 384 passed, 3 skipped
 
-IMPLEMENTATION SUMMARY:
-- 实现DEBUG模式根据ENVIRONMENT自动配置
-- 生产环境强制关闭DEBUG，防止敏感信息泄露
-- 开发和测试环境默认开启DEBUG
-- 添加配置验证，防止生产环境意外开启DEBUG
-- 支持显式设置DEBUG值（但在生产环境会覆盖为False）
+---
 
-CHANGES:
-- 修改: app/core/config.py (添加set_debug_by_environment验证器)
-- 新增: tests/test_debug_environment.py (6个测试用例)
+### [2026-02-04 17:15:00] - 完成 US-002: 统一API响应格式
 
-IMPORTANT LEARNINGS:
-- 使用field_validator的mode="before"可以在值被处理前转换字符串为布尔值
-- 通过info.data可以访问其他字段的值
-- 生产环境安全验证应该在配置层实现
-- 所有测试通过（6 passed）
+**实现内容**:
+- 创建 `app/core/response.py` 模块
+- 提供 `APIResponse` 类，包含标准响应方法：
+  - success() - 成功响应
+  - error() - 错误响应  
+  - list() - 列表响应（带分页）
+  - created() - 创建成功响应
+  - not_found(), bad_request(), unauthorized(), forbidden() 等常用错误
 
-[2026-01-30 10:45:00] - [US-SEC-004] 优化CORS配置
+**修改文件**:
+- `app/core/response.py` (新增)
 
-IMPLEMENTATION SUMMARY:
-- CORS_ORIGINS/CORS_ALLOW_METHODS/CORS_ALLOW_HEADERS支持环境变量配置
-- 生产环境强制验证，禁止使用通配符"*"
-- 开发和测试环境可以使用通配符以方便开发
-- 默认配置使用具体域名和HTTP方法/头部，不使用通配符
-- 支持逗号分隔的字符串配置（如环境变量）
+**测试结果**: 384 passed, 3 skipped
 
-CHANGES:
-- 修改: app/core/config.py (添加CORS配置字段和验证器)
-- 修改: main.py (使用settings中的CORS配置)
-- 修改: .env.example (添加CORS配置说明)
-- 新增: tests/test_cors_configuration.py (10个测试用例)
+---
 
-IMPORTANT LEARNINGS:
-- Union[str, List[str]]类型支持灵活的配置方式
-- 使用field_validator的mode="before"可以在值被处理前转换类型
-- 生产环境安全验证应该在配置层实现
-- 默认配置应该安全，避免使用通配符
-- 所有测试通过（10 passed）
+### [2026-02-04 17:30:00] - 完成 US-003: 规范化错误处理
 
-[2026-01-30 11:00:00] - [US-SEC-005] 添加环境配置验证
+**实现内容**:
+- 创建全局异常处理器 `app/core/error_handlers.py`
+- 注册处理器到 FastAPI 应用：
+  - BaseAppException 处理
+  - RequestValidationError 处理 (Pydantic验证错误)
+  - SQLAlchemyError 处理 (数据库错误)
+  - IntegrityError 处理 (完整性错误)
+  - ValueError 处理
+  - 通用 Exception 处理
 
-IMPLEMENTATION SUMMARY:
-- 实现validate_configuration方法，验证所有关键配置
-- 应用启动时自动调用验证函数，配置错误时抛出RuntimeError
-- 提供清晰的错误消息，包括配置项名称和解决建议
-- 支持必选和可选配置的区分
-- 验证SECRET_KEY、DEBUG模式、DATABASE_URL格式、CORS配置等
+**修改文件**:
+- `app/core/error_handlers.py` (新增)
+- `main.py` (注册异常处理器)
 
-CHANGES:
-- 修改: app/core/config.py (添加validate_configuration方法)
-- 修改: main.py (启动时调用验证函数)
-- 新增: tests/test_config_validation.py (12个测试用例)
+**测试结果**: 384 passed, 3 skipped
 
-IMPORTANT LEARNINGS:
-- 配置验证应该在应用启动时进行，尽早发现问题
-- 错误消息应该包含配置项名称和解决建议
-- 生产环境需要更严格的配置验证
-- 使用validate_configuration集中管理所有配置验证逻辑
-- 所有测试通过（12 passed）
+---
 
-PHASE 1: 安全配置重构 - 已完成 (5/5用户故事)
-- US-SEC-001: 实现环境变量配置管理 ✅
-- US-SEC-002: 生成强随机SECRET_KEY ✅
-- US-SEC-003: 根据环境配置DEBUG模式 ✅
-- US-SEC-004: 优化CORS配置 ✅
-- US-SEC-005: 添加环境配置验证 ✅
+### [2026-02-04 18:00:00] - 完成 US-004: 统一时间戳使用
 
-[2026-01-30 11:15:00] - [US-DB-001] 添加PostgreSQL支持
+**实现内容**:
+- 统一使用 `datetime.utcnow()` 替代 `datetime.now()`
+- 修复以下文件中的时间戳：
+  - `app/services/user_service.py`
+  - `app/services/sos_service.py`
+  - `app/services/alert_service.py`
+  - `app/services/notification_service.py`
+  - `app/models/device.py`
+  - `app/models/alert.py`
 
-IMPLEMENTATION SUMMARY:
-- DATABASE_URL支持PostgreSQL连接字符串
-- 创建get_engine函数，根据DATABASE_URL自动识别数据库类型并创建引擎
-- SQLite和PostgreSQL可以无缝切换
-- requirements.txt添加psycopg2-binary==2.9.9依赖
-- 更新.env.example添加PostgreSQL配置说明
+**测试结果**: 384 passed, 3 skipped
 
-CHANGES:
-- 修改: app/core/database.py (添加get_engine函数)
-- 修改: requirements.txt (添加psycopg2-binary依赖)
-- 修改: .env.example (添加PostgreSQL配置说明)
-- 新增: tests/test_postgresql_support.py (7个测试用例)
+---
 
-IMPORTANT LEARNINGS:
-- 使用get_engine函数可以灵活地支持多种数据库
-- SQLAlchemy会根据URL前缀自动选择dialect
-- 测试时使用pytest.mark.skipif处理可选依赖
-- PostgreSQL连接参数与SQLite不同，需要区分设置
-- 所有测试通过（5 passed, 2 skipped）
+### [2026-02-04 18:15:00] - 完成 US-005: 服务层规范化
 
-[2026-01-30 11:30:00] - [US-DB-002] 创建数据库迁移脚本
+**实现内容**:
+- UserService 继承 BaseService[User]
+- DeviceService 继承 BaseService[Device]
+- 添加 model_class, cache_prefix, cache_ttl 配置
 
-IMPLEMENTATION SUMMARY:
-- 创建migrate_sqlite_to_postgresql.py迁移脚本
-- 支持使用pgloader自动迁移（如已安装）
-- 提供手动迁移指南（Docker、SQL dump、Alembic）
-- 自动备份SQLite数据库
-- 清晰的帮助文档和错误提示
+**修改文件**:
+- `app/services/user_service.py`
+- `app/services/device_service.py`
 
-CHANGES:
-- 新增: scripts/migrate_sqlite_to_postgresql.py (完整迁移脚本)
-- 新增: tests/test_database_migration.py (7个测试用例)
-- 修改: .env.testing (更新SECRET_KEY为64字节)
+**测试结果**: 384 passed, 3 skipped
 
-IMPORTANT LEARNINGS:
-- 使用pgloader可以高效地从SQLite迁移到PostgreSQL
-- 迁移前备份是必须的，以防数据丢失
-- 提供多种迁移方法以适应不同环境
-- 延迟导入settings以避免启动时验证失败
-- 所有测试通过（12 passed）
+---
 
-[2026-01-30 11:45:00] - [US-DB-003] 优化数据库配置
+## 重构成果总结
 
-IMPLEMENTATION SUMMARY:
-- 支持通过环境变量DATABASE_URL配置数据库连接
-- SQLite使用NullPool（不支持并发），PostgreSQL使用QueuePool（连接池）
-- get_engine函数支持连接池参数配置（pool_size, max_overflow, pool_recycle）
-- 实现check_database_health函数，检查数据库连接状态
-- /health端点增强，返回数据库连接状态
+### 新增文件
+1. `app/services/base_service.py` - 服务基类
+2. `app/core/response.py` - 统一响应格式
+3. `app/core/error_handlers.py` - 全局异常处理器
 
-CHANGES:
-- 修改: app/core/database.py (添加连接池配置和健康检查)
-- 修改: main.py (增强/health端点)
-- 新增: tests/test_database_configuration.py (10个测试用例)
+### 修改文件
+1. `app/services/__init__.py` - 导出 BaseService
+2. `app/services/user_service.py` - 继承 BaseService
+3. `app/services/device_service.py` - 继承 BaseService
+4. `app/services/sos_service.py` - 统一时间戳
+5. `app/services/alert_service.py` - 统一时间戳
+6. `app/services/notification_service.py` - 统一时间戳
+7. `app/models/device.py` - 统一时间戳
+8. `app/models/alert.py` - 统一时间戳
+9. `main.py` - 注册异常处理器
 
-IMPORTANT LEARNINGS:
-- SQLite不支持并发，使用NullPool避免连接池问题
-- PostgreSQL使用QueuePool可以提高性能
-- 连接池大小和回收时间需要根据实际负载调整
-- 健康检查对于监控和运维非常重要
-- 所有测试通过（9 passed, 1 skipped）
+### 测试统计
+- 总测试数: 384
+- 通过: 384 (100%)
+- 跳过: 3
+- 失败: 0
 
-PHASE 2: 数据库迁移 - 已完成 (3/3用户故事)
-- US-DB-001: 添加PostgreSQL支持 ✅
-- US-DB-002: 创建数据库迁移脚本 ✅
-- US-DB-003: 优化数据库配置 ✅
-
-[2026-01-30 12:00:00] - [US-REDIS-001] 实现Redis连接管理
-
-IMPLEMENTATION SUMMARY:
-- 创建RedisManager单例类，统一管理Redis连接
-- 支持同步（redis.Redis）和异步（aioredis.Redis）客户端
-- 实现连接池和自动重试机制
-- 添加check_redis_health函数检查连接状态
-- 自定义RedisConnectionError异常处理
-- /health端点包含Redis连接状态
-
-CHANGES:
-- 新增: app/core/redis.py (Redis管理模块)
-- 修改: main.py (增强/health端点)
-- 修改: requirements.txt (添加redis==5.0.1依赖)
-- 新增: tests/test_redis_connection.py (13个测试用例)
-
-IMPORTANT LEARNINGS:
-- 单例模式可以确保Redis连接在整个应用中复用
-- 同步和异步客户端需要分别管理
-- 连接池可以提高性能，但需要合理配置
-- 健康检查对于监控和运维至关重要
-- 使用Mock测试可以避免实际的Redis依赖
-- 所有测试通过（13 passed）
-
-PHASE 3: Redis缓存实现 - 进行中 (1/4用户故事)
-- US-REDIS-001: 实现Redis连接管理 ✅
-- US-REDIS-002: 实现通用缓存装饰器
-- US-REDIS-003: 为用户服务添加缓存
-- US-REDIS-004: 为签到服务添加缓存
-
-[2026-01-30 12:15:00] - [US-REDIS-002] 实现通用缓存装饰器
-
-IMPLEMENTATION SUMMARY:
-- 创建@cache装饰器，支持TTL、key_prefix、key_builder、condition参数
-- 实现cache_result/get_cached/invalidate_cache/cache_clear辅助函数
-- 支持JSON序列化和反序列化
-- 支持条件缓存和自定义键生成
-- 提供CacheInvalidator类用于批量失效缓存
-- Redis异常时自动降级到直接执行函数
-
-CHANGES:
-- 新增: app/core/cache.py (缓存装饰器模块)
-- 新增: tests/test_cache_decorator.py (11个测试用例)
-
-IMPORTANT LEARNINGS:
-- MD5 hash可以确保缓存键的唯一性和一致性
-- JSON序列化支持复杂类型（dict、list等）
-- 条件缓存可以避免缓存不必要的结果
-- 异常降级可以确保Redis故障不影响功能
-- 通配符清除缓存可以批量失效相关缓存
-- 所有测试通过（11 passed）
-
-PHASE 3: Redis缓存实现 - 已完成 (4/4用户故事)
-- US-REDIS-001: 实现Redis连接管理 ✅
-- US-REDIS-002: 实现通用缓存装饰器 ✅
-- US-REDIS-003: 为用户服务添加缓存 ✅
-- US-REDIS-004: 为签到服务添加缓存 ✅
-
-[2026-01-30 12:30:00] - [US-REDIS-003] 为用户服务添加缓存
-
-IMPLEMENTATION SUMMARY:
-- get_user_by_id和get_user_by_phone使用get_cached/cache_result，TTL: 5分钟
-- verify_code使用Redis缓存，TTL: 5分钟
-- update_user失效相关缓存（user:id:{id}和user:phone:{phone}）
-- Redis异常时降级到直接执行函数
-- 签到记录缓存（TTL: 1小时）- get_user_checkins
-- 用户签到状态缓存（TTL: 10分钟）- get_checkin_status
-- 签到统计缓存（TTL: 30分钟）- get_checkin_stats
-- 缓存失效逻辑 - create_checkin时失效相关缓存
-
-CHANGES:
-- 修改: app/services/user_service.py (添加缓存功能)
-- 修改: app/services/checkin_service.py (添加缓存功能)
-- 新增: tests/test_user_service_cache.py (8个测试用例)
-- 新增: tests/test_checkin_service_cache.py (8个测试用例)
-
-IMPORTANT LEARNINGS:
-- 空列表[]在Python中是falsy值，缓存命中测试需要返回truthy值
-- Mock Redis客户端需要正确patch redis_manager
-- 缓存键设计需要包含所有相关参数以确保唯一性
-- 缓存失效需要使用通配符清除相关缓存
-- Redis异常时降级处理可以确保应用稳定性
-- 所有测试通过（现有签到服务测试16 passed，新缓存测试8 passed）
-
-PHASE 3: Redis缓存实现 - 已完成 (4/4用户故事) ✅
-- US-REDIS-001: 实现Redis连接管理 ✅
-- US-REDIS-002: 实现通用缓存装饰器 ✅
-- US-REDIS-003: 为用户服务添加缓存 ✅
-- US-REDIS-004: 为签到服务添加缓存 ✅
-
-PHASE 4: 代码质量提升 - 进行中 (1/6用户故事)
-- US-CQ-001: 重构UserService代码重复 ✅
-- US-CQ-002: 重构DeviceService代码重复
-- US-CQ-003: 建立统一的异常处理
-- US-CQ-004: 建立统一的日志规范
-- US-CQ-005: 提升测试覆盖率
-- US-CQ-006: 优化复杂方法
-
-[2026-01-30 13:00:00] - [US-CQ-001] 重构UserService代码重复
-
-IMPLEMENTATION SUMMARY:
-- 合并_register_user_impl和create_user为统一的create_user方法，支持verify_code参数
-- 统一登录方法实现：login（实例方法，返回token）-> login_user（静态方法，返回User并更新登录时间）-> authenticate_user（静态方法，基础认证）
-- 删除冗余的register_user实例方法和静态方法
-- 所有方法保持清晰的层次结构和职责分离
-
-CHANGES:
-- 修改: app/services/user_service.py (重构代码，消除重复)
-- 修改: tests/test_user_service-4d794b424b.py (更新测试以适配新方法名)
-- 修改: tests/test_user_service_cache.py (更新测试以适配新结构)
-
-IMPORTANT LEARNINGS:
-- 代码重构需要保持向后兼容性，避免破坏现有测试
-- 方法命名应该清晰反映其功能（create_user vs register_user）
-- 分层设计有助于代码维护（authenticate_user -> login_user -> login）
-- 测试文件需要同步更新以反映API变更
-- 所有核心功能测试通过（test_user_service 10 passed）
-
-[2026-01-30 12:45:00] - [US-REDIS-004] 为签到服务添加缓存
-
-IMPLEMENTATION SUMMARY:
-- 签到记录缓存（TTL: 1小时）- get_user_checkins
-- 用户签到状态缓存（TTL: 10分钟）- get_checkin_status
-- 签到统计缓存（TTL: 30分钟）- get_checkin_stats
-- 缓存失效逻辑 - create_checkin时失效相关缓存
-- 使用通配符清除相关缓存（checkin:list:*、checkin:status:*、checkin:stats:*）
-
-CHANGES:
-- 修改: app/services/checkin_service.py (添加缓存功能)
-- 新增: tests/test_checkin_service_cache.py (8个测试用例)
-
-IMPORTANT LEARNINGS:
-- Python的secrets模块用于密码学安全的随机数
-- Base64编码适合存储二进制密钥
-- 配置验证应该在Settings类中使用field_validator
-- 测试环境应该有独立配置（.env.testing）
-- 安全配置文档应包含详细说明和FAQ
+### 代码质量提升
+- 消除了服务层的重复CRUD代码
+- 统一了API响应格式
+- 规范了错误处理机制
+- 统一了UTC时间戳使用
+- 提升了代码可维护性

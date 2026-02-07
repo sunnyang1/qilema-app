@@ -28,6 +28,14 @@ class HealthRecord(Base):
     # 加密存储标识
     is_encrypted = Column(Integer, default=0, comment="是否加密:0-否 1-是")
 
+    # 健康档案数据（JSON字符串存储）
+    chronic_diseases_json = Column("chronic_diseases", Text, comment="慢性病史，JSON数组字符串")
+    allergies_json = Column("allergies", Text, comment="过敏史，JSON数组字符串")
+    current_medications_json = Column("current_medications", Text, comment="当前用药，JSON数组字符串")
+    surgeries_json = Column("surgeries", Text, comment="手术史，JSON数组字符串")
+    blood_transfusion_history = Column(Integer, default=0, comment="输血史:0-否 1-是")
+    organ_transplant_history = Column(Integer, default=0, comment="器官移植史:0-否 1-是")
+
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 

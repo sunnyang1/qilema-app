@@ -44,6 +44,7 @@ class User(Base):
     user_setting = db_relationship("UserSetting", back_populates="user", cascade="all, delete-orphan", uselist=False)
     emergency_calls = db_relationship("EmergencyCall", back_populates="user", cascade="all, delete-orphan")
     notifications = db_relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    notification_preferences = db_relationship("NotificationPreference", back_populates="user", cascade="all, delete-orphan", uselist=False)
     anomalies = db_relationship("Anomaly", back_populates="user", cascade="all, delete-orphan")
     health_trends = db_relationship("HealthTrend", back_populates="user", cascade="all, delete-orphan")
     activity_patterns = db_relationship("ActivityPattern", back_populates="user", cascade="all, delete-orphan")

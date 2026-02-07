@@ -161,23 +161,26 @@ class EmergencyCenterService:
     def _send_health_summary_to_120(self, db: Session, call: EmergencyCall, user_id: str) -> bool:
         """
         发送健康档案摘要到120
-        
+
         生成用户健康档案摘要并发送给急救中心
         """
         try:
             # 生成健康档案摘要
             health_summary = self.generate_health_summary(db, user_id)
-            
+
             # 更新呼叫记录
-            call.health_summary_sent = True
-            call.health_summary_content = json.dumps(health_summary.dict(), ensure_ascii=False)
+            call.health_summary_sent = 1
+            call.health_summary_content = json.dumps(health_summary.model_dump(mode='json'), ensure_ascii=False)
             call.health_summary_sent_at = datetime.utcnow()
-            
+
             # 如果急救中心支持API,实际应该调用接口
             # self._call_emergency_center_api(emergency_center, "send_health_summary", {...})
-            
+
             return True
-        except:
+        except Exception as e:
+            print(f"发送健康档案摘要失败: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def generate_health_summary(self, db: Session, user_id: str) -> HealthSummary:
@@ -223,11 +226,11 @@ class EmergencyCenterService:
             user_name=user.nickname,
             age=age,
             blood_type=user.blood_type.value if user.blood_type else None,
-            chronic_diseases=json.loads(health_record.chronic_diseases) if health_record and health_record.chronic_diseases else None,
-            allergies=json.loads(health_record.allergies) if health_record and health_record.allergies else None,
-            current_medications=json.loads(health_record.current_medications) if health_record and health_record.current_medications else None,
+            chronic_diseases=json.loads(health_record.chronic_diseases_json) if health_record and health_record.chronic_diseases_json else None,
+            allergies=json.loads(health_record.allergies_json) if health_record and health_record.allergies_json else None,
+            current_medications=json.loads(health_record.current_medications_json) if health_record and health_record.current_medications_json else None,
             latest_heart_rate=latest_device_data.heart_rate if latest_device_data else None,
-            latest_blood_pressure=f"{latest_device_data.systolic}/{latest_device_data.diastolic}" if latest_device_data and latest_device_data.systolic else None,
+            latest_blood_pressure=f"{latest_device_data.systolic_pressure}/{latest_device_data.diastolic_pressure}" if latest_device_data and latest_device_data.systolic_pressure else None,
             latest_blood_oxygen=latest_device_data.blood_oxygen if latest_device_data else None,
             emergency_contacts=[ec.to_dict() for ec in emergency_contacts],
             recent_anomalies=[a.to_dict() for a in recent_anomalies],

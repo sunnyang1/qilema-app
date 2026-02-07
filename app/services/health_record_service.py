@@ -191,7 +191,7 @@ class HealthRecordService:
             frequency=data.frequency,
             start_date=data.start_date,
             end_date=data.end_date,
-            is_current=data.is_current or 1,
+            is_current=1 if data.is_current else 0,
             notes=data.notes
         )
         
@@ -234,7 +234,7 @@ class HealthRecordService:
         if data.end_date is not None:
             medication.end_date = data.end_date
         if data.is_current is not None:
-            medication.is_current = data.is_current
+            medication.is_current = 1 if data.is_current else 0
         if data.notes is not None:
             medication.notes = data.notes
         
@@ -341,16 +341,27 @@ class HealthRecordService:
             if allg.severity == '严重'
         ]
         
+        # 构建紧急联系人列表
+        emergency_contacts = []
+        if health_record.emergency_contact_name and health_record.emergency_contact_phone:
+            emergency_contacts.append({
+                "name": health_record.emergency_contact_name,
+                "phone": health_record.emergency_contact_phone,
+                "relation": health_record.emergency_contact_relation or ""
+            })
+        
         summary = HealthRecordSummary(
             real_name=health_record.real_name,
             gender=health_record.gender,
             age=health_record.age,
             blood_type=health_record.blood_type,
+            height=health_record.height,
+            weight=health_record.weight,
             chronic_diseases=chronic_diseases,
             current_medications=current_medications,
-            severe_allergies=severe_allergies,
-            emergency_contact=health_record.emergency_contact_name,
-            emergency_phone=health_record.emergency_contact_phone
+            allergies=severe_allergies,  # 只包含严重过敏
+            emergency_contacts=emergency_contacts,
+            recent_anomalies=None  # 暂时留空
         )
         
         return summary

@@ -67,92 +67,135 @@ class EmergencyResourceService:
     ) -> List[Dict]:
         """
         搜索周边急救资源
-        
+
         基于用户位置和搜索半径,查找附近的急救资源
         """
-        # 计算搜索边界的经纬度
+        boundaries = self._calculate_search_boundaries(request.latitude, request.longitude, request.radius)
+        resources = self._query_resources_in_bounds(db, request, boundaries)
+        results = self._calculate_distances_and_filter(resources, request)
+
+        if request.sort_by == "distance":
+            self._enrich_with_route_info(results, request)
+            self._sort_results(results, "distance")
+        elif request.sort_by == "rating":
+            self._sort_results(results, "rating")
+
+        # 记录使用日志
+        if user_id and results:
+            self._log_resource_usage_batch(
+                db,
+                results,
+                user_id,
+                f"{request.longitude},{request.latitude}"
+            )
+
+        # 截取指定数量
+        return results[:request.limit]
+
+    def _calculate_search_boundaries(self, latitude: float, longitude: float, radius: float) -> Dict[str, float]:
+        """计算搜索边界的经纬度"""
         # 纬度1度约等于111公里
-        lat_delta = request.radius / 111000.0
+        lat_delta = radius / 111000.0
         # 经度1度的距离随纬度变化,这里简化处理
-        lon_delta = request.radius / (111000.0 * math.cos(math.radians(request.latitude)))
-        
-        min_lat = request.latitude - lat_delta
-        max_lat = request.latitude + lat_delta
-        min_lon = request.longitude - lon_delta
-        max_lon = request.longitude + lon_delta
-        
-        # 构建查询条件
+        lon_delta = radius / (111000.0 * math.cos(math.radians(latitude)))
+
+        return {
+            "min_lat": latitude - lat_delta,
+            "max_lat": latitude + lat_delta,
+            "min_lon": longitude - lon_delta,
+            "max_lon": longitude + lon_delta
+        }
+
+    def _query_resources_in_bounds(
+        self,
+        db: Session,
+        request: NearbySearchRequest,
+        boundaries: Dict[str, float]
+    ) -> List[EmergencyResource]:
+        """查询边界内的资源并应用筛选条件"""
         query = db.query(EmergencyResource).filter(
-            EmergencyResource.status == ResourceStatus.ACTIVE,
-            EmergencyResource.latitude >= min_lat,
-            EmergencyResource.latitude <= max_lat,
-            EmergencyResource.longitude >= min_lon,
-            EmergencyResource.longitude <= max_lon
+            EmergencyResource.is_active == 1,
+            EmergencyResource.latitude >= boundaries["min_lat"],
+            EmergencyResource.latitude <= boundaries["max_lat"],
+            EmergencyResource.longitude >= boundaries["min_lon"],
+            EmergencyResource.longitude <= boundaries["max_lon"]
         )
-        
+
         # 应用筛选条件
         if request.resource_type:
             query = query.filter(EmergencyResource.resource_type == request.resource_type.value)
-        
+
         if request.is_24h is not None:
-            query = query.filter(EmergencyResource.is_24h == request.is_24h)
-        
+            query = query.filter(EmergencyResource.is_24h == (1 if request.is_24h else 0))
+
         if request.has_emergency is not None:
-            query = query.filter(EmergencyResource.has_emergency == request.has_emergency)
-        
+            query = query.filter(EmergencyResource.has_emergency == (1 if request.has_emergency else 0))
+
         if request.hospital_level:
             query = query.filter(EmergencyResource.hospital_level == request.hospital_level.value)
-        
-        # 获取所有符合条件的资源
-        resources = query.limit(request.limit * 2).all()  # 多取一些,后续筛选
-        
-        # 计算距离并筛选
+
+        # 多取一些,后续筛选
+        return query.limit(request.limit * 2).all()
+
+    def _calculate_distances_and_filter(
+        self,
+        resources: List[EmergencyResource],
+        request: NearbySearchRequest
+    ) -> List[Dict]:
+        """计算距离并筛选符合条件的资源"""
         results = []
         for resource in resources:
             distance = self.calculate_distance(
                 request.latitude, request.longitude,
                 resource.latitude, resource.longitude
             )
-            
+
             if distance <= request.radius:
-                # 估算到达时间(假设步行速度5km/h,驾车速度30km/h)
-                if request.sort_by == "distance":
-                    # 使用地图API获取实际路线和耗时
-                    route_info = self._get_route_info(
-                        request.latitude, request.longitude,
-                        resource.latitude, resource.longitude,
-                        "driving"
-                    )
-                    duration = route_info.get("duration", None)
-                else:
-                    duration = None
-                
                 result = resource.to_dict()
                 result["distance"] = distance
-                result["duration"] = duration
+                result["duration"] = None
+                result["_resource_id"] = resource.id  # 临时保存用于日志记录
                 results.append(result)
-                
-                # 记录使用日志
-                if user_id:
-                    self._log_resource_usage(
-                        db,
-                        resource.id,
-                        user_id,
-                        "view",
-                        f"{request.longitude},{request.latitude}",
-                        distance
-                    )
-        
-        # 排序
-        if request.sort_by == "distance":
-            results.sort(key=lambda x: x["distance"])
-        elif request.sort_by == "rating":
-            results.sort(key=lambda x: x["rating"] or 0, reverse=True)
-        
-        # 截取指定数量
-        results = results[:request.limit]
-        
+
         return results
+
+    def _enrich_with_route_info(self, results: List[Dict], request: NearbySearchRequest):
+        """为结果添加路线信息"""
+        for result in results:
+            route_info = self._get_route_info(
+                request.latitude, request.longitude,
+                result["latitude"],
+                result["longitude"],
+                "driving"
+            )
+            result["duration"] = route_info.get("duration", None)
+
+    def _sort_results(self, results: List[Dict], sort_by: str):
+        """对结果进行排序"""
+        if sort_by == "distance":
+            results.sort(key=lambda x: x["distance"])
+        elif sort_by == "rating":
+            results.sort(key=lambda x: x["rating"] or 0, reverse=True)
+
+    def _log_resource_usage_batch(
+        self,
+        db: Session,
+        results: List[Dict],
+        user_id: str,
+        user_location: str
+    ):
+        """批量记录资源使用日志"""
+        for result in results:
+            self._log_resource_usage(
+                db,
+                result["_resource_id"],
+                user_id,
+                "view",
+                user_location,
+                result["distance"]
+            )
+            # 移除临时字段
+            del result["_resource_id"]
     
     def get_navigation_route(
         self,

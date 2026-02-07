@@ -37,16 +37,16 @@ class AnomalyService:
         self.notification_service = NotificationService()
     
     # ========== 异常检测核心逻辑 ==========
-    
+
     def detect_heart_rate_anomaly(
-        self, 
-        db: Session, 
+        self,
+        db: Session,
         device_data: DeviceData,
         config: Optional[AnomalyDetectionConfig] = None
     ) -> Optional[Anomaly]:
         """
         检测心率异常
-        
+
         检测条件:
         - 心率过低: 低于最低阈值
         - 心率过高: 超过最高阈值
@@ -55,133 +55,174 @@ class AnomalyService:
         """
         if not device_data.heart_rate:
             return None
-        
-        anomalies = []
-        
+
         # 获取设备阈值配置
+        hr_min, hr_max, sudden_change_threshold = self._get_heart_rate_thresholds(config)
+
+        anomalies = []
+        current_hr = device_data.heart_rate
+
+        # 检测各种心率异常
+        anomalies.extend(self._check_heart_rate_low(device_data, current_hr, hr_min))
+        anomalies.extend(self._check_heart_rate_high(device_data, current_hr, hr_max))
+        anomalies.extend(self._check_heart_rate_stop(db, device_data, current_hr))
+        anomalies.extend(self._check_heart_rate_sudden_change(db, device_data, current_hr, sudden_change_threshold, anomalies))
+
+        # 保存异常并返回第一个
+        return self._save_and_trigger_alerts(db, anomalies)
+
+    def _get_heart_rate_thresholds(self, config: Optional[AnomalyDetectionConfig]) -> tuple:
+        """获取心率阈值配置
+
+        Returns:
+            tuple: (hr_min, hr_max, sudden_change_threshold)
+        """
         if config:
-            hr_min = config.heart_rate_min
-            hr_max = config.heart_rate_max
-            sudden_change_threshold = config.heart_rate_sudden_change_threshold
+            return (
+                config.heart_rate_min,
+                config.heart_rate_max,
+                config.heart_rate_sudden_change_threshold
+            )
         else:
             # 默认阈值
-            hr_min = 50
-            hr_max = 110
-            sudden_change_threshold = 30
-        
-        current_hr = device_data.heart_rate
-        
-        # 1. 心率过低检测
-        if current_hr < hr_min:
-            anomaly = Anomaly(
-                user_id=device_data.device.user_id,
-                device_id=device_data.device.id,
-                device_data_id=device_data.id,
-                anomaly_type=AnomalyTypeEnum.HEART_RATE_LOW,
-                severity=SeverityLevel.MEDIUM,
-                status=AnomalyStatus.PENDING,
-                anomaly_value=current_hr,
-                threshold_value=hr_min,
-                deviation_ratio=(hr_min - current_hr) / hr_min * 100 if hr_min else 0,
-                description=f"心率过低: {current_hr} bpm (阈值: {hr_min} bpm)",
-                trigger_condition=f"heart_rate < {hr_min}",
-                metadata=json.dumps({"condition": "heart_rate_low"})
-            )
-            anomalies.append(anomaly)
-        
-        # 2. 心率过高检测
-        elif current_hr > hr_max:
-            severity = SeverityLevel.HIGH if current_hr > 130 else SeverityLevel.MEDIUM
-            anomaly = Anomaly(
-                user_id=device_data.device.user_id,
-                device_id=device_data.device.id,
-                device_data_id=device_data.id,
-                anomaly_type=AnomalyTypeEnum.HEART_RATE_HIGH,
-                severity=severity,
-                status=AnomalyStatus.PENDING,
-                anomaly_value=current_hr,
-                threshold_value=hr_max,
-                deviation_ratio=(current_hr - hr_max) / hr_max * 100 if hr_max else 0,
-                description=f"心率过高: {current_hr} bpm (阈值: {hr_max} bpm)",
-                trigger_condition=f"heart_rate > {hr_max}",
-                metadata=json.dumps({"condition": "heart_rate_high"})
-            )
-            anomalies.append(anomaly)
-        
-        # 3. 心率骤停检测(心率突变为0)
-        if current_hr == 0:
-            # 检查最近的数据,确认是否为骤停
-            recent_data = db.query(DeviceData).filter(
-                DeviceData.device_id == device_data.device_id,
-                DeviceData.data_timestamp >= device_data.data_timestamp - timedelta(minutes=5)
-            ).order_by(desc(DeviceData.data_timestamp)).limit(2).all()
-            
-            if recent_data and all(d.heart_rate and d.heart_rate > 0 for d in recent_data):
-                # 确认为骤停
-                anomaly = Anomaly(
-                    user_id=device_data.device.user_id,
-                    device_id=device_data.device.id,
-                    device_data_id=device_data.id,
-                    anomaly_type=AnomalyTypeEnum.HEART_RATE_STOP,
-                    severity=SeverityLevel.CRITICAL,
-                    status=AnomalyStatus.PENDING,
-                    anomaly_value=0,
-                    threshold_value=1,
-                    deviation_ratio=100.0,
-                    description="检测到心跳骤停,需要立即救援",
-                    trigger_condition="heart_rate == 0 (之前有正常心跳)",
-                    metadata=json.dumps({"condition": "heart_rate_stop", "previous_hr": recent_data[0].heart_rate})
-                )
-                anomalies.append(anomaly)
-        
-        # 4. 心率骤变检测
-        if sudden_change_threshold and len(anomalies) == 0:
-            # 获取最近的心率数据
-            recent_data = db.query(DeviceData).filter(
-                DeviceData.device_id == device_data.device_id,
-                DeviceData.data_timestamp >= device_data.data_timestamp - timedelta(minutes=5),
-                DeviceData.heart_rate.isnot(None)
-            ).order_by(desc(DeviceData.data_timestamp)).limit(2).all()
-            
-            if len(recent_data) >= 2:
-                previous_hr = recent_data[1].heart_rate
-                change_ratio = abs(current_hr - previous_hr) / previous_hr * 100 if previous_hr else 0
-                
-                if change_ratio >= sudden_change_threshold:
-                    severity = SeverityLevel.HIGH if change_ratio > 50 else SeverityLevel.MEDIUM
-                    anomaly = Anomaly(
-                        user_id=device_data.device.user_id,
-                        device_id=device_data.device.id,
-                        device_data_id=device_data.id,
-                        anomaly_type=AnomalyTypeEnum.HEART_RATE_SUDDEN_CHANGE,
-                        severity=severity,
-                        status=AnomalyStatus.PENDING,
-                        anomaly_value=current_hr,
-                        threshold_value=previous_hr,
-                        deviation_ratio=change_ratio,
-                        description=f"心率骤变: 从 {previous_hr} bpm 变为 {current_hr} bpm (变化: {change_ratio:.1f}%)",
-                        trigger_condition=f"|heart_rate_change| >= {sudden_change_threshold}%",
-                        metadata=json.dumps({
-                            "condition": "heart_rate_sudden_change",
-                            "previous_hr": previous_hr,
-                            "change_ratio": change_ratio
-                        })
-                    )
-                    anomalies.append(anomaly)
-        
-        # 保存异常并返回
+            return (50, 110, 30)
+
+    def _check_heart_rate_low(self, device_data: DeviceData, current_hr: float, hr_min: float) -> list:
+        """检测心率过低异常"""
+        if current_hr >= hr_min:
+            return []
+
+        return [Anomaly(
+            user_id=device_data.device.user_id,
+            device_id=device_data.device.device_id,
+            device_data_id=device_data.id,
+            anomaly_type=AnomalyTypeEnum.HEART_RATE_LOW,
+            severity=SeverityLevel.MEDIUM,
+            status=AnomalyStatus.PENDING,
+            anomaly_value=current_hr,
+            threshold_value=hr_min,
+            deviation_ratio=(hr_min - current_hr) / hr_min * 100 if hr_min else 0,
+            description=f"心率过低: {current_hr} bpm (阈值: {hr_min} bpm)",
+            trigger_condition=f"heart_rate < {hr_min}",
+            metadata=json.dumps({"condition": "heart_rate_low"})
+        )]
+
+    def _check_heart_rate_high(self, device_data: DeviceData, current_hr: float, hr_max: float) -> list:
+        """检测心率过高异常"""
+        if current_hr <= hr_max:
+            return []
+
+        severity = SeverityLevel.HIGH if current_hr > 130 else SeverityLevel.MEDIUM
+        return [Anomaly(
+            user_id=device_data.device.user_id,
+            device_id=device_data.device.device_id,
+            device_data_id=device_data.id,
+            anomaly_type=AnomalyTypeEnum.HEART_RATE_HIGH,
+            severity=severity,
+            status=AnomalyStatus.PENDING,
+            anomaly_value=current_hr,
+            threshold_value=hr_max,
+            deviation_ratio=(current_hr - hr_max) / hr_max * 100 if hr_max else 0,
+            description=f"心率过高: {current_hr} bpm (阈值: {hr_max} bpm)",
+            trigger_condition=f"heart_rate > {hr_max}",
+            metadata=json.dumps({"condition": "heart_rate_high"})
+        )]
+
+    def _check_heart_rate_stop(self, db: Session, device_data: DeviceData, current_hr: float) -> list:
+        """检测心率骤停异常"""
+        if current_hr != 0:
+            return []
+
+        # 检查最近的数据,确认是否为骤停
+        recent_data = db.query(DeviceData).filter(
+            DeviceData.device_id == device_data.device_id,
+            DeviceData.data_timestamp >= device_data.data_timestamp - timedelta(minutes=5)
+        ).order_by(desc(DeviceData.data_timestamp)).limit(2).all()
+
+        if not recent_data or not all(d.heart_rate and d.heart_rate > 0 for d in recent_data):
+            return []
+
+        return [Anomaly(
+            user_id=device_data.device.user_id,
+            device_id=device_data.device.device_id,
+            device_data_id=device_data.id,
+            anomaly_type=AnomalyTypeEnum.HEART_RATE_STOP,
+            severity=SeverityLevel.CRITICAL,
+            status=AnomalyStatus.PENDING,
+            anomaly_value=0,
+            threshold_value=1,
+            deviation_ratio=100.0,
+            description="检测到心跳骤停,需要立即救援",
+            trigger_condition="heart_rate == 0 (之前有正常心跳)",
+            metadata=json.dumps({"condition": "heart_rate_stop", "previous_hr": recent_data[0].heart_rate})
+        )]
+
+    def _check_heart_rate_sudden_change(
+        self,
+        db: Session,
+        device_data: DeviceData,
+        current_hr: float,
+        threshold: float,
+        existing_anomalies: list
+    ) -> list:
+        """检测心率骤变异常"""
+        if not threshold or existing_anomalies or current_hr == 0:
+            return []
+
+        # 获取最近的心率数据
+        recent_data = db.query(DeviceData).filter(
+            DeviceData.device_id == device_data.device_id,
+            DeviceData.data_timestamp >= device_data.data_timestamp - timedelta(minutes=5),
+            DeviceData.heart_rate.isnot(None)
+        ).order_by(desc(DeviceData.data_timestamp)).limit(2).all()
+
+        if len(recent_data) < 2:
+            return []
+
+        previous_hr = recent_data[1].heart_rate
+        change_ratio = abs(current_hr - previous_hr) / previous_hr * 100 if previous_hr else 0
+
+        if change_ratio < threshold:
+            return []
+
+        severity = SeverityLevel.HIGH if change_ratio > 50 else SeverityLevel.MEDIUM
+        return [Anomaly(
+            user_id=device_data.device.user_id,
+            device_id=device_data.device.device_id,
+            device_data_id=device_data.id,
+            anomaly_type=AnomalyTypeEnum.HEART_RATE_SUDDEN_CHANGE,
+            severity=severity,
+            status=AnomalyStatus.PENDING,
+            anomaly_value=current_hr,
+            threshold_value=previous_hr,
+            deviation_ratio=change_ratio,
+            description=f"心率骤变: 从 {previous_hr} bpm 变为 {current_hr} bpm (变化: {change_ratio:.1f}%)",
+            trigger_condition=f"|heart_rate_change| >= {threshold}%",
+            metadata=json.dumps({
+                "condition": "heart_rate_sudden_change",
+                "previous_hr": previous_hr,
+                "change_ratio": change_ratio
+            })
+        )]
+
+    def _save_and_trigger_alerts(self, db: Session, anomalies: list) -> Optional[Anomaly]:
+        """保存异常并触发危急警报"""
+        if not anomalies:
+            return None
+
+        # 保存所有异常
         for anomaly in anomalies:
             db.add(anomaly)
-        
-        if anomalies:
-            db.commit()
-            # 触发危机异常的SOS
-            for anomaly in anomalies:
-                if anomaly.severity == SeverityLevel.CRITICAL:
-                    self._trigger_critical_anomaly_alert(db, anomaly)
-        
-        return anomalies[0] if anomalies else None
-    
+
+        db.commit()
+
+        # 触发危机异常的SOS
+        for anomaly in anomalies:
+            if anomaly.severity == SeverityLevel.CRITICAL:
+                self._trigger_critical_anomaly_alert(db, anomaly)
+
+        return anomalies[0]
+
     def detect_blood_pressure_anomaly(
         self,
         db: Session,
@@ -190,81 +231,125 @@ class AnomalyService:
     ) -> Optional[Anomaly]:
         """
         检测血压异常
-        
+
         检测收缩压和舒张压是否超出正常范围
         """
         if not device_data.systolic or not device_data.diastolic:
             return None
-        
-        # 默认阈值
+
+        thresholds = self._get_bp_thresholds(config)
+
+        if anomaly := self._check_systolic_anomaly(device_data, thresholds):
+            return self._save_anomaly(db, anomaly)
+
+        if anomaly := self._check_diastolic_anomaly(device_data, thresholds):
+            return self._save_anomaly(db, anomaly)
+
+        return None
+
+    def _get_bp_thresholds(self, config: Optional[AnomalyDetectionConfig]) -> Dict:
+        """获取血压阈值"""
         if config:
-            sys_min = config.systolic_min or 90
-            sys_max = config.systolic_max or 140
-            dia_min = config.diastolic_min or 60
-            dia_max = config.diastolic_max or 90
+            return {
+                "sys_min": config.systolic_min or 90,
+                "sys_max": config.systolic_max or 140,
+                "dia_min": config.diastolic_min or 60,
+                "dia_max": config.diastolic_max or 90
+            }
         else:
-            sys_min, sys_max = 90, 140
-            dia_min, dia_max = 60, 90
-        
+            return {
+                "sys_min": 90,
+                "sys_max": 140,
+                "dia_min": 60,
+                "dia_max": 90
+            }
+
+    def _check_systolic_anomaly(self, device_data: DeviceData, thresholds: Dict) -> Optional[Anomaly]:
+        """检测收缩压异常"""
         systolic = device_data.systolic
-        diastolic = device_data.diastolic
-        
-        # 检测收缩压异常
+        sys_min = thresholds["sys_min"]
+        sys_max = thresholds["sys_max"]
+
         if systolic < sys_min:
-            anomaly = Anomaly(
-                user_id=device_data.device.user_id,
-                device_id=device_data.device.id,
-                device_data_id=device_data.id,
-                anomaly_type=AnomalyTypeEnum.BLOOD_PRESSURE_LOW,
-                severity=SeverityLevel.MEDIUM,
-                status=AnomalyStatus.PENDING,
-                anomaly_value=float(systolic),
-                threshold_value=float(sys_min),
-                description=f"收缩压过低: {systolic} mmHg (阈值: {sys_min} mmHg)",
-                trigger_condition=f"systolic < {sys_min}"
+            return self._create_bp_anomaly(
+                device_data,
+                AnomalyTypeEnum.BLOOD_PRESSURE_LOW,
+                SeverityLevel.MEDIUM,
+                systolic,
+                sys_min,
+                "收缩压过低"
             )
-            db.add(anomaly)
-            db.commit()
-            return anomaly
-        
         elif systolic > sys_max:
             severity = SeverityLevel.HIGH if systolic > 160 else SeverityLevel.MEDIUM
-            anomaly = Anomaly(
-                user_id=device_data.device.user_id,
-                device_id=device_data.device.id,
-                device_data_id=device_data.id,
-                anomaly_type=AnomalyTypeEnum.BLOOD_PRESSURE_HIGH,
-                severity=severity,
-                status=AnomalyStatus.PENDING,
-                anomaly_value=float(systolic),
-                threshold_value=float(sys_max),
-                description=f"收缩压过高: {systolic} mmHg (阈值: {sys_max} mmHg)",
-                trigger_condition=f"systolic > {sys_max}"
+            return self._create_bp_anomaly(
+                device_data,
+                AnomalyTypeEnum.BLOOD_PRESSURE_HIGH,
+                severity,
+                systolic,
+                sys_max,
+                "收缩压过高"
             )
-            db.add(anomaly)
-            db.commit()
-            return anomaly
-        
-        # 检测舒张压异常
-        if diastolic < dia_min or diastolic > dia_max:
-            condition = f"diastolic < {dia_min}" if diastolic < dia_min else f"diastolic > {dia_max}"
-            anomaly = Anomaly(
-                user_id=device_data.device.user_id,
-                device_id=device_data.device.id,
-                device_data_id=device_data.id,
-                anomaly_type=AnomalyTypeEnum.BLOOD_PRESSURE_HIGH if diastolic > dia_max else AnomalyTypeEnum.BLOOD_PRESSURE_LOW,
-                severity=SeverityLevel.MEDIUM,
-                status=AnomalyStatus.PENDING,
-                anomaly_value=float(diastolic),
-                threshold_value=float(dia_max if diastolic > dia_max else dia_min),
-                description=f"舒张压异常: {diastolic} mmHg (正常范围: {dia_min}-{dia_max} mmHg)",
-                trigger_condition=condition
-            )
-            db.add(anomaly)
-            db.commit()
-            return anomaly
-        
+
         return None
+
+    def _check_diastolic_anomaly(self, device_data: DeviceData, thresholds: Dict) -> Optional[Anomaly]:
+        """检测舒张压异常"""
+        diastolic = device_data.diastolic
+        dia_min = thresholds["dia_min"]
+        dia_max = thresholds["dia_max"]
+
+        if diastolic < dia_min:
+            return self._create_bp_anomaly(
+                device_data,
+                AnomalyTypeEnum.BLOOD_PRESSURE_LOW,
+                SeverityLevel.MEDIUM,
+                diastolic,
+                dia_min,
+                "舒张压过低"
+            )
+        elif diastolic > dia_max:
+            return self._create_bp_anomaly(
+                device_data,
+                AnomalyTypeEnum.BLOOD_PRESSURE_HIGH,
+                SeverityLevel.MEDIUM,
+                diastolic,
+                dia_max,
+                "舒张压过高"
+            )
+
+        return None
+
+    def _create_bp_anomaly(
+        self,
+        device_data: DeviceData,
+        anomaly_type: AnomalyTypeEnum,
+        severity: SeverityLevel,
+        value: float,
+        threshold: float,
+        description_prefix: str
+    ) -> Anomaly:
+        """创建血压异常对象"""
+        threshold_name = "收缩压" if "收缩" in description_prefix else "舒张压"
+        condition_operator = "<" if "低" in description_prefix else ">"
+
+        return Anomaly(
+            user_id=device_data.device.user_id,
+            device_id=device_data.device.device_id,
+            device_data_id=device_data.id,
+            anomaly_type=anomaly_type,
+            severity=severity,
+            status=AnomalyStatus.PENDING,
+            anomaly_value=float(value),
+            threshold_value=float(threshold),
+            description=f"{description_prefix}: {value} mmHg (阈值: {threshold} mmHg)",
+            trigger_condition=f"{threshold_name} {condition_operator} {threshold}"
+        )
+
+    def _save_anomaly(self, db: Session, anomaly: Anomaly) -> Anomaly:
+        """保存异常记录"""
+        db.add(anomaly)
+        db.commit()
+        return anomaly
     
     def detect_no_activity_anomaly(
         self,
@@ -294,7 +379,7 @@ class AnomalyService:
         
         if not recent_data:
             # 确认设备存在
-            device = db.query(Device).filter(Device.id == device_id).first()
+            device = db.query(Device).filter(Device.device_id == device_id).first()
             if not device:
                 return None
             
@@ -326,75 +411,111 @@ class AnomalyService:
     ) -> Optional[HealthTrendResponse]:
         """
         分析健康数据趋势
-        
+
         计算指定时间段内某项指标的平均值、最大值、最小值、标准差和变化趋势
         """
-        # 确定时间范围
-        if not request.start_date:
+        date_range = self._determine_date_range(request.start_date, request.end_date)
+        metric_field = self._validate_metric_field(request.metric_type)
+        device_data = self._query_device_data(db, request, date_range, metric_field)
+
+        if not device_data:
+            return None
+
+        values = self._extract_values(device_data, metric_field)
+        if not values:
+            return None
+
+        statistics_data = self._calculate_statistics(values)
+        trend = self._analyze_trend(values)
+        trend_record = self._save_or_update_trend(
+            db, request, date_range, statistics_data, trend, len(device_data), len(values)
+        )
+
+        return HealthTrendResponse.from_orm(trend_record)
+
+    def _determine_date_range(self, start_date: Optional[datetime], end_date: Optional[datetime]) -> Tuple[datetime, datetime]:
+        """确定时间范围"""
+        if not start_date:
             start_date = datetime.utcnow() - timedelta(days=7)
-        else:
-            start_date = request.start_date
-        
-        if not request.end_date:
+        if not end_date:
             end_date = datetime.utcnow()
-        else:
-            end_date = request.end_date
-        
-        # 构建查询条件
+        return (start_date, end_date)
+
+    def _validate_metric_field(self, metric_type: str):
+        """验证指标类型并返回对应的数据库字段"""
+        metric_field = self._get_metric_field(metric_type)
+        if not metric_field:
+            raise ValueError(f"不支持的指标类型: {metric_type}")
+        return metric_field
+
+    def _query_device_data(
+        self,
+        db: Session,
+        request: TrendAnalysisRequest,
+        date_range: Tuple[datetime, datetime],
+        metric_field
+    ) -> List[DeviceData]:
+        """查询设备数据"""
+        start_date, end_date = date_range
+
         query_conditions = [
             DeviceData.data_timestamp >= start_date,
-            DeviceData.data_timestamp <= end_date
+            DeviceData.data_timestamp <= end_date,
+            metric_field.isnot(None)
         ]
-        
+
         if request.device_id:
             query_conditions.append(DeviceData.device_id == request.device_id)
-        
-        # 根据指标类型选择数据字段
-        metric_field = self._get_metric_field(request.metric_type)
-        if not metric_field:
-            raise ValueError(f"不支持的指标类型: {request.metric_type}")
-        
-        query_conditions.append(metric_field.isnot(None))
-        
-        # 查询数据
-        device_data = db.query(DeviceData).join(Device).filter(
+
+        return db.query(DeviceData).join(Device).filter(
             Device.user_id == request.user_id,
             *query_conditions
         ).order_by(DeviceData.data_timestamp).all()
-        
-        if not device_data:
-            return None
-        
-        # 提取数值
-        values = [getattr(d, metric_field.name) for d in device_data if getattr(d, metric_field.name) is not None]
-        
-        if not values:
-            return None
-        
-        # 计算统计数据
-        avg_value = statistics.mean(values)
-        min_value = min(values)
-        max_value = max(values)
-        
-        std_deviation = statistics.stdev(values) if len(values) > 1 else 0
-        
-        # 分析趋势
-        if len(values) >= 2:
-            first_value = values[0]
-            last_value = values[-1]
-            trend_percentage = ((last_value - first_value) / first_value * 100) if first_value != 0 else 0
-            
-            if abs(trend_percentage) < 5:
-                trend_direction = "stable"
-            elif trend_percentage > 0:
-                trend_direction = "up"
-            else:
-                trend_direction = "down"
+
+    def _extract_values(self, device_data: List[DeviceData], metric_field) -> List[float]:
+        """从设备数据中提取数值"""
+        return [getattr(d, metric_field.name) for d in device_data if getattr(d, metric_field.name) is not None]
+
+    def _calculate_statistics(self, values: List[float]) -> Dict:
+        """计算统计数据"""
+        return {
+            "avg": statistics.mean(values),
+            "min": min(values),
+            "max": max(values),
+            "std": statistics.stdev(values) if len(values) > 1 else 0
+        }
+
+    def _analyze_trend(self, values: List[float]) -> Dict:
+        """分析趋势"""
+        if len(values) < 2:
+            return {"direction": None, "percentage": None}
+
+        first_value = values[0]
+        last_value = values[-1]
+        trend_percentage = ((last_value - first_value) / first_value * 100) if first_value != 0 else 0
+
+        if abs(trend_percentage) < 5:
+            trend_direction = "stable"
+        elif trend_percentage > 0:
+            trend_direction = "up"
         else:
-            trend_direction = None
-            trend_percentage = None
-        
-        # 创建或更新趋势记录
+            trend_direction = "down"
+
+        return {"direction": trend_direction, "percentage": trend_percentage}
+
+    def _save_or_update_trend(
+        self,
+        db: Session,
+        request: TrendAnalysisRequest,
+        date_range: Tuple[datetime, datetime],
+        statistics_data: Dict,
+        trend: Dict,
+        total_count: int,
+        valid_count: int
+    ) -> HealthTrend:
+        """创建或更新趋势记录"""
+        start_date, end_date = date_range
+
         existing_trend = db.query(HealthTrend).filter(
             HealthTrend.user_id == request.user_id,
             HealthTrend.metric_type == request.metric_type,
@@ -402,39 +523,66 @@ class AnomalyService:
             HealthTrend.start_date == start_date,
             HealthTrend.end_date == end_date
         ).first()
-        
+
         if existing_trend:
-            existing_trend.avg_value = avg_value
-            existing_trend.min_value = min_value
-            existing_trend.max_value = max_value
-            existing_trend.std_deviation = std_deviation
-            existing_trend.trend_direction = trend_direction
-            existing_trend.trend_percentage = trend_percentage
-            existing_trend.sample_count = len(values)
-            existing_trend.quality_score = self._calculate_quality_score(len(values), len(device_data))
-            trend = existing_trend
+            self._update_trend_record(existing_trend, statistics_data, trend, valid_count, total_count)
+            return existing_trend
         else:
-            trend = HealthTrend(
-                user_id=request.user_id,
-                device_id=request.device_id,
-                metric_type=request.metric_type,
-                period_type=request.period_type,
-                start_date=start_date,
-                end_date=end_date,
-                avg_value=avg_value,
-                min_value=min_value,
-                max_value=max_value,
-                std_deviation=std_deviation,
-                trend_direction=trend_direction,
-                trend_percentage=trend_percentage,
-                sample_count=len(values),
-                missing_count=len(device_data) - len(values),
-                quality_score=self._calculate_quality_score(len(values), len(device_data))
+            return self._create_trend_record(
+                db, request, date_range, statistics_data, trend, valid_count, total_count
             )
-            db.add(trend)
-        
+
+    def _update_trend_record(
+        self,
+        trend_record: HealthTrend,
+        statistics_data: Dict,
+        trend: Dict,
+        valid_count: int,
+        total_count: int
+    ):
+        """更新趋势记录"""
+        trend_record.avg_value = statistics_data["avg"]
+        trend_record.min_value = statistics_data["min"]
+        trend_record.max_value = statistics_data["max"]
+        trend_record.std_deviation = statistics_data["std"]
+        trend_record.trend_direction = trend["direction"]
+        trend_record.trend_percentage = trend["percentage"]
+        trend_record.sample_count = valid_count
+        trend_record.quality_score = self._calculate_quality_score(valid_count, total_count)
+
+    def _create_trend_record(
+        self,
+        db: Session,
+        request: TrendAnalysisRequest,
+        date_range: Tuple[datetime, datetime],
+        statistics_data: Dict,
+        trend: Dict,
+        valid_count: int,
+        total_count: int
+    ) -> HealthTrend:
+        """创建趋势记录"""
+        start_date, end_date = date_range
+
+        trend_record = HealthTrend(
+            user_id=request.user_id,
+            device_id=request.device_id,
+            metric_type=request.metric_type,
+            period_type=request.period_type,
+            start_date=start_date,
+            end_date=end_date,
+            avg_value=statistics_data["avg"],
+            min_value=statistics_data["min"],
+            max_value=statistics_data["max"],
+            std_deviation=statistics_data["std"],
+            trend_direction=trend["direction"],
+            trend_percentage=trend["percentage"],
+            sample_count=valid_count,
+            missing_count=total_count - valid_count,
+            quality_score=self._calculate_quality_score(valid_count, total_count)
+        )
+        db.add(trend_record)
         db.commit()
-        return HealthTrendResponse.from_orm(trend)
+        return trend_record
     
     # ========== 异常记录管理 ==========
     
@@ -530,112 +678,187 @@ class AnomalyService:
     def analyze_heart_health(self, db: Session, user_id: str, device_id: Optional[int] = None) -> HeartHealthAnalysis:
         """
         心脏健康分析
-        
+
         基于心率数据进行心脏健康评估,包括静息心率、心率变异性、心律不齐检测等
         """
-        # 获取最近7天的心率数据
+        heart_rate_data = self._get_heart_rate_data(db, user_id, device_id)
+        heart_rates = heart_rate_data['rates']
+        device_data = heart_rate_data['device_data']
+
+        stats = self._calculate_basic_stats(heart_rates)
+        resting_heart_rate = self._estimate_resting_heart_rate(device_data)
+        hrv_analysis = self._analyze_hrv(heart_rates)
+        rhythm_analysis = self._analyze_heart_rhythm(heart_rates)
+        risk_assessment = self._assess_cardiovascular_risk(stats, hrv_analysis, rhythm_analysis)
+        recommendations = self._generate_recommendations(stats, hrv_analysis, rhythm_analysis, resting_heart_rate)
+
+        return self._build_heart_health_response(
+            user_id,
+            stats,
+            resting_heart_rate,
+            hrv_analysis,
+            rhythm_analysis,
+            risk_assessment,
+            recommendations
+        )
+
+    def _get_heart_rate_data(self, db: Session, user_id: str, device_id: Optional[int] = None) -> Dict:
+        """获取最近7天的心率数据"""
         cutoff_time = datetime.utcnow() - timedelta(days=7)
-        
+
         query = db.query(DeviceData).join(Device).filter(
             Device.user_id == user_id,
             DeviceData.data_timestamp >= cutoff_time,
             DeviceData.heart_rate.isnot(None)
         )
-        
+
         if device_id:
             query = query.filter(DeviceData.id == device_id)
-        
+
         device_data = query.order_by(DeviceData.data_timestamp).all()
-        
+
         if not device_data:
             raise ValueError("没有找到心率数据")
-        
-        # 提取心率值
+
         heart_rates = [d.heart_rate for d in device_data if d.heart_rate is not None]
-        
+
         if not heart_rates:
             raise ValueError("心率数据为空")
-        
-        # 基础统计
-        avg_heart_rate = statistics.mean(heart_rates)
-        max_heart_rate = max(heart_rates)
-        min_heart_rate = min(heart_rates)
-        
-        # 估算静息心率(取凌晨2-4点的心率平均值)
+
+        return {'rates': heart_rates, 'device_data': device_data}
+
+    def _calculate_basic_stats(self, heart_rates: List[float]) -> Dict:
+        """计算基础统计数据"""
+        return {
+            'avg': statistics.mean(heart_rates),
+            'max': max(heart_rates),
+            'min': min(heart_rates)
+        }
+
+    def _estimate_resting_heart_rate(self, device_data: List) -> Optional[float]:
+        """估算静息心率(取凌晨2-4点的心率平均值)"""
+        if not device_data:
+            return None
+
         nighttime_rates = [
             d.heart_rate for d in device_data
             if d.heart_rate and 2 <= d.data_timestamp.hour < 4
         ]
-        resting_heart_rate = statistics.mean(nighttime_rates) if nighttime_rates else None
-        
-        # 心率变异性(简化版:连续心跳间隔的标准差)
-        hrv_value = statistics.stdev(heart_rates) if len(heart_rates) > 1 else None
-        
-        if hrv_value:
-            if hrv_value > 50:
-                hrv_status = "excellent"
-            elif hrv_value > 30:
-                hrv_status = "good"
-            elif hrv_value > 20:
-                hrv_status = "fair"
-            else:
-                hrv_status = "poor"
+
+        return statistics.mean(nighttime_rates) if nighttime_rates else None
+
+    def _analyze_hrv(self, heart_rates: List[float]) -> Dict:
+        """分析心率变异性"""
+        if len(heart_rates) <= 1:
+            return {'value': None, 'status': None}
+
+        hrv_value = statistics.stdev(heart_rates)
+
+        if hrv_value > 50:
+            hrv_status = "excellent"
+        elif hrv_value > 30:
+            hrv_status = "good"
+        elif hrv_value > 20:
+            hrv_status = "fair"
         else:
-            hrv_status = None
-        
-        # 心律不齐检测(心率波动异常)
-        if len(heart_rates) > 10:
-            # 计算心率连续差分
-            hr_diffs = [abs(heart_rates[i+1] - heart_rates[i]) for i in range(len(heart_rates)-1)]
-            irregular_count = sum(1 for diff in hr_diffs if diff > 15)
-            irregular_rhythm_detected = irregular_count > len(hr_diffs) * 0.2
-        else:
-            irregular_count = 0
-            irregular_rhythm_detected = False
-        
-        # 心血管风险评估
+            hrv_status = "poor"
+
+        return {'value': hrv_value, 'status': hrv_status}
+
+    def _analyze_heart_rhythm(self, heart_rates: List[float]) -> Dict:
+        """分析心律不齐"""
+        if len(heart_rates) <= 10:
+            return {'detected': False, 'count': 0}
+
+        # 计算心率连续差分
+        hr_diffs = [abs(heart_rates[i+1] - heart_rates[i]) for i in range(len(heart_rates)-1)]
+        irregular_count = sum(1 for diff in hr_diffs if diff > 15)
+        irregular_rhythm_detected = irregular_count > len(hr_diffs) * 0.2
+
+        return {'detected': irregular_rhythm_detected, 'count': irregular_count}
+
+    def _assess_cardiovascular_risk(
+        self,
+        stats: Dict,
+        hrv_analysis: Dict,
+        rhythm_analysis: Dict
+    ) -> str:
+        """评估心血管风险"""
         risk_factors = []
-        if avg_heart_rate > 90:
+
+        if stats['avg'] > 90:
             risk_factors.append("静息心率偏高")
-        if min_heart_rate < 45:
+        if stats['min'] < 45:
             risk_factors.append("心率偏低")
-        if irregular_rhythm_detected:
+        if rhythm_analysis['detected']:
             risk_factors.append("心律不齐")
-        if hrv_status == "poor":
+        if hrv_analysis['status'] == "poor":
             risk_factors.append("心率变异性低")
-        
+
         if len(risk_factors) >= 3:
-            cardiovascular_risk = "high"
+            return "high"
         elif len(risk_factors) >= 2:
-            cardiovascular_risk = "medium"
+            return "medium"
         elif len(risk_factors) >= 1:
-            cardiovascular_risk = "low"
+            return "low"
         else:
-            cardiovascular_risk = "very_low"
-        
-        # 健康建议
+            return "very_low"
+
+    def _generate_recommendations(
+        self,
+        stats: Dict,
+        hrv_analysis: Dict,
+        rhythm_analysis: Dict,
+        resting_heart_rate: Optional[float]
+    ) -> List[str]:
+        """生成健康建议"""
         recommendations = []
-        if avg_heart_rate > 90:
+
+        if stats['avg'] > 90:
             recommendations.append("建议进行适度有氧运动降低静息心率")
-        if irregular_rhythm_detected:
+        if rhythm_analysis['detected']:
             recommendations.append("建议定期监测心率,必要时咨询医生")
-        if hrv_status == "poor":
+        if hrv_analysis['status'] == "poor":
             recommendations.append("建议改善睡眠质量,增加运动")
         if resting_heart_rate and resting_heart_rate < 50:
             recommendations.append("如无其他不适,低静息心率可能表示心脏功能良好")
-        
+
+        return recommendations
+
+    def _build_heart_health_response(
+        self,
+        user_id: str,
+        stats: Dict,
+        resting_heart_rate: Optional[float],
+        hrv_analysis: Dict,
+        rhythm_analysis: Dict,
+        risk_assessment: str,
+        recommendations: List[str]
+    ) -> HeartHealthAnalysis:
+        """构建心脏健康分析响应"""
+        # 重新计算风险因子列表
+        risk_factors = []
+        if stats['avg'] > 90:
+            risk_factors.append("静息心率偏高")
+        if stats['min'] < 45:
+            risk_factors.append("心率偏低")
+        if rhythm_analysis['detected']:
+            risk_factors.append("心律不齐")
+        if hrv_analysis['status'] == "poor":
+            risk_factors.append("心率变异性低")
+
         return HeartHealthAnalysis(
             user_id=user_id,
             analysis_date=datetime.utcnow(),
-            avg_heart_rate=round(avg_heart_rate, 1),
+            avg_heart_rate=round(stats['avg'], 1),
             resting_heart_rate=round(resting_heart_rate, 1) if resting_heart_rate else None,
-            max_heart_rate=max_heart_rate,
-            min_heart_rate=min_heart_rate,
-            hrv_value=round(hrv_value, 1) if hrv_value else None,
-            hrv_status=hrv_status,
-            irregular_rhythm_detected=irregular_rhythm_detected,
-            irregular_rhythm_count=irregular_count,
-            cardiovascular_risk=cardiovascular_risk,
+            max_heart_rate=stats['max'],
+            min_heart_rate=stats['min'],
+            hrv_value=round(hrv_analysis['value'], 1) if hrv_analysis['value'] else None,
+            hrv_status=hrv_analysis['status'],
+            irregular_rhythm_detected=rhythm_analysis['detected'],
+            irregular_rhythm_count=rhythm_analysis['count'],
+            cardiovascular_risk=risk_assessment,
             risk_factors=risk_factors,
             health_recommendations=recommendations
         )

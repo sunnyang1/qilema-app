@@ -28,7 +28,7 @@ class Device(Base):
     last_sync_at = Column(DateTime, nullable=True, comment="最后同步时间(别名)")
     bound_at = Column(DateTime, nullable=True, comment="绑定时间")
     unbound_at = Column(DateTime, nullable=True, comment="解绑时间")
-    created_at = Column(DateTime, nullable=False, default=lambda: __import__('datetime').datetime.now(), comment="创建时间")
+    created_at = Column(DateTime, nullable=False, default=lambda: __import__('datetime').datetime.utcnow(), comment="创建时间")
     updated_at = Column(DateTime, nullable=True, comment="更新时间")
     
     # 关系

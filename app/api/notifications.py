@@ -6,7 +6,8 @@
 
 from typing import List
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from app.core.exceptions import ValidationException, NotFoundException, ForbiddenException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -40,11 +41,11 @@ def send_notification(
     """
     # 验证用户ID是否为当前用户
     if request.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权发送给其他用户")
+        raise ForbiddenException("无权发送给其他用户")
     
     notification = notification_service.send_notification(db, request)
     if not notification:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="发送通知失败")
+        raise ValidationException("发送通知失败")
     
     return notification
 
@@ -79,7 +80,7 @@ def get_notifications(
     """
     # 验证用户ID是否为当前用户
     if query_params.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权查看其他用户的通知")
+        raise ForbiddenException("无权查看其他用户的通知")
     
     notifications = notification_service.get_notifications(db, query_params)
     return notifications
@@ -102,7 +103,7 @@ def mark_as_read(
     
     for notification in notifications:
         if notification.user_id != current_user.user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权标记其他用户的通知")
+            raise ForbiddenException("无权标记其他用户的通知")
     
     count = notification_service.mark_as_read(db, request.notification_ids)
     return {"message": f"已标记 {count} 条通知为已读", "count": count}
@@ -149,7 +150,7 @@ def create_preference(
     """
     # 验证用户ID是否为当前用户
     if preference_data.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权设置其他用户的偏好")
+        raise ForbiddenException("无权设置其他用户的偏好")
     
     preference = notification_service.create_preference(db, preference_data)
     return preference
@@ -184,7 +185,7 @@ def update_preference(
     """
     preference = notification_service.update_preference(db, current_user.user_id, update_data)
     if not preference:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通知偏好设置不存在")
+        raise NotFoundException("通知偏好设置不存在")
     
     return preference
 
@@ -217,7 +218,7 @@ def get_template(
     """
     template = notification_service.get_template(db, template_code)
     if not template:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="通知模板不存在")
+        raise NotFoundException("通知模板不存在")
     
     return template
 

@@ -5,7 +5,8 @@
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from app.core.exceptions import ValidationException, NotFoundException, ForbiddenException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -42,7 +43,7 @@ def call_120(
         response = emergency_center_service.call_120(db, request)
         return response
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 急救呼叫管理 ==========
@@ -60,11 +61,11 @@ def get_emergency_call(
     """
     call = emergency_center_service.get_emergency_call(db, call_id)
     if not call:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="呼叫记录不存在")
+        raise NotFoundException("呼叫记录不存在")
     
     # 权限检查
     if call.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权限访问")
+        raise ForbiddenException("无权限访问")
     
     return call
 
@@ -98,11 +99,11 @@ def update_emergency_call(
     """
     call = emergency_center_service.get_emergency_call(db, call_id)
     if not call:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="呼叫记录不存在")
+        raise NotFoundException("呼叫记录不存在")
     
     # 权限检查
     if call.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权限操作")
+        raise ForbiddenException("无权限操作")
     
     for field, value in update_data.dict(exclude_unset=True).items():
         setattr(call, field, value)
@@ -129,7 +130,7 @@ def dispatch_ambulance(
         ambulance = emergency_center_service.dispatch_ambulance(db, emergency_call_id)
         return ambulance
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.post("/ambulances/location", response_model=AmbulanceResponse)
@@ -146,7 +147,7 @@ def update_ambulance_location(
         ambulance = emergency_center_service.update_ambulance_location(db, location_data)
         return ambulance
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.get("/ambulances/{emergency_call_id}/track", response_model=AmbulanceTracking)
@@ -164,7 +165,7 @@ def track_ambulance(
         tracking = emergency_center_service.track_ambulance(db, emergency_call_id)
         return tracking
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 救援记录管理 ==========
@@ -184,7 +185,7 @@ def create_rescue_record(
         record = emergency_center_service.create_rescue_record(db, record_data)
         return record
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.put("/rescue-records/{record_id}", response_model=RescueRecordResponse)
@@ -202,10 +203,10 @@ def update_rescue_record(
     try:
         record = emergency_center_service.update_rescue_record(db, record_id, update_data)
         if not record:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="救援记录不存在")
+            raise NotFoundException("救援记录不存在")
         return record
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 健康档案摘要 ==========
@@ -225,7 +226,7 @@ def get_health_summary(
         summary = emergency_center_service.generate_health_summary(db, user_id)
         return summary
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 急救中心管理(管理员) ==========
@@ -244,7 +245,7 @@ def create_emergency_center(
         center = emergency_center_service.create_emergency_center(db, center_data)
         return center
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.get("/centers", response_model=List[EmergencyCenterResponse])
@@ -263,7 +264,7 @@ def get_emergency_centers(
 
 # ========== 统计分析 ==========
 
-@get("/statistics/overview")
+@router.get("/statistics/overview")
 def get_rescue_statistics(
     db: Session = Depends(get_db)
 ):
@@ -284,7 +285,7 @@ def get_rescue_statistics(
 
 # ========== 快捷接口 ==========
 
-@post("/quick-call-120")
+@router.post("/quick-call-120")
 def quick_call_120(
     current_lat: float,
     current_lon: float,
@@ -307,7 +308,7 @@ def quick_call_120(
     return response
 
 
-@get("/my-health-summary", response_model=HealthSummary)
+@router.get("/my-health-summary", response_model=HealthSummary)
 def get_my_health_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -321,4 +322,4 @@ def get_my_health_summary(
         summary = emergency_center_service.generate_health_summary(db, current_user.user_id)
         return summary
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))

@@ -5,13 +5,18 @@
 """
 
 from typing import List
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.exceptions import (
+    ValidationException, ForbiddenException, NotFoundException
+)
 from app.models.user import User
+from app.models.anomaly import Anomaly
 from app.schemas.anomaly import (
     AnomalyCreate, AnomalyUpdate, AnomalyResponse, AnomalyQuery, AnomalyStatistics,
     TrendAnalysisRequest, HealthTrendResponse,
@@ -86,11 +91,11 @@ def update_anomaly(
     """
     anomaly = anomaly_service.update_anomaly(db, anomaly_id, update_data)
     if not anomaly:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="异常记录不存在")
-    
+        raise NotFoundException("异常记录不存在")
+
     # 权限检查:只能更新自己的异常
     if anomaly.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权限操作")
+        raise ForbiddenException("无权限操作")
     
     return anomaly
 
@@ -115,8 +120,8 @@ def resolve_anomaly(
     
     anomaly = anomaly_service.update_anomaly(db, anomaly_id, update_data)
     if not anomaly:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="异常记录不存在")
-    
+        raise NotFoundException("异常记录不存在")
+
     return {"message": "异常已标记为已解决", "anomaly_id": anomaly_id}
 
 
@@ -136,16 +141,13 @@ def analyze_health_trend(
     try:
         request.user_id = current_user.user_id
         trend = anomaly_service.analyze_health_trend(db, request)
-        
+
         if not trend:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="未找到相关数据"
-            )
-        
+            raise NotFoundException("未找到相关数据")
+
         return trend
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 @router.get("/trends/recent")
@@ -173,10 +175,10 @@ def get_recent_trends(
     )
     
     trend = anomaly_service.analyze_health_trend(db, request)
-    
+
     if not trend:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到趋势数据")
-    
+        raise NotFoundException("未找到趋势数据")
+
     return trend
 
 
@@ -197,7 +199,7 @@ def analyze_heart_health(
         analysis = anomaly_service.analyze_heart_health(db, current_user.user_id, device_id)
         return analysis
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise ValidationException(detail=str(e))
 
 
 # ========== 异常检测配置 ==========
@@ -314,8 +316,8 @@ def dismiss_anomaly(
     """
     anomaly = db.query(Anomaly).filter(Anomaly.id == anomaly_id).first()
     if not anomaly:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="异常记录不存在")
-    
+        raise NotFoundException("异常记录不存在")
+
     anomaly.status = "dismissed"
     anomaly.action_taken = f"管理员忽略: {reason}"
     db.commit()

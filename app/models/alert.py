@@ -24,7 +24,7 @@ class Alert(Base):
     resolved_at = Column(DateTime, nullable=True, comment="解决时间")
     resolved_reason = Column(String(500), nullable=True, comment="解决原因")
     resolved_by = Column(String(36), nullable=True, comment="解决人")
-    created_at = Column(DateTime, nullable=False, default=lambda: __import__('datetime').datetime.now(), comment="创建时间")
+    created_at = Column(DateTime, nullable=False, default=lambda: __import__('datetime').datetime.utcnow(), comment="创建时间")
     
     # 关系
     user = db_relationship("User", back_populates="alerts")
