@@ -87,10 +87,10 @@ class SOSService:
             sos.status = update_data.status
             # 如果状态变为救援中，设置救援开始时间
             if update_data.status == SOSStatusEnum.RESCUING.value:
-                sos.rescue_start_time = datetime.now()
+                sos.rescue_start_time = datetime.utcnow()
             # 如果状态变为已解决或已取消，设置解决时间
             if update_data.status in [SOSStatusEnum.RESOLVED.value, SOSStatusEnum.CANCELLED.value]:
-                sos.resolve_time = datetime.now()
+                sos.resolve_time = datetime.utcnow()
 
         if update_data.status_change_reason:
             sos.status_change_reason = update_data.status_change_reason
@@ -117,7 +117,7 @@ class SOSService:
             raise ValueError("只能取消待救援状态的SOS请求")
 
         sos.status = SOSStatusEnum.CANCELLED.value
-        sos.resolve_time = datetime.now()
+        sos.resolve_time = datetime.utcnow()
 
         if cancel_data.cancel_reason:
             sos.status_change_reason = cancel_data.cancel_reason

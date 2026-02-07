@@ -15,6 +15,15 @@ class LocationService:
     def __init__(self):
         pass
 
+    def reverse_geocode(self, latitude: float, longitude: float) -> Optional[str]:
+        """
+        逆向地理编码
+
+        根据经纬度获取地址信息
+        """
+        # 简化实现，返回模拟地址
+        return f"位置: {latitude}, {longitude}"
+
     def get_location_history(self, db: Session, user_id: str, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
         """获取用户位置历史"""
         # 这里应该从数据库查询位置历史记录

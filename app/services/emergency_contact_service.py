@@ -12,6 +12,7 @@ from sqlalchemy import func, and_, desc
 from app.models.emergency_contact import EmergencyContact
 from app.models.user import User
 from app.schemas.emergency_contact import EmergencyContactCreate, EmergencyContactUpdate
+from app.core.cache import get_cached, cache_result
 
 
 class EmergencyContactService:
@@ -34,18 +35,41 @@ class EmergencyContactService:
 
     def get_emergency_contacts(self, db: Session, user_id: str) -> List[EmergencyContact]:
         """获取用户紧急联系人列表"""
-        return db.query(EmergencyContact).filter(
+        # 尝试从缓存获取（缓存10分钟）
+        cache_key = f"emergency:contacts:{user_id}"
+        cached_contacts = get_cached(cache_key)
+        if cached_contacts:
+            return cached_contacts
+
+        contacts = db.query(EmergencyContact).filter(
             EmergencyContact.user_id == user_id
         ).order_by(EmergencyContact.is_primary.desc(), EmergencyContact.created_at.desc()).all()
 
+        # 缓存结果（10分钟）
+        cache_result(cache_key, contacts, ttl=600)
+
+        return contacts
+
     def get_emergency_contact(self, db: Session, contact_id: int, user_id: str) -> Optional[EmergencyContact]:
         """获取紧急联系人详情"""
-        return db.query(EmergencyContact).filter(
+        # 尝试从缓存获取（缓存10分钟）
+        cache_key = f"emergency:contact:{contact_id}:{user_id}"
+        cached_contact = get_cached(cache_key)
+        if cached_contact:
+            return cached_contact
+
+        contact = db.query(EmergencyContact).filter(
             and_(
                 EmergencyContact.id == contact_id,
                 EmergencyContact.user_id == user_id
             )
         ).first()
+
+        if contact:
+            # 缓存结果（10分钟）
+            cache_result(cache_key, contact, ttl=600)
+
+        return contact
 
     def update_emergency_contact(self, db: Session, contact_id: int, update_data: EmergencyContactUpdate, user_id: str) -> Optional[EmergencyContact]:
         """更新紧急联系人"""

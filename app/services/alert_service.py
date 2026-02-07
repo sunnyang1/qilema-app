@@ -10,6 +10,7 @@ from app.models.alert import Alert, AlertSetting
 from app.models.checkin import CheckIn
 from app.models.emergency_contact import EmergencyContact
 from app.schemas.alert import AlertSettingCreate, AlertSettingUpdate, AlertCreate
+from app.core.cache import get_cached, cache_result, invalidate_cache
 
 
 class AlertService:
@@ -33,7 +34,7 @@ class AlertService:
                     setattr(setting, field, notification_channels_str)
                 else:
                     setattr(setting, field, value)
-            setting.updated_at = datetime.now()
+            setting.updated_at = datetime.utcnow()
         else:
             # 创建新配置
             setting = AlertSetting(
@@ -52,19 +53,35 @@ class AlertService:
                 notification_channels=notification_channels_str,
                 emergency_contact_notify=setting_data.emergency_contact_notify,
                 auto_resolve=setting_data.auto_resolve,
-                created_at=datetime.now(),
-                updated_at=datetime.now()
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
             )
             db.add(setting)
 
         db.commit()
         db.refresh(setting)
+
+        # 失效缓存
+        invalidate_cache(f"alert:setting:{user_id}")
+
         return setting
 
     @staticmethod
     def get_setting(db: Session, user_id: str) -> Optional[AlertSetting]:
         """获取预警配置"""
-        return db.query(AlertSetting).filter(AlertSetting.user_id == user_id).first()
+        # 尝试从缓存获取（缓存30分钟）
+        cache_key = f"alert:setting:{user_id}"
+        cached_setting = get_cached(cache_key)
+        if cached_setting:
+            return cached_setting
+
+        setting = db.query(AlertSetting).filter(AlertSetting.user_id == user_id).first()
+
+        if setting:
+            # 缓存结果（30分钟）
+            cache_result(cache_key, setting, ttl=1800)
+
+        return setting
 
     @staticmethod
     def update_setting(db: Session, user_id: str, update_data: AlertSettingUpdate) -> Optional[AlertSetting]:
@@ -75,10 +92,14 @@ class AlertService:
         
         for field, value in update_data.model_dump(exclude_unset=True).items():
             setattr(setting, field, value)
-        setting.updated_at = datetime.now()
+        setting.updated_at = datetime.utcnow()
         
         db.commit()
         db.refresh(setting)
+
+        # 失效缓存
+        invalidate_cache(f"alert:setting:{user_id}")
+
         return setting
 
     @staticmethod
@@ -103,11 +124,16 @@ class AlertService:
             trigger_reason=alert_data.trigger_reason,
             status="active",
             abnormal_data=alert_data.abnormal_data,
-            created_at=datetime.now()
+            created_at=datetime.utcnow()
         )
         db.add(alert)
         db.commit()
         db.refresh(alert)
+
+        # 失效相关缓存
+        invalidate_cache(f"alert:list:{alert_data.user_id}:*")
+        invalidate_cache(f"alert:stats:{alert_data.user_id}")
+
         return alert
 
     @staticmethod
@@ -128,6 +154,12 @@ class AlertService:
         alert.resolved_by = "manual_dismiss"
         db.commit()
         db.refresh(alert)
+
+        # 失效相关缓存
+        invalidate_cache(f"alert:list:{user_id}:*")
+        invalidate_cache(f"alert:stats:{user_id}")
+        invalidate_cache(f"alert:detail:{alert_id}")
+
         return alert
 
     @staticmethod
@@ -147,38 +179,66 @@ class AlertService:
         count = 0
         for alert in active_alerts:
             alert.status = "resolved"
-            alert.resolved_at = datetime.now()
+            alert.resolved_at = datetime.utcnow()
             alert.resolved_reason = "用户已签到"
             alert.resolved_by = "auto_checkin"
             count += 1
 
         db.commit()
+
+        # 失效相关缓存
+        invalidate_cache(f"alert:list:{user_id}:*")
+        invalidate_cache(f"alert:stats:{user_id}")
+
         return count
 
     @staticmethod
     def get_alerts(db: Session, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> tuple[List[Alert], int]:
         """获取用户预警列表"""
+        # 尝试从缓存获取（缓存5分钟）
+        cache_key = f"alert:list:{user_id}:{status or 'all'}:{skip}:{limit}"
+        cached_result = get_cached(cache_key)
+        if cached_result:
+            return cached_result
+
         query = db.query(Alert).filter(Alert.user_id == user_id)
         if status:
             query = query.filter(Alert.status == status)
         total = query.count()
         alerts = query.order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
-        return alerts, total
+
+        result = (alerts, total)
+
+        # 缓存结果（5分钟）
+        cache_result(cache_key, result, ttl=300)
+
+        return result
 
     @staticmethod
     def get_alert_stats(db: Session, user_id: str) -> dict:
         """获取预警统计"""
+        # 尝试从缓存获取（缓存5分钟）
+        cache_key = f"alert:stats:{user_id}"
+        cached_stats = get_cached(cache_key)
+        if cached_stats:
+            return cached_stats
+
         total = db.query(Alert).filter(Alert.user_id == user_id).count()
         active = db.query(Alert).filter(Alert.user_id == user_id, Alert.status == "active").count()
         resolved = db.query(Alert).filter(Alert.user_id == user_id, Alert.status == "resolved").count()
         dismissed = db.query(Alert).filter(Alert.user_id == user_id, Alert.status == "dismissed").count()
 
-        return {
+        stats = {
             'total_alerts': total,
             'active_alerts': active,
             'resolved_alerts': resolved,
             'dismissed_alerts': dismissed
         }
+
+        # 缓存结果（5分钟）
+        cache_result(cache_key, stats, ttl=300)
+
+        return stats
 
     @staticmethod
     def get_contacts_for_notification(db: Session, user_id: str) -> List[EmergencyContact]:
@@ -225,7 +285,19 @@ class AlertService:
     @staticmethod
     def get_alert(db: Session, alert_id: str) -> Optional[Alert]:
         """获取预警"""
-        return db.query(Alert).filter(Alert.alert_id == alert_id).first()
+        # 尝试从缓存获取（缓存10分钟）
+        cache_key = f"alert:detail:{alert_id}"
+        cached_alert = get_cached(cache_key)
+        if cached_alert:
+            return cached_alert
+
+        alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
+
+        if alert:
+            # 缓存结果（10分钟）
+            cache_result(cache_key, alert, ttl=600)
+
+        return alert
 
     @staticmethod
     def get_user_alerts(db: Session, user_id: str, skip: int = 0, limit: int = 100) -> List[Alert]:
@@ -252,7 +324,7 @@ class AlertService:
             return None
         
         # 检查是否超过阈值
-        threshold = datetime.now() - timedelta(hours=setting.checkin_threshold_hours)
+        threshold = datetime.utcnow() - timedelta(hours=setting.checkin_threshold_hours)
         if last_checkin.checkin_time < threshold:
             # 检查是否已有未解决的预警
             existing_alert = db.query(Alert).filter(
@@ -281,46 +353,59 @@ class AlertService:
         setting = AlertService.get_setting(db, user_id)
         if not setting or not setting.abnormal_enabled:
             return None
-        
+
         abnormal_info = {}
-        
-        # 检查心率
-        heart_rate = health_data.get("heart_rate")
-        if heart_rate:
-            if setting.heart_rate_min and heart_rate < setting.heart_rate_min:
-                abnormal_info["heart_rate_low"] = heart_rate
-            if setting.heart_rate_max and heart_rate > setting.heart_rate_max:
-                abnormal_info["heart_rate_high"] = heart_rate
-        
-        # 检查血压
-        if "systolic" in health_data and "diastolic" in health_data:
-            systolic = health_data["systolic"]
-            diastolic = health_data["diastolic"]
-            
-            if setting.blood_pressure_systolic_min and systolic < setting.blood_pressure_systolic_min:
-                abnormal_info["blood_pressure_systolic_low"] = systolic
-            if setting.blood_pressure_systolic_max and systolic > setting.blood_pressure_systolic_max:
-                abnormal_info["blood_pressure_systolic_high"] = systolic
-            if setting.blood_pressure_diastolic_min and diastolic < setting.blood_pressure_diastolic_min:
-                abnormal_info["blood_pressure_diastolic_low"] = diastolic
-            if setting.blood_pressure_diastolic_max and diastolic > setting.blood_pressure_diastolic_max:
-                abnormal_info["blood_pressure_diastolic_high"] = diastolic
-        
-        # 检查血氧
-        blood_oxygen = health_data.get("blood_oxygen")
-        if blood_oxygen and setting.blood_oxygen_min and blood_oxygen < setting.blood_oxygen_min:
-            abnormal_info["blood_oxygen_low"] = blood_oxygen
-        
+
+        self._check_heart_rate_abnormal(health_data, setting, abnormal_info)
+        self._check_blood_pressure_abnormal(health_data, setting, abnormal_info)
+        self._check_blood_oxygen_abnormal(health_data, setting, abnormal_info)
+
         if abnormal_info:
-            # 创建异常预警
             alert_data = AlertCreate(
                 alert_type=2,
                 trigger_time=datetime.now(),
                 abnormal_data=abnormal_info
             )
             return AlertService.create_alert(db, user_id, alert_data)
-        
+
         return None
+
+    @staticmethod
+    def _check_heart_rate_abnormal(health_data: dict, setting: AlertSetting, abnormal_info: dict):
+        """检查心率异常"""
+        heart_rate = health_data.get("heart_rate")
+        if not heart_rate:
+            return
+
+        if setting.heart_rate_min and heart_rate < setting.heart_rate_min:
+            abnormal_info["heart_rate_low"] = heart_rate
+        if setting.heart_rate_max and heart_rate > setting.heart_rate_max:
+            abnormal_info["heart_rate_high"] = heart_rate
+
+    @staticmethod
+    def _check_blood_pressure_abnormal(health_data: dict, setting: AlertSetting, abnormal_info: dict):
+        """检查血压异常"""
+        if "systolic" not in health_data or "diastolic" not in health_data:
+            return
+
+        systolic = health_data["systolic"]
+        diastolic = health_data["diastolic"]
+
+        if setting.blood_pressure_systolic_min and systolic < setting.blood_pressure_systolic_min:
+            abnormal_info["blood_pressure_systolic_low"] = systolic
+        if setting.blood_pressure_systolic_max and systolic > setting.blood_pressure_systolic_max:
+            abnormal_info["blood_pressure_systolic_high"] = systolic
+        if setting.blood_pressure_diastolic_min and diastolic < setting.blood_pressure_diastolic_min:
+            abnormal_info["blood_pressure_diastolic_low"] = diastolic
+        if setting.blood_pressure_diastolic_max and diastolic > setting.blood_pressure_diastolic_max:
+            abnormal_info["blood_pressure_diastolic_high"] = diastolic
+
+    @staticmethod
+    def _check_blood_oxygen_abnormal(health_data: dict, setting: AlertSetting, abnormal_info: dict):
+        """检查血氧异常"""
+        blood_oxygen = health_data.get("blood_oxygen")
+        if blood_oxygen and setting.blood_oxygen_min and blood_oxygen < setting.blood_oxygen_min:
+            abnormal_info["blood_oxygen_low"] = blood_oxygen
 
     @staticmethod
     def get_user_emergency_contacts(db: Session, user_id: str) -> List[EmergencyContact]:

@@ -166,11 +166,11 @@ class TestDeviceService:
             steps=5000,
             calories=250.5
         )
-        
+
         device_data = device_service.upload_device_data(db_session, test_user.user_id, data)
-        
+
         assert device_data.id is not None
-        assert device_data.device_id == test_device.id
+        assert device_data.device_id == test_device.device_id
         assert device_data.heart_rate == 75
         assert device_data.steps == 5000
     
@@ -207,16 +207,17 @@ class TestDeviceService:
                 steps=1000 * (i + 1)
             )
             device_service.upload_device_data(db_session, test_user.user_id, data)
-        
+
         from app.schemas.device import DeviceDataQuery
+        # 使用当前时间作为 end_time，确保包含所有已上传的数据
         query_params = DeviceDataQuery(
             start_time=base_time - timedelta(hours=5),
-            end_time=base_time,
+            end_time=datetime.utcnow(),
             limit=100
         )
-        
+
         data_list = device_service.get_device_data(db_session, test_user.user_id, query_params)
-        
+
         assert len(data_list) >= 5
     
     def test_get_device_statistics(self, db_session, test_user, test_device, device_service):
@@ -231,15 +232,15 @@ class TestDeviceService:
                 heart_rate=rate
             )
             device_service.upload_device_data(db_session, test_user.user_id, data)
-        
+
         # 计算统计
         start_time = base_time - timedelta(hours=len(heart_rates))
-        end_time = base_time
-        
+        end_time = datetime.utcnow()  # 使用当前时间作为结束时间
+
         statistics = device_service.get_device_statistics(
-            db_session, test_device.id, "heart_rate", start_time, end_time
+            db_session, test_device.device_id, "heart_rate", start_time, end_time
         )
-        
+
         assert statistics['count'] == len(heart_rates)
         assert statistics['avg_value'] == sum(heart_rates) / len(heart_rates)
         assert statistics['min_value'] == min(heart_rates)

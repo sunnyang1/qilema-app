@@ -1,7 +1,8 @@
 """
 SOS紧急求助API路由
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
+from app.core.exceptions import ValidationException, NotFoundException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -73,11 +74,8 @@ async def get_sos(
     ).first()
     
     if not sos:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="SOS记录不存在"
-        )
-    
+        raise NotFoundException("SOS记录不存在")
+
     return sos
 
 
@@ -92,18 +90,12 @@ async def cancel_sos(
         SOSRequest.sos_id == sos_id,
         SOSRequest.user_id == current_user.user_id
     ).first()
-    
+
     if not sos:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="SOS记录不存在"
-        )
-    
+        raise NotFoundException("SOS记录不存在")
+
     if sos.status != "pending":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只能取消待处理的SOS求助"
-        )
+        raise ValidationException("只能取消待处理的SOS求助")
     
     sos.status = "cancelled"
     db.commit()
@@ -125,13 +117,10 @@ async def resolve_sos(
     ).first()
     
     if not sos:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="SOS记录不存在"
-        )
-    
+        raise NotFoundException("SOS记录不存在")
+
     sos.status = "resolved"
     sos.resolution = resolution
     db.commit()
-    
+
     return {"message": "SOS求助已标记为解决"}

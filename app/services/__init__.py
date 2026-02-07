@@ -1,6 +1,7 @@
 """
 Services包初始化文件
 """
+from .base_service import BaseService
 from .user_service import UserService
 from .alert_service import AlertService
 from .checkin_service import CheckInService
@@ -15,6 +16,7 @@ from .location_service import LocationService
 from .emergency_service import EmergencyService
 
 __all__ = [
+    'BaseService',
     'UserService',
     'AlertService',
     'CheckInService',

@@ -23,7 +23,7 @@ from app.models.device_data import DeviceData
 from app.models.anomaly import Anomaly, AnomalyTypeEnum, SeverityLevel
 from app.services.emergency_center_service import EmergencyCenterService
 from app.schemas.emergency_center import (
-    Call120Request, AmbulanceLocation, RescueRecordCreate
+    Call120Request, AmbulanceLocation, RescueRecordCreate, EmergencyCallStatus, AmbulanceStatus
 )
 
 
@@ -118,12 +118,18 @@ def test_health_record(db, test_user):
     """创建测试健康档案"""
     record = HealthRecord(
         user_id=test_user.user_id,
-        allergies='["青霉素", "磺胺类"]',
-        chronic_diseases='["高血压", "糖尿病"]',
-        current_medications='["降压药", "胰岛素"]',
-        surgeries='["阑尾切除术"]',
-        blood_transfusion_history=False,
-        organ_transplant_history=False
+        real_name="测试用户",
+        gender="男",
+        blood_type="O",
+        height=175.0,
+        weight=70.0,
+        age=30,
+        allergies_json='["青霉素", "磺胺类"]',
+        chronic_diseases_json='["高血压", "糖尿病"]',
+        current_medications_json='["降压药", "胰岛素"]',
+        surgeries_json='["阑尾切除术"]',
+        blood_transfusion_history=0,
+        organ_transplant_history=0
     )
     db.add(record)
     db.commit()
@@ -152,13 +158,13 @@ def test_sos_request(db, test_user):
 def test_device(db, test_user):
     """创建测试设备"""
     device = Device(
+        device_id="device_test_001",
         user_id=test_user.user_id,
         device_type="smartwatch",
         device_name="智能手表",
-        device_mac="AA:BB:CC:DD:EE:FF",
-        device_sn="SN123456",
         device_brand="华为",
-        device_model="Watch GT 3"
+        device_model="Watch GT 3",
+        status="active"
     )
     db.add(device)
     db.commit()
@@ -167,17 +173,22 @@ def test_device(db, test_user):
 
 
 @pytest.fixture
-def test_device_data(db, test_device):
+def test_device_data(db, test_device, test_user):
     """创建测试设备数据"""
     data = DeviceData(
-        device_id=test_device.id,
-        heart_rate=75.5,
+        data_id="data_test_001",
+        device_id=test_device.device_id,
+        user_id=test_user.user_id,
+        data_type="health",
+        data_value={"heart_rate": 75, "blood_pressure": {"systolic": 120, "diastolic": 80}, "blood_oxygen": 98.5},
+        heart_rate=75,
         blood_oxygen=98.5,
-        systolic=120,
-        diastolic=80,
+        systolic_pressure=120,
+        diastolic_pressure=80,
         steps=5000,
-        sleep_hours=7.5,
-        data_timestamp=datetime.utcnow()
+        sleep_duration=7.5,
+        data_timestamp=datetime.utcnow(),
+        upload_time=datetime.utcnow()
     )
     db.add(data)
     db.commit()
@@ -256,15 +267,15 @@ def test_call_120_with_sos_request(db, emergency_center_service, test_user, test
     """测试拨打120关联SOS请求"""
     request = Call120Request(
         user_id=test_user.user_id,
-        sos_request_id=test_sos_request.id,
+        sos_request_id=str(test_sos_request.id),
         caller_location="116.4074,39.9042",
         send_health_summary=True
     )
-    
+
     response = emergency_center_service.call_120(db, request)
-    
+
     call = db.query(EmergencyCall).filter(EmergencyCall.id == response.call_id).first()
-    assert call.sos_request_id == test_sos_request.id
+    assert call.sos_request_id == str(test_sos_request.id)
 
 
 def test_call_120_no_emergency_center(db, emergency_center_service, test_user):
@@ -505,17 +516,17 @@ def test_create_emergency_center(db, emergency_center_service):
         phone="120",
         service_area="上海市全域",
         service_radius=60000,
-        is_active=True,
-        is_24h=True
+        is_active=1,
+        is_24h=1
     )
-    
+
     center = emergency_center_service.create_emergency_center(db, center_data)
-    
+
     assert center.id is not None
     assert center.center_name == "上海市急救中心"
     assert center.center_code == "SH120"
     assert center.city == "上海"
-    assert center.is_active is True
+    assert center.is_active == 1
 
 
 def test_get_emergency_centers(db, emergency_center_service, test_emergency_center):

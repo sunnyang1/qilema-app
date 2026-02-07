@@ -103,8 +103,8 @@ class DeviceDataUpload(BaseModel):
     device_id: str = Field(..., description="设备ID")
     data_type: Optional[str] = Field(None, description="数据类型")
     data_value: Optional[Dict[str, Any]] = Field(None, description="数据值")
-    data_timestamp: Optional[datetime] = Field(default_factory=datetime.now, description="数据时间戳")
-    upload_time: Optional[datetime] = Field(default_factory=datetime.now, description="上传时间")
+    data_timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow, description="数据时间戳")
+    upload_time: Optional[datetime] = Field(default_factory=datetime.utcnow, description="上传时间")
     # 兼容旧 API 的字段
     heart_rate: Optional[int] = Field(None, description="心率(bpm)")
     steps: Optional[int] = Field(None, description="步数")

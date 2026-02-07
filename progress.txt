@@ -1,0 +1,140 @@
+# 项目重构进度记录
+
+## 代码库模式 (Codebase Patterns)
+
+### 服务层模式
+- 服务类目前混用实例方法和静态方法
+- 每个服务都有自己的CRUD实现
+- 缓存逻辑散落在各个服务中
+
+### API层模式
+- 使用 FastAPI 的 APIRouter
+- 依赖注入获取 db 和 current_user
+- 错误处理方式不一致
+
+### 模型层模式
+- 使用 SQLAlchemy ORM
+- 模型有 to_dict() 方法用于序列化
+- 使用 uuid 作为主键
+
+---
+
+## 重构进度
+
+### [2026-02-04 17:00:00] - 完成 US-001: 提取服务基类
+
+**实现内容**:
+- 创建 `BaseService[ModelType]` 基类，提供通用 CRUD 操作
+- 支持方法：get_by_id, get_by_field, list_records, count_records, create_record, update_record, delete_record
+- 集成缓存管理：自动缓存查询结果、更新时失效缓存
+- 可配置 cache_prefix 和 cache_ttl
+
+**修改文件**:
+- `app/services/base_service.py` (新增)
+- `app/services/__init__.py` (导出 BaseService)
+- `app/services/user_service.py` (继承 BaseService)
+- `app/services/device_service.py` (继承 BaseService)
+
+**测试结果**: 384 passed, 3 skipped
+
+---
+
+### [2026-02-04 17:15:00] - 完成 US-002: 统一API响应格式
+
+**实现内容**:
+- 创建 `app/core/response.py` 模块
+- 提供 `APIResponse` 类，包含标准响应方法：
+  - success() - 成功响应
+  - error() - 错误响应  
+  - list() - 列表响应（带分页）
+  - created() - 创建成功响应
+  - not_found(), bad_request(), unauthorized(), forbidden() 等常用错误
+
+**修改文件**:
+- `app/core/response.py` (新增)
+
+**测试结果**: 384 passed, 3 skipped
+
+---
+
+### [2026-02-04 17:30:00] - 完成 US-003: 规范化错误处理
+
+**实现内容**:
+- 创建全局异常处理器 `app/core/error_handlers.py`
+- 注册处理器到 FastAPI 应用：
+  - BaseAppException 处理
+  - RequestValidationError 处理 (Pydantic验证错误)
+  - SQLAlchemyError 处理 (数据库错误)
+  - IntegrityError 处理 (完整性错误)
+  - ValueError 处理
+  - 通用 Exception 处理
+
+**修改文件**:
+- `app/core/error_handlers.py` (新增)
+- `main.py` (注册异常处理器)
+
+**测试结果**: 384 passed, 3 skipped
+
+---
+
+### [2026-02-04 18:00:00] - 完成 US-004: 统一时间戳使用
+
+**实现内容**:
+- 统一使用 `datetime.utcnow()` 替代 `datetime.now()`
+- 修复以下文件中的时间戳：
+  - `app/services/user_service.py`
+  - `app/services/sos_service.py`
+  - `app/services/alert_service.py`
+  - `app/services/notification_service.py`
+  - `app/models/device.py`
+  - `app/models/alert.py`
+
+**测试结果**: 384 passed, 3 skipped
+
+---
+
+### [2026-02-04 18:15:00] - 完成 US-005: 服务层规范化
+
+**实现内容**:
+- UserService 继承 BaseService[User]
+- DeviceService 继承 BaseService[Device]
+- 添加 model_class, cache_prefix, cache_ttl 配置
+
+**修改文件**:
+- `app/services/user_service.py`
+- `app/services/device_service.py`
+
+**测试结果**: 384 passed, 3 skipped
+
+---
+
+## 重构成果总结
+
+### 新增文件
+1. `app/services/base_service.py` - 服务基类
+2. `app/core/response.py` - 统一响应格式
+3. `app/core/error_handlers.py` - 全局异常处理器
+
+### 修改文件
+1. `app/services/__init__.py` - 导出 BaseService
+2. `app/services/user_service.py` - 继承 BaseService
+3. `app/services/device_service.py` - 继承 BaseService
+4. `app/services/sos_service.py` - 统一时间戳
+5. `app/services/alert_service.py` - 统一时间戳
+6. `app/services/notification_service.py` - 统一时间戳
+7. `app/models/device.py` - 统一时间戳
+8. `app/models/alert.py` - 统一时间戳
+9. `main.py` - 注册异常处理器
+
+### 测试统计
+- 总测试数: 384
+- 通过: 384 (100%)
+- 跳过: 3
+- 失败: 0
+
+### 代码质量提升
+- 消除了服务层的重复CRUD代码
+- 统一了API响应格式
+- 规范了错误处理机制
+- 统一了UTC时间戳使用
+- 提升了代码可维护性

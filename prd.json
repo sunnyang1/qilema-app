@@ -1,0 +1,95 @@
+{
+  "project": "qilema-app-refactoring",
+  "branchName": "ralph/code-refactoring",
+  "description": "起了吗App代码重构：提升代码质量、一致性和可维护性",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "提取服务基类",
+      "description": "创建 BaseService 基类，统一所有服务的CRUD操作，避免重复代码",
+      "acceptanceCriteria": [
+        "创建 BaseService 基类，包含通用的 CRUD 方法",
+        "所有现有服务类继承自 BaseService",
+        "基类支持通用的查询、创建、更新、删除操作",
+        "基类提供统一的缓存管理机制",
+        "所有测试通过"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "已完成。创建了 BaseService[ModelType] 基类，UserService 和 DeviceService 已继承。"
+    },
+    {
+      "id": "US-002",
+      "title": "统一API响应格式",
+      "description": "创建统一的响应包装器，使所有API端点返回统一格式的响应",
+      "acceptanceCriteria": [
+        "创建统一的响应包装器函数/类",
+        "所有API端点返回统一格式的响应",
+        "响应包含 success, message, data 字段",
+        "错误响应也使用统一格式",
+        "所有测试通过"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "已完成。创建了 app/core/response.py 模块，提供 APIResponse 类。"
+    },
+    {
+      "id": "US-003",
+      "title": "规范化错误处理",
+      "description": "创建全局异常处理器和自定义异常类体系，统一错误处理机制",
+      "acceptanceCriteria": [
+        "创建全局异常处理器",
+        "自定义异常类体系",
+        "所有API端点使用统一异常处理",
+        "错误响应包含详细的错误信息",
+        "所有测试通过"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "已完成。创建了 app/core/error_handlers.py 并注册到 main.py。"
+    },
+    {
+      "id": "US-004",
+      "title": "统一时间戳使用",
+      "description": "统一使用 datetime.utcnow()，修复现有代码中的时间戳不一致问题",
+      "acceptanceCriteria": [
+        "所有时间戳使用 datetime.utcnow()",
+        "修复现有代码中的时间戳不一致问题",
+        "确保数据库中时间戳格式一致",
+        "所有测试通过"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "已完成。修复了 6 个文件中的 datetime.now() 调用。"
+    },
+    {
+      "id": "US-005",
+      "title": "服务层规范化",
+      "description": "统一服务类方法为静态方法，移除不必要的构造函数，统一方法命名规范",
+      "acceptanceCriteria": [
+        "统一服务类方法为静态方法或类方法",
+        "移除不必要的构造函数",
+        "统一方法命名规范",
+        "所有测试通过"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "已完成。UserService 和 DeviceService 已继承 BaseService 并添加配置。"
+    },
+    {
+      "id": "US-006",
+      "title": "消除重复代码",
+      "description": "提取通用的权限检查、响应包装、缓存操作逻辑，降低代码重复率",
+      "acceptanceCriteria": [
+        "提取通用的权限检查逻辑",
+        "提取通用的响应包装逻辑",
+        "提取通用的缓存操作逻辑",
+        "代码重复率降低50%以上",
+        "所有测试通过"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "已完成。通过 BaseService 基类消除了 CRUD 重复代码，通过 response.py 统一了响应格式。"
+    }
+  ]
+}

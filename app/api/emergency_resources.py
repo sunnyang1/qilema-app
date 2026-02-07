@@ -5,7 +5,8 @@
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from app.core.exceptions import NotFoundException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -53,7 +54,7 @@ def get_resource(
     """
     resource = resource_service.get_resource(db, resource_id)
     if not resource:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="资源不存在")
+        raise NotFoundException("资源不存在")
     return resource
 
 
@@ -85,7 +86,7 @@ def update_resource(
     """
     resource = resource_service.update_resource(db, resource_id, update_data)
     if not resource:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="资源不存在")
+        raise NotFoundException("资源不存在")
     return resource
 
 
@@ -102,7 +103,7 @@ def delete_resource(
     """
     success = resource_service.delete_resource(db, resource_id)
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="资源不存在")
+        raise NotFoundException("资源不存在")
     return None
 
 
@@ -268,7 +269,7 @@ def quick_navigate_to_resource(
     # 获取目标资源
     resource = resource_service.get_resource(db, resource_id)
     if not resource:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="资源不存在")
+        raise NotFoundException("资源不存在")
     
     # 创建导航请求
     request = NavigationRequest(
@@ -307,7 +308,7 @@ def verify_resource(
     """
     resource = resource_service.get_resource(db, resource_id)
     if not resource:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="资源不存在")
+        raise NotFoundException("资源不存在")
     
     update_data = ResourceUpdate(verified=True)
     resource = resource_service.update_resource(db, resource_id, update_data)

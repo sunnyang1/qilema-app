@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
 import logging
 
-from app.models.notification_model import Notification
+from app.models.notification_model import Notification, NotificationPreference
 from app.models.user import User
 from app.models.emergency_contact import EmergencyContact
 from app.schemas.notification import (
@@ -18,7 +18,14 @@ from app.schemas.notification import (
     SendNotificationRequest, BatchSendNotificationRequest, MarkAsReadRequest,
     NotificationPreferenceCreate, NotificationPreferenceUpdate,
     NotificationTemplateCreate, NotificationTemplateUpdate,
-    NotificationPriority
+    NotificationPriority, NotificationChannelEnum, NotificationStatusEnum, NotificationTypeEnum
+)
+from app.core.notification_simulators import (
+    NotificationServiceConfig,
+    create_push_simulator,
+    create_sms_simulator,
+    create_phone_simulator,
+    create_email_simulator
 )
 
 logger = logging.getLogger(__name__)
@@ -26,18 +33,32 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     """消息通知服务"""
-    
-    def __init__(self):
-        # 推送服务配置(实际应该从配置文件读取)
+
+    def __init__(self, config: Optional[NotificationServiceConfig] = None):
+        """
+        初始化通知服务
+
+        Args:
+            config: 通知服务配置对象，如果为None则使用默认配置
+        """
+        # 初始化配置
+        self.config = config or NotificationServiceConfig()
+
+        # 初始化通知模拟器
+        self.push_simulator = create_push_simulator(self.config)
+        self.sms_simulator = create_sms_simulator(self.config)
+        self.phone_simulator = create_phone_simulator(self.config)
+        self.email_simulator = create_email_simulator(self.config)
+
+        # 保留旧配置字段以保持向后兼容
         self.push_service_config = {
-            "enabled": False,
+            "enabled": self.push_simulator.enabled,
             "app_key": "",
             "master_secret": ""
         }
-        
-        # 短信服务配置(实际应该从配置文件读取)
+
         self.sms_service_config = {
-            "enabled": False,
+            "enabled": self.sms_simulator.enabled,
             "access_key": "",
             "access_secret": "",
             "sign_name": "",
@@ -55,38 +76,78 @@ class NotificationService:
     ) -> Optional[Notification]:
         """
         发送通知
-        
+
         根据通知偏好设置,选择合适的通知渠道发送通知
         """
-        # 检查用户通知偏好设置
-        preference = db.query(NotificationPreference).filter(
-            NotificationPreference.user_id == request.user_id
-        ).first()
-        
-        if not preference:
-            # 创建默认偏好设置
-            preference = self._create_default_preference(db, request.user_id)
-        
-        # 检查通知类型是否启用
-        if not self._is_notification_type_enabled(preference, request.notification_type):
-            logger.info(f"用户 {request.user_id} 的 {request.notification_type} 通知已禁用")
+        preference = self._get_or_create_preference(db, request.user_id)
+
+        if not self._is_notification_enabled(preference, request):
             return None
-        
-        # 检查免打扰设置
-        if self._is_mute_enabled(preference):
-            logger.info(f"用户 {request.user_id} 当前处于免打扰时段")
-            # 根据优先级决定是否发送
-            if request.priority != NotificationPriority.URGENT:
-                return None
-        
-        # 选择通知渠道
-        channel = request.channel or self._select_channel(preference, request.notification_type, request.priority)
-        
+
+        channel = self._select_notification_channel(preference, request)
         if not channel:
             logger.error(f"无法为用户 {request.user_id} 选择通知渠道")
             return None
-        
-        # 创建通知记录
+
+        notification = self._create_and_send_notification(db, request, channel, recipient_type, recipient_id)
+        return notification
+
+    def _get_or_create_preference(self, db: Session, user_id: str) -> NotificationPreference:
+        """获取或创建用户通知偏好设置"""
+        preference = db.query(NotificationPreference).filter(
+            NotificationPreference.user_id == user_id
+        ).first()
+
+        if not preference:
+            preference = self._create_default_preference(db, user_id)
+
+        return preference
+
+    def _is_notification_enabled(
+        self,
+        preference: NotificationPreference,
+        request: SendNotificationRequest
+    ) -> bool:
+        """检查通知是否应该发送"""
+        if not self._is_notification_type_enabled(preference, request.notification_type):
+            logger.info(f"用户 {request.user_id} 的 {request.notification_type} 通知已禁用")
+            return False
+
+        if not self._should_send_during_mute(preference, request):
+            logger.info(f"用户 {request.user_id} 当前处于免打扰时段")
+            return False
+
+        return True
+
+    def _should_send_during_mute(
+        self,
+        preference: NotificationPreference,
+        request: SendNotificationRequest
+    ) -> bool:
+        """判断免打扰时段是否应该发送通知"""
+        if not self._is_mute_enabled(preference):
+            return True
+
+        # 紧急通知不受免打扰限制
+        return request.priority == NotificationPriority.URGENT
+
+    def _select_notification_channel(
+        self,
+        preference: NotificationPreference,
+        request: SendNotificationRequest
+    ) -> Optional[str]:
+        """选择通知渠道"""
+        return request.channel or self._select_channel(preference, request.notification_type, request.priority)
+
+    def _create_and_send_notification(
+        self,
+        db: Session,
+        request: SendNotificationRequest,
+        channel: str,
+        recipient_type: Optional[str],
+        recipient_id: Optional[str]
+    ) -> Notification:
+        """创建并发送通知"""
         notification = Notification(
             user_id=request.user_id,
             notification_type=request.notification_type,
@@ -99,36 +160,140 @@ class NotificationService:
             recipient_id=recipient_id,
             related_type=request.related_type,
             related_id=request.related_id,
-            status=NotificationStatus.PENDING
+            status=NotificationStatusEnum.PENDING
         )
         db.add(notification)
         db.commit()
         db.refresh(notification)
-        
-        # 发送通知
-        try:
-            if channel == NotificationChannel.PUSH:
-                self._send_push_notification(notification)
-            elif channel == NotificationChannel.SMS:
-                self._send_sms_notification(notification)
-            elif channel == NotificationChannel.PHONE:
-                self._send_phone_notification(notification)
-            elif channel == NotificationChannel.EMAIL:
-                self._send_email_notification(notification)
-            
-            # 更新通知状态
-            notification.status = NotificationStatus.SENT
-            notification.sent_at = datetime.now()
-            db.commit()
-            
-        except Exception as e:
-            logger.error(f"发送通知失败: {str(e)}")
-            notification.status = NotificationStatus.FAILED
-            notification.error_message = str(e)
-            notification.retry_count += 1
-            db.commit()
-        
+
+        self._send_notification_by_channel(notification, channel)
+
         return notification
+
+    def _send_notification_by_channel(self, notification: Notification, channel: str):
+        """根据渠道发送通知（支持降级策略）"""
+        # 如果启用了降级策略，使用降级逻辑发送
+        if self.config.is_degradation_enabled():
+            self._send_notification_with_degradation(notification, channel)
+        else:
+            # 不启用降级策略，直接发送
+            self._send_notification_directly(notification, channel)
+
+    def _send_notification_with_degradation(self, notification: Notification, initial_channel: str):
+        """
+        使用降级策略发送通知
+
+        Args:
+            notification: 通知对象
+            initial_channel: 初始通知渠道
+        """
+        # 获取渠道优先级
+        channel_priority = self.config.get_channel_priority()
+        # 将channel转换为字符串（枚举值）
+        initial_channel_str = str(initial_channel)
+
+        # 首先尝试初始渠道
+        try:
+            result = self._try_send_by_channel(notification, initial_channel_str)
+            if result["success"]:
+                # 发送成功
+                self._mark_notification_sent(notification)
+                logger.info(f"通知发送成功（使用渠道: {initial_channel_str}）: {notification.title}")
+                return
+            # 初始渠道失败，记录日志
+            logger.warning(f"初始渠道发送失败（渠道: {initial_channel_str}）: {result['error']}")
+        except Exception as e:
+            logger.error(f"初始渠道发送异常（渠道: {initial_channel_str}）: {str(e)}")
+
+        # 初始渠道失败，按照优先级尝试其他渠道
+        for channel in channel_priority:
+            # 跳过已尝试的初始渠道
+            if channel == initial_channel_str:
+                continue
+
+            # 记录降级日志
+            logger.info(f"通知降级：尝试渠道 {channel}")
+
+            try:
+                # 尝试通过当前渠道发送
+                result = self._try_send_by_channel(notification, channel)
+
+                if result["success"]:
+                    # 发送成功，更新通知渠道为实际使用的渠道
+                    notification.channel = NotificationChannelEnum(channel)
+                    self._mark_notification_sent(notification)
+                    logger.info(f"通知发送成功（使用渠道: {channel}）: {notification.title}")
+                    return
+                else:
+                    # 发送失败，继续尝试下一个渠道
+                    logger.warning(f"通知发送失败（渠道: {channel}）: {result['error']}")
+                    continue
+
+            except Exception as e:
+                # 发送异常，继续尝试下一个渠道
+                logger.error(f"通知发送异常（渠道: {channel}）: {str(e)}")
+                continue
+
+        # 所有渠道都失败了
+        self._mark_notification_failed(notification, "所有通知渠道都发送失败")
+
+    def _send_notification_directly(self, notification: Notification, channel: str):
+        """
+        直接发送通知（不使用降级策略）
+
+        Args:
+            notification: 通知对象
+            channel: 通知渠道
+        """
+        try:
+            self._try_send_by_channel(notification, channel)
+            self._mark_notification_sent(notification)
+        except Exception as e:
+            self._mark_notification_failed(notification, str(e))
+
+    def _try_send_by_channel(self, notification: Notification, channel: str) -> Dict[str, Any]:
+        """
+        尝试通过指定渠道发送通知
+
+        Args:
+            notification: 通知对象
+            channel: 通知渠道
+
+        Returns:
+            dict: 包含success和error字段的结果字典
+        """
+        try:
+            if channel == NotificationChannelEnum.PUSH.value:
+                self._send_push_notification(notification)
+            elif channel == NotificationChannelEnum.SMS.value:
+                self._send_sms_notification(notification)
+            elif channel == NotificationChannelEnum.PHONE.value:
+                self._send_phone_notification(notification)
+            elif channel == NotificationChannelEnum.EMAIL.value:
+                self._send_email_notification(notification)
+            else:
+                raise ValueError(f"不支持的通知渠道: {channel}")
+
+            return {"success": True, "error": None}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _mark_notification_sent(self, notification: Notification):
+        """标记通知为已发送"""
+        notification.status = NotificationStatusEnum.SENT
+        notification.sent_at = datetime.utcnow()
+        db = notification._sa_instance_state.session
+        db.commit()
+
+    def _mark_notification_failed(self, notification: Notification, error_message: str):
+        """标记通知发送失败"""
+        logger.error(f"发送通知失败: {error_message}")
+        notification.status = NotificationStatusEnum.FAILED
+        notification.error_message = error_message
+        notification.retry_count += 1
+        db = notification._sa_instance_state.session
+        db.commit()
     
     def batch_send_notification(
         self,
@@ -240,8 +405,8 @@ class NotificationService:
         count = 0
         for notification in notifications:
             if notification.read_at is None:
-                notification.read_at = datetime.now()
-                notification.status = NotificationStatus.READ
+                notification.read_at = datetime.utcnow()
+                notification.status = NotificationStatusEnum.READ
                 count += 1
         
         db.commit()
@@ -324,19 +489,19 @@ class NotificationService:
         ).all()
         
         # 统计总数
-        total_sent = len([n for n in notifications if n.status == NotificationStatus.SENT])
-        total_delivered = len([n for n in notifications if n.status == NotificationStatus.DELIVERED])
+        total_sent = len([n for n in notifications if n.status == NotificationStatusEnum.SENT])
+        total_delivered = len([n for n in notifications if n.status == NotificationStatusEnum.DELIVERED])
         total_read = len([n for n in notifications if n.read_at is not None])
-        total_failed = len([n for n in notifications if n.status == NotificationStatus.FAILED])
+        total_failed = len([n for n in notifications if n.status == NotificationStatusEnum.FAILED])
         
         # 按类型统计
-        checkin_count = len([n for n in notifications if n.notification_type == NotificationType.CHECKIN])
-        alert_count = len([n for n in notifications if n.notification_type == NotificationType.ALERT])
-        sos_count = len([n for n in notifications if n.notification_type == NotificationType.SOS])
-        system_count = len([n for n in notifications if n.notification_type == NotificationType.SYSTEM])
-        health_count = len([n for n in notifications if n.notification_type == NotificationType.HEALTH])
-        device_count = len([n for n in notifications if n.notification_type == NotificationType.DEVICE])
-        reminder_count = len([n for n in notifications if n.notification_type == NotificationType.REMINDER])
+        checkin_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.CHECKIN])
+        alert_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.ALERT])
+        sos_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.SOS])
+        system_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.SYSTEM])
+        health_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.HEALTH])
+        device_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.DEVICE])
+        reminder_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.REMINDER])
         
         # 未读数量
         unread_count = len([n for n in notifications if n.read_at is None])
@@ -368,16 +533,16 @@ class NotificationService:
         db.refresh(preference)
         return preference
     
-    def _is_notification_type_enabled(self, preference: NotificationPreference, notification_type: NotificationType) -> bool:
+    def _is_notification_type_enabled(self, preference: NotificationPreference, notification_type: NotificationTypeEnum) -> bool:
         """检查通知类型是否启用"""
         type_mapping = {
-            NotificationType.CHECKIN: preference.checkin_enabled,
-            NotificationType.ALERT: preference.alert_enabled,
-            NotificationType.SOS: preference.sos_enabled,
-            NotificationType.SYSTEM: preference.system_enabled,
-            NotificationType.HEALTH: preference.health_enabled,
-            NotificationType.DEVICE: preference.device_enabled,
-            NotificationType.REMINDER: preference.reminder_enabled
+            NotificationTypeEnum.CHECKIN: preference.checkin_enabled,
+            NotificationTypeEnum.ALERT: preference.alert_enabled,
+            NotificationTypeEnum.SOS: preference.sos_enabled,
+            NotificationTypeEnum.SYSTEM: preference.system_enabled,
+            NotificationTypeEnum.HEALTH: preference.health_enabled,
+            NotificationTypeEnum.DEVICE: preference.device_enabled,
+            NotificationTypeEnum.REMINDER: preference.reminder_enabled
         }
         return type_mapping.get(notification_type, True)
     
@@ -442,47 +607,160 @@ class NotificationService:
     def _send_push_notification(self, notification: Notification):
         """
         发送APP推送通知
-        
-        实际应该调用推送服务SDK(极光推送/个推/FCM)
+
+        使用推送通知模拟器发送
         """
-        if not self.push_service_config["enabled"]:
+        if not self.push_simulator.enabled:
             logger.info(f"推送服务未启用,模拟发送推送通知: {notification.title}")
             return
-        
-        # 实际推送逻辑
-        # 这里应该调用极光推送/个推/FCM等推送服务的SDK
-        logger.info(f"发送推送通知: {notification.title}")
+
+        # 获取用户的推送token
+        user = self._get_user_by_notification(notification)
+        if not user:
+            logger.warning(f"用户 {notification.user_id} 不存在，无法发送推送")
+            return
+
+        # 使用模拟器发送推送
+        result = self.push_simulator.send(
+            user_id=notification.user_id,
+            title=notification.title,
+            content=notification.content,
+            data=notification.data
+        )
+
+        # 记录结果
+        if result["status"] == "success":
+            logger.info(f"推送通知发送成功: {notification.title}")
+        else:
+            logger.error(f"推送通知发送失败: {result.get('message')}")
+
     
     def _send_sms_notification(self, notification: Notification):
         """
         发送短信通知
-        
-        实际应该调用短信服务SDK(阿里云短信/腾讯云短信)
+
+        使用短信通知模拟器发送
         """
-        if not self.sms_service_config["enabled"]:
+        if not self.sms_simulator.enabled:
             logger.info(f"短信服务未启用,模拟发送短信通知: {notification.title}")
             return
-        
-        # 实际短信发送逻辑
-        # 这里应该调用阿里云短信/腾讯云短信等短信服务的SDK
-        logger.info(f"发送短信通知: {notification.title}")
+
+        # 获取用户的手机号
+        user = self._get_user_by_notification(notification)
+        if not user or not user.phone:
+            logger.warning(f"用户 {notification.user_id} 没有手机号，无法发送短信")
+            return
+
+        # 使用模拟器发送短信
+        result = self.sms_simulator.send(
+            phone_number=user.phone,
+            content=notification.content
+        )
+
+        # 记录结果
+        if result["status"] == "success":
+            logger.info(f"短信通知发送成功: {notification.title}")
+        else:
+            logger.error(f"短信通知发送失败: {result.get('message')}")
+
     
     def _send_phone_notification(self, notification: Notification):
         """
         发送电话通知
-        
-        实际应该调用电话拨打API
+
+        使用电话通知模拟器发送
         """
-        logger.info(f"发送电话通知: {notification.title}")
-        # 实际电话拨打逻辑
-        # 这里应该调用电话拨打API
+        # 获取接收者手机号
+        phone_number = None
+        if notification.recipient_type == "emergency_contact":
+            # 紧急联系人
+            emergency_contact = self._get_emergency_contact(notification)
+            if emergency_contact:
+                phone_number = emergency_contact.phone_number
+        else:
+            # 用户本人
+            user = self._get_user_by_notification(notification)
+            if user:
+                phone_number = user.phone
+
+        if not phone_number:
+            logger.warning(f"无法获取通知接收者手机号，无法发送电话通知: {notification.title}")
+            return
+
+        # 使用模拟器发送电话
+        result = self.phone_simulator.call(
+            phone_number=phone_number,
+            content=notification.content
+        )
+
+        # 记录结果
+        if result["status"] == "success":
+            logger.info(f"电话通知发送成功: {notification.title}")
+        else:
+            logger.error(f"电话通知发送失败: {result.get('message')}")
+
     
     def _send_email_notification(self, notification: Notification):
         """
         发送邮件通知
-        
-        实际应该调用邮件发送API
+
+        使用邮件通知模拟器发送
         """
-        logger.info(f"发送邮件通知: {notification.title}")
-        # 实际邮件发送逻辑
-        # 这里应该调用邮件发送API
+        # 获取用户的邮箱
+        user = self._get_user_by_notification(notification)
+        if not user or not user.email:
+            logger.warning(f"用户 {notification.user_id} 没有邮箱，无法发送邮件")
+            return
+
+        # 使用模拟器发送邮件
+        result = self.email_simulator.send(
+            to_email=user.email,
+            subject=notification.title,
+            content=notification.content
+        )
+
+        # 记录结果
+        if result["status"] == "success":
+            logger.info(f"邮件通知发送成功: {notification.title}")
+        else:
+            logger.error(f"邮件通知发送失败: {result.get('message')}")
+
+    def _get_user_by_notification(self, notification: Notification) -> Optional[User]:
+        """
+        根据通知获取用户信息
+
+        Args:
+            notification: 通知对象
+
+        Returns:
+            User: 用户对象，如果不存在则返回None
+        """
+        from app.core.database import get_db
+        db = next(get_db())
+        try:
+            return db.query(User).filter(User.user_id == notification.user_id).first()
+        finally:
+            db.close()
+
+    def _get_emergency_contact(self, notification: Notification) -> Optional[EmergencyContact]:
+        """
+        根据通知获取紧急联系人信息
+
+        Args:
+            notification: 通知对象
+
+        Returns:
+            EmergencyContact: 紧急联系人对象，如果不存在则返回None
+        """
+        if not notification.recipient_id:
+            return None
+
+        from app.core.database import get_db
+        db = next(get_db())
+        try:
+            return db.query(EmergencyContact).filter(
+                EmergencyContact.id == notification.recipient_id
+            ).first()
+        finally:
+            db.close()
+
