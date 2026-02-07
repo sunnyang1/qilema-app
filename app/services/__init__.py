@@ -14,6 +14,7 @@ from .emergency_resource_service import EmergencyResourceService
 from .sos_service import SOSService
 from .location_service import LocationService
 from .emergency_service import EmergencyService
+from .emergency_contact_service import EmergencyContactService
 
 __all__ = [
     'BaseService',
@@ -29,4 +30,5 @@ __all__ = [
     'SOSService',
     'LocationService',
     'EmergencyService',
+    'EmergencyContactService',
 ]

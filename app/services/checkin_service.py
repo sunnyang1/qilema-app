@@ -17,13 +17,19 @@ from app.schemas.checkin import (
     CheckInStatusResponse
 )
 from app.core.cache import get_cached, cache_result, invalidate_cache
+from app.core.cache_config import CacheConfig
+from app.services.base_service import BaseService
 
 
-class CheckInService:
-    """签到服务类"""
+class CheckInService(BaseService[CheckIn]):
+    """签到服务类 - 继承BaseService"""
+    
+    model_class = CheckIn
+    cache_prefix = CacheConfig.PREFIX_CHECKIN
+    cache_ttl = CacheConfig.TTL_CHECKIN_LIST
 
-    @staticmethod
-    def create_checkin(db: Session, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
+    
+    def create_checkin(self, db: Session, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
         """
         创建签到记录
         
@@ -68,14 +74,13 @@ class CheckInService:
         db.refresh(db_checkin)
         
         # 失效相关缓存
-        invalidate_cache(f"checkin:list:{user_id}:*")
-        invalidate_cache(f"checkin:status:{user_id}:*")
-        invalidate_cache(f"checkin:stats:{user_id}:*")
+        invalidate_cache(CacheConfig.make_pattern(CacheConfig.PREFIX_CHECKIN, user_id, "*"))
         
         return db_checkin
 
-    @staticmethod
+    
     def get_user_checkins(
+        cls,
         db: Session, 
         user_id: str, 
         days: int = 30,
@@ -95,11 +100,10 @@ class CheckInService:
         Returns:
             签到记录列表
         """
-        # 尝试从缓存获取（缓存10分钟）
-        cache_key = f"checkin:list:{user_id}:{days}:{start_date or ''}:{end_date or ''}"
+        # 尝试从缓存获取
+        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_CHECKIN_LIST, user_id, days, start_date or '', end_date or '')
         cached_checkins = get_cached(cache_key)
         if cached_checkins:
-            # 缓存命中
             return cached_checkins
 
         if start_date is None:
@@ -115,13 +119,13 @@ class CheckInService:
             )
         ).order_by(desc(CheckIn.checkin_date)).all()
 
-        # 缓存结果（1小时）
-        cache_result(cache_key, checkins, ttl=3600)
+        # 缓存结果
+        cache_result(cache_key, checkins, ttl=CacheConfig.TTL_CHECKIN_LIST)
 
         return checkins
 
-    @staticmethod
-    def get_checkin_stats(db: Session, user_id: str, days: int = 30) -> CheckInStatsResponse:
+    
+    def get_checkin_stats(self, db: Session, user_id: str, days: int = 30) -> CheckInStatsResponse:
         """
         获取用户签到统计信息
 
@@ -133,8 +137,8 @@ class CheckInService:
         Returns:
             签到统计信息
         """
-        # 尝试从缓存获取（缓存30分钟）
-        cache_key = f"checkin:stats:{user_id}:{days}"
+        # 尝试从缓存获取
+        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_CHECKIN_STATS, user_id, days)
         cached_stats = get_cached(cache_key)
         if cached_stats:
             return cached_stats
@@ -163,13 +167,13 @@ class CheckInService:
             checkin_rate=round(checkin_rate, 2)
         )
 
-        # 缓存结果（30分钟）
-        cache_result(cache_key, stats, ttl=1800)
+        # 缓存结果
+        cache_result(cache_key, stats, ttl=CacheConfig.TTL_CHECKIN_STATS)
 
         return stats
 
-    @staticmethod
-    def get_checkin_status(db: Session, user_id: str, target_date: Optional[date] = None) -> CheckInStatusResponse:
+    
+    def get_checkin_status(self, db: Session, user_id: str, target_date: Optional[date] = None) -> CheckInStatusResponse:
         """
         查询指定日期的签到状态
 
@@ -186,8 +190,8 @@ class CheckInService:
 
         date_str = target_date.strftime('%Y-%m-%d')
 
-        # 尝试从缓存获取（缓存10分钟）
-        cache_key = f"checkin:status:{user_id}:{date_str}"
+        # 尝试从缓存获取
+        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_CHECKIN, "status", user_id, date_str)
         cached_status = get_cached(cache_key)
         if cached_status:
             return cached_status
@@ -204,13 +208,13 @@ class CheckInService:
             checkin_time=checkin.checkin_time if checkin else None
         )
 
-        # 缓存结果（10分钟）
-        cache_result(cache_key, status, ttl=600)
+        # 缓存结果
+        cache_result(cache_key, status, ttl=CacheConfig.TTL_SHORT)
 
         return status
 
-    @staticmethod
-    def get_emergency_contacts_for_notification(db: Session, user_id: str) -> List[EmergencyContact]:
+    
+    def get_emergency_contacts_for_notification(self, db: Session, user_id: str) -> List[EmergencyContact]:
         """
         获取用户的紧急联系人(用于签到通知)
         
@@ -221,20 +225,10 @@ class CheckInService:
         Returns:
             紧急联系人列表
         """
-        # 尝试从缓存获取（缓存10分钟）
-        cache_key = f"checkin:contacts:{user_id}"
-        cached_contacts = get_cached(cache_key)
-        if cached_contacts:
-            return cached_contacts
-
-        contacts = db.query(EmergencyContact).filter(
+        # 直接从EmergencyContactService获取，不缓存
+        return db.query(EmergencyContact).filter(
             EmergencyContact.user_id == user_id
         ).order_by(EmergencyContact.priority).all()
-
-        # 缓存结果（10分钟）
-        cache_result(cache_key, contacts, ttl=600)
-
-        return contacts
 
     @staticmethod
     def _calculate_streak(db: Session, user_id: str, from_date: date) -> int:
