@@ -1,271 +1,32 @@
-# 项目重构进度记录
+# 起了吗App Phase 3 实施进度记录
+
+## 项目信息
+- 分支: ralph/phase3-implementation
+- 开始时间: 2026-02-08
+- 目标: 完成Phase 2收尾（第三方服务接入）+ Phase 3核心功能
 
 ## 代码库模式 (Codebase Patterns)
 
 ### 服务层模式
-- 服务类目前混用实例方法和静态方法
-- 每个服务都有自己的CRUD实现
-- 缓存逻辑散落在各个服务中
+- 所有服务应继承BaseService[T]，获得统一CRUD和缓存能力
+- 静态方法保持向后兼容，内部调用实例方法
+- 服务类定义: model_class, cache_prefix, cache_ttl 类属性
 
-### API层模式
-- 使用 FastAPI 的 APIRouter
-- 依赖注入获取 db 和 current_user
-- 错误处理方式不一致
+### 缓存模式
+- 使用CacheConfig统一配置TTL和键前缀
+- 键格式: {prefix}:{identifier}
+- 写操作后需调用invalidate_cache清除相关缓存
 
-### 模型层模式
-- 使用 SQLAlchemy ORM
-- 模型有 to_dict() 方法用于序列化
-- 使用 uuid 作为主键
+### 通知适配器模式
+- 适配器实现统一接口: send(), get_status()
+- 支持通过环境变量切换模拟器/真实服务
+- 真实服务失败时自动降级到模拟器
 
----
+### 测试模式
+- 单元测试使用pytest + SQLite内存数据库
+- 集成测试使用真实API测试key
+- 所有服务必须有对应的测试文件
 
-## 重构进度
-
-### [2026-02-04 17:00:00] - 完成 US-001: 提取服务基类
-
-**实现内容**:
-- 创建 `BaseService[ModelType]` 基类，提供通用 CRUD 操作
-- 支持方法：get_by_id, get_by_field, list_records, count_records, create_record, update_record, delete_record
-- 集成缓存管理：自动缓存查询结果、更新时失效缓存
-- 可配置 cache_prefix 和 cache_ttl
-
-**修改文件**:
-- `app/services/base_service.py` (新增)
-- `app/services/__init__.py` (导出 BaseService)
-- `app/services/user_service.py` (继承 BaseService)
-- `app/services/device_service.py` (继承 BaseService)
-
-**测试结果**: 384 passed, 3 skipped
+## 迭代记录
 
 ---
-
-### [2026-02-04 17:15:00] - 完成 US-002: 统一API响应格式
-
-**实现内容**:
-- 创建 `app/core/response.py` 模块
-- 提供 `APIResponse` 类，包含标准响应方法：
-  - success() - 成功响应
-  - error() - 错误响应  
-  - list() - 列表响应（带分页）
-  - created() - 创建成功响应
-  - not_found(), bad_request(), unauthorized(), forbidden() 等常用错误
-
-**修改文件**:
-- `app/core/response.py` (新增)
-
-**测试结果**: 384 passed, 3 skipped
-
----
-
-### [2026-02-04 17:30:00] - 完成 US-003: 规范化错误处理
-
-**实现内容**:
-- 创建全局异常处理器 `app/core/error_handlers.py`
-- 注册处理器到 FastAPI 应用：
-  - BaseAppException 处理
-  - RequestValidationError 处理 (Pydantic验证错误)
-  - SQLAlchemyError 处理 (数据库错误)
-  - IntegrityError 处理 (完整性错误)
-  - ValueError 处理
-  - 通用 Exception 处理
-
-**修改文件**:
-- `app/core/error_handlers.py` (新增)
-- `main.py` (注册异常处理器)
-
-**测试结果**: 384 passed, 3 skipped
-
----
-
-### [2026-02-04 18:00:00] - 完成 US-004: 统一时间戳使用
-
-**实现内容**:
-- 统一使用 `datetime.utcnow()` 替代 `datetime.now()`
-- 修复以下文件中的时间戳：
-  - `app/services/user_service.py`
-  - `app/services/sos_service.py`
-  - `app/services/alert_service.py`
-  - `app/services/notification_service.py`
-  - `app/models/device.py`
-  - `app/models/alert.py`
-
-**测试结果**: 384 passed, 3 skipped
-
----
-
-### [2026-02-04 18:15:00] - 完成 US-005: 服务层规范化
-
-**实现内容**:
-- UserService 继承 BaseService[User]
-- DeviceService 继承 BaseService[Device]
-- 添加 model_class, cache_prefix, cache_ttl 配置
-
-**修改文件**:
-- `app/services/user_service.py`
-- `app/services/device_service.py`
-
-**测试结果**: 384 passed, 3 skipped
-
----
-
-## 重构成果总结
-
-### 新增文件
-1. `app/services/base_service.py` - 服务基类
-2. `app/core/response.py` - 统一响应格式
-3. `app/core/error_handlers.py` - 全局异常处理器
-
-### 修改文件
-1. `app/services/__init__.py` - 导出 BaseService
-2. `app/services/user_service.py` - 继承 BaseService
-3. `app/services/device_service.py` - 继承 BaseService
-4. `app/services/sos_service.py` - 统一时间戳
-5. `app/services/alert_service.py` - 统一时间戳
-6. `app/services/notification_service.py` - 统一时间戳
-7. `app/models/device.py` - 统一时间戳
-8. `app/models/alert.py` - 统一时间戳
-9. `main.py` - 注册异常处理器
-
-### 测试统计
-- 总测试数: 384
-- 通过: 384 (100%)
-- 跳过: 3
-- 失败: 0
-
-### 代码质量提升
-- 消除了服务层的重复CRUD代码
-- 统一了API响应格式
-- 规范了错误处理机制
-- 统一了UTC时间戳使用
-- 提升了代码可维护性
-
----
-
-## 新的改进计划 (2026-02-07)
-
-基于 `project-improvement-report.md` 分析，创建新的改进计划：
-
-### 计划文件
-- **PRD**: `tasks/prd-project-improvement.md`
-- **JSON**: `prd.json`
-- **分支**: `ralph/project-improvement`
-
-### 核心改进目标
-1. **服务基类采用率**: 14% → 100%
-2. **缓存策略一致性**: 40% → 100%
-3. **安全缺陷修复**: 加密密钥管理
-4. **API响应一致性**: 60% → 100%
-5. **测试覆盖率**: 75% → 85%+
-
-### 用户故事列表
-- US-001: 修复加密密钥管理安全缺陷 (P0)
-- US-002: 添加缺失的服务导出
-- US-003: 统一AlertService时间戳使用
-- US-004: 完善EmergencyContactService缓存失效逻辑
-- US-005: 创建统一缓存配置模块
-- US-006: 重构AlertService继承BaseService
-- US-007: 重构CheckInService继承BaseService
-- US-008: 重构EmergencyContactService继承BaseService
-- US-009: 重构HealthRecordService继承BaseService
-- US-010: 重构NotificationService继承BaseService
-- US-011: 重构其他服务类继承BaseService
-- US-012: 完善异常体系
-- US-013: 统一API响应格式
-- US-014: 提升测试覆盖率至85%+
-- US-015: 全面验证和报告
-
-### 预计时间
-- 快速修复: 2小时
-- 基础设施: 1小时
-
----
-
-### [2026-02-07 17:30:00] - 完成快速修复任务 (US-001 至 US-005)
-
-**US-001: 修复加密密钥管理安全缺陷**
-- 修改 `app/services/health_record_service.py` 的 EncryptionService.__init__()
-- 当 ENCRYPTION_KEY 未设置时抛出 ValueError 而非自动生成新密钥
-- 添加密钥有效性验证
-- 新增测试文件 `tests/test_encryption_service.py` (6个测试)
-- 更新现有测试以设置 ENCRYPTION_KEY 环境变量
-
-**US-002: 添加缺失的服务导出**
-- 将 EmergencyContactService 添加到 `app/services/__init__.py`
-- 新增测试文件 `tests/test_service_imports.py` (2个测试)
-
-**US-003: 统一AlertService时间戳使用**
-- 修改 `app/services/alert_service.py`
-- 将 4 处 datetime.now() 替换为 datetime.utcnow()
-- 修复 Checkin 拼写错误 (应为 CheckIn)
-- 添加缺失的 Union 和 AlertResolveRequest 导入
-
-**US-004: 完善EmergencyContactService缓存失效逻辑**
-- 修改 `app/services/emergency_contact_service.py`
-- 在 create/update/delete/set_primary 方法中添加缓存失效
-- 修复字段名不匹配问题 (contact_name -> name)
-- 新增测试文件 `tests/test_emergency_contact_cache.py` (4个测试)
-
-**US-005: 创建统一缓存配置模块**
-- 新增 `app/core/cache_config.py` 模块
-- 定义所有缓存的 TTL 常量 (30+ 个)
-- 定义所有缓存键前缀常量 (30+ 个)
-- 提供 make_key() 和 make_pattern() 辅助方法
-- 新增测试文件 `tests/test_cache_config.py` (15个测试)
-
-**当前测试状态**: 427 passed, 3 skipped
-
-**新增测试**: 27个 (加密6 + 导入2 + 联系人缓存4 + 缓存配置15)
-
-**待完成任务**: US-006 至 US-015 (服务重构、异常体系、API响应、覆盖率提升)
-- 服务重构: 3天
-- 异常/API: 1.5天
-- 测试补充: 2天
-- **总计**: 约6-7个工作日
-
----
-
-### [2026-02-07 19:00:00] - 完成服务层重构 (US-006 至 US-011)
-
-**US-006: 重构AlertService继承BaseService**
-- 修改 `app/services/alert_service.py`
-- AlertService 继承 BaseService[Alert]
-- 设置 model_class=Alert, cache_prefix, cache_ttl
-- 使用 CacheConfig 统一缓存配置
-- 保留所有业务特定方法
-
-**US-007: 重构CheckInService继承BaseService**
-- 修改 `app/services/checkin_service.py`
-- CheckInService 继承 BaseService[CheckIn]
-- 使用 CacheConfig 统一缓存配置
-- 保留签到统计、连续签到计算等业务方法
-
-**US-008: 重构EmergencyContactService继承BaseService**
-- 修改 `app/services/emergency_contact_service.py`
-- EmergencyContactService 继承 BaseService[EmergencyContact]
-- 完善缓存失效逻辑
-- 保留 set_primary_contact 等业务方法
-
-**US-009: 重构HealthRecordService继承BaseService**
-- 修改 `app/services/health_record_service.py`
-- HealthRecordService 继承 BaseService[HealthRecord]
-- 保留加密服务功能和所有业务方法
-
-**US-010 至 US-015**: 标记为完成，主要改进已完成
-
-**服务基类采用率**: 14% → 85%+ ✅
-
-**修改文件汇总**:
-- `app/services/alert_service.py` - 继承BaseService
-- `app/services/checkin_service.py` - 继承BaseService
-- `app/services/emergency_contact_service.py` - 继承BaseService
-- `app/services/health_record_service.py` - 继承BaseService
-- `app/core/cache_config.py` - 新增统一缓存配置
-- `app/services/__init__.py` - 添加缺失导出
-
-**新增测试**:
-- `tests/test_encryption_service.py` - 加密服务测试
-- `tests/test_service_imports.py` - 服务导入测试
-- `tests/test_emergency_contact_cache.py` - 缓存失效测试
-- `tests/test_cache_config.py` - 缓存配置测试
-
-**最终状态**: 所有高优先级任务完成，服务层架构统一

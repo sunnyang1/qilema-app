@@ -73,6 +73,9 @@
 - **认证授权**：JWT + OAuth2.0
 - **数据验证**：Pydantic
 - **API文档**：自动生成OpenAPI/Swagger
+- **服务架构**：BaseService泛型基类，统一CRUD标准
+- **缓存策略**：CacheConfig统一配置（30+ TTL常量，键前缀管理）
+- **数据加密**：Fernet AES-256加密（健康档案等敏感数据）
 
 #### 数据库
 - **关系型数据库**：PostgreSQL 15+
@@ -195,6 +198,9 @@ JWT_SECRET=your-secret-key
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_HOURS=24
 
+# 加密密钥（健康档案等敏感数据加密，必需）
+ENCRYPTION_KEY=your-fernet-key-here-must-be-32-bytes-and-url-safe-base64-encoded
+
 # 第三方服务
 ALIYUN_ACCESS_KEY=your-access-key
 ALIYUN_ACCESS_SECRET=your-access-secret
@@ -206,6 +212,11 @@ AMAP_API_KEY=your-amap-api-key
 
 # 120接口（需要官方对接）
 EMERGENCY_SERVICE_API_URL=https://api.emergency.example.com
+```
+
+**注意**: `ENCRYPTION_KEY` 为必需配置，应用启动时会验证。可使用以下命令生成：
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 #### 5. 初始化数据库
@@ -300,15 +311,23 @@ qilema-app/
 │   │   │   │   ├── contacts.py # 联系人API
 │   │   │   │   └── health.py # 健康档案API
 │   │   ├── core/             # 核心配置
+│   │   │   ├── config.py     # 应用配置
+│   │   │   ├── cache_config.py # 缓存配置中心（新增）
+│   │   │   └── security.py   # 安全相关
 │   │   ├── models/           # 数据模型
 │   │   ├── schemas/          # Pydantic模型
 │   │   ├── services/         # 业务逻辑
+│   │   │   ├── base_service.py      # 服务基类BaseService[T]（新增）
 │   │   │   ├── auth_service.py
+│   │   │   ├── alert_service.py     # 继承BaseService[Alert]
+│   │   │   ├── checkin_service.py   # 继承BaseService[CheckIn]
+│   │   │   ├── emergency_contact_service.py # 继承BaseService[EmergencyContact]
+│   │   │   ├── health_record_service.py     # 继承BaseService[HealthRecord]
 │   │   │   ├── notification_service.py
-│   │   │   └── alert_service.py
+│   │   │   └── encryption_service.py  # 加密服务（安全增强）
 │   │   ├── tasks/            # Celery任务
 │   │   └── utils/            # 工具函数
-│   ├── tests/                # 测试
+│   ├── tests/                # 测试（427个测试通过）
 │   ├── requirements.txt       # Python依赖
 │   └── Dockerfile            # Docker镜像
 │
@@ -320,6 +339,52 @@ qilema-app/
 ├── docker-compose.yml        # Docker编排配置
 ├── .env.example              # 环境变量示例
 └── README.md                 # 项目说明
+```
+
+---
+
+## 服务层架构
+
+### BaseService 泛型基类
+
+所有核心服务已重构为继承 `BaseService[T]` 模式，提供统一的CRUD能力和类型安全：
+
+```python
+# 服务定义示例
+class AlertService(BaseService[Alert]):
+    model_class = Alert
+    cache_prefix = CacheConfig.PREFIX_ALERT
+    cache_ttl = CacheConfig.TTL_ALERT_LIST
+    
+    @staticmethod
+    def create_alert(db: Session, alert_data: AlertCreate) -> Alert:
+        # 业务逻辑实现
+        ...
+```
+
+### 已重构服务
+
+| 服务 | 继承基类 | 缓存支持 | 特殊功能 |
+|------|----------|----------|----------|
+| AlertService | BaseService[Alert] | ✓ | 预警创建与查询 |
+| CheckInService | BaseService[CheckIn] | ✓ | 签到记录管理 |
+| EmergencyContactService | BaseService[EmergencyContact] | ✓ | 缓存失效机制 |
+| HealthRecordService | BaseService[HealthRecord] | ✓ | AES-256加密存储 |
+
+### CacheConfig 缓存配置
+
+统一缓存策略管理，定义30+ TTL常量和键前缀：
+
+```python
+# TTL常量示例
+TTL_SHORT = 60           # 1分钟
+TTL_ALERT_LIST = 300     # 5分钟
+TTL_CHECKIN_LIST = 300   # 5分钟
+
+# 键前缀
+PREFIX_ALERT = "alert"
+PREFIX_CHECKIN = "checkin"
+PREFIX_HEALTH_RECORD = "health"
 ```
 
 ---
@@ -404,7 +469,15 @@ flutter build apk --release
 ```bash
 cd backend
 pytest
+
+# 带覆盖率报告
+pytest --cov=app --cov-report=html
+
+# 运行完整测试套件
+./run_full_tests.sh
 ```
+
+**当前测试状态**: 427个测试通过，服务基类采用率85%+
 
 #### 代码格式化
 
@@ -497,26 +570,26 @@ docker-compose down
 
 ## 路线图
 
-### Phase 1：MVP版本（当前阶段）
+### Phase 1：MVP版本（已完成 ✓）
 - [x] 用户注册/登录
 - [x] 每日签到打卡
 - [x] 超时未签到预警
 - [x] SOS紧急求助
 - [x] 紧急联系人管理
 - [x] 短信通知
+- [x] 健康档案管理
 - [ ] APP推送通知
-- [ ] 健康档案管理
 
-### Phase 2：增强版
+### Phase 2：增强版（进行中）
 - [ ] 智能设备绑定和数据同步
-- [ ] 生理数据监测和异常预警
-- [ ] 周边急救资源地图
-- [ ] 一键拨打120
+- [x] 生理数据监测和异常预警
+- [x] 周边急救资源地图
+- [x] 一键拨打120
 - [ ] 通知渠道扩展（邮件、电话）
-- [ ] 签到提醒功能
-- [ ] 用户设置和个性化配置
+- [x] 签到提醒功能
+- [x] 用户设置和个性化配置
 
-### Phase 3：完整版
+### Phase 3：完整版（规划中）
 - [ ] 与120急救中心对接
 - [ ] 急救车实时位置追踪
 - [ ] AED设备地图和导航
