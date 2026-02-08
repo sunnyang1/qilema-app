@@ -60,6 +60,12 @@ class CacheConfig:
     TTL_EMERGENCY_CENTER = 1800            # 紧急中心：30分钟
     TTL_EMERGENCY_RESOURCE = 1800          # 紧急资源：30分钟
     
+    # 知识库相关
+    TTL_KNOWLEDGE_LIST = 600               # 知识库列表：10分钟
+    TTL_KNOWLEDGE_DETAIL = 1800            # 知识库详情：30分钟
+    TTL_KNOWLEDGE_CATEGORY = 3600          # 知识库分类：1小时
+    TTL_KNOWLEDGE_TAG = 3600               # 知识库标签：1小时
+    
     # 默认TTL
     TTL_DEFAULT = 300                      # 默认：5分钟
     TTL_SHORT = 60                         # 短缓存：1分钟
@@ -118,6 +124,13 @@ class CacheConfig:
     # 紧急中心和资源
     PREFIX_EMERGENCY_CENTER = "emergency:center"
     PREFIX_EMERGENCY_RESOURCE = "emergency:resource"
+    
+    # 知识库
+    PREFIX_KNOWLEDGE = "knowledge"
+    PREFIX_KNOWLEDGE_ARTICLE = "knowledge:article"
+    PREFIX_KNOWLEDGE_CATEGORY = "knowledge:category"
+    PREFIX_KNOWLEDGE_TAG = "knowledge:tag"
+    PREFIX_KNOWLEDGE_LIST = "knowledge:list"
     
     # ==================== 辅助方法 ====================
     

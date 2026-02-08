@@ -29,6 +29,9 @@ httpx==0.25.2
 # 其他
 python-dotenv==1.0.0
 
+# Markdown渲染
+Markdown==3.5.1
+
 # 第三方服务适配器（可选，真实环境使用）
 # 阿里云短信服务 - 取消注释以启用真实短信服务
 # alibabacloud_dysmsapi20170525==2.0.24
