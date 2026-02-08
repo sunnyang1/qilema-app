@@ -1,7 +1,7 @@
 """
 预警服务层
 """
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 import uuid
@@ -9,12 +9,18 @@ import uuid
 from app.models.alert import Alert, AlertSetting
 from app.models.checkin import CheckIn
 from app.models.emergency_contact import EmergencyContact
-from app.schemas.alert import AlertSettingCreate, AlertSettingUpdate, AlertCreate
+from app.schemas.alert import AlertSettingCreate, AlertSettingUpdate, AlertCreate, AlertResolveRequest
 from app.core.cache import get_cached, cache_result, invalidate_cache
+from app.core.cache_config import CacheConfig
+from app.services.base_service import BaseService
 
 
-class AlertService:
-    """预警服务类"""
+class AlertService(BaseService[Alert]):
+    """预警服务类 - 继承BaseService"""
+    
+    model_class = Alert
+    cache_prefix = CacheConfig.PREFIX_ALERT
+    cache_ttl = CacheConfig.TTL_ALERT_LIST
 
     @staticmethod
     def create_or_update_setting(db: Session, user_id: str, setting_data: AlertSettingCreate) -> AlertSetting:
@@ -62,15 +68,15 @@ class AlertService:
         db.refresh(setting)
 
         # 失效缓存
-        invalidate_cache(f"alert:setting:{user_id}")
+        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_ALERT_SETTING, user_id))
 
         return setting
 
     @staticmethod
     def get_setting(db: Session, user_id: str) -> Optional[AlertSetting]:
         """获取预警配置"""
-        # 尝试从缓存获取（缓存30分钟）
-        cache_key = f"alert:setting:{user_id}"
+        # 尝试从缓存获取
+        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_ALERT_SETTING, user_id)
         cached_setting = get_cached(cache_key)
         if cached_setting:
             return cached_setting
@@ -78,8 +84,8 @@ class AlertService:
         setting = db.query(AlertSetting).filter(AlertSetting.user_id == user_id).first()
 
         if setting:
-            # 缓存结果（30分钟）
-            cache_result(cache_key, setting, ttl=1800)
+            # 缓存结果
+            cache_result(cache_key, setting, ttl=CacheConfig.TTL_ALERT_SETTING)
 
         return setting
 
@@ -98,11 +104,10 @@ class AlertService:
         db.refresh(setting)
 
         # 失效缓存
-        invalidate_cache(f"alert:setting:{user_id}")
+        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_ALERT_SETTING, user_id))
 
         return setting
 
-    @staticmethod
     def create_alert(db: Session, alert_data: AlertCreate) -> Alert:
         """创建预警"""
         # 检查是否已存在相同类型的活动预警
@@ -131,12 +136,12 @@ class AlertService:
         db.refresh(alert)
 
         # 失效相关缓存
-        invalidate_cache(f"alert:list:{alert_data.user_id}:*")
-        invalidate_cache(f"alert:stats:{alert_data.user_id}")
+        invalidate_cache(CacheConfig.make_pattern(CacheConfig.PREFIX_ALERT_LIST, alert_data.user_id, "*"))
+        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_ALERT_STATS, alert_data.user_id))
 
         return alert
 
-    @staticmethod
+    
     def resolve_alert(db: Session, alert_id: Union[str, int], user_id: str, resolve_request: AlertResolveRequest) -> Optional[Alert]:
         """解决预警"""
         # 支持 id 和 alert_id 两种查找方式
@@ -149,20 +154,20 @@ class AlertService:
             return None
 
         alert.status = "resolved"
-        alert.resolved_at = datetime.now()
+        alert.resolved_at = datetime.utcnow()
         alert.resolved_reason = resolve_request.resolved_reason if resolve_request.resolved_reason else resolve_request.resolve_note
         alert.resolved_by = "manual_dismiss"
         db.commit()
         db.refresh(alert)
 
         # 失效相关缓存
-        invalidate_cache(f"alert:list:{user_id}:*")
-        invalidate_cache(f"alert:stats:{user_id}")
-        invalidate_cache(f"alert:detail:{alert_id}")
+        invalidate_cache(CacheConfig.make_pattern(CacheConfig.PREFIX_ALERT_LIST, user_id, "*"))
+        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_ALERT_STATS, user_id))
+        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_ALERT_DETAIL, alert_id))
 
         return alert
 
-    @staticmethod
+    
     def auto_resolve_by_checkin(db: Session, user_id: str) -> int:
         """签到后自动解除所有活动预警"""
         setting = AlertService.get_setting(db, user_id)
@@ -187,16 +192,16 @@ class AlertService:
         db.commit()
 
         # 失效相关缓存
-        invalidate_cache(f"alert:list:{user_id}:*")
-        invalidate_cache(f"alert:stats:{user_id}")
+        invalidate_cache(CacheConfig.make_pattern(CacheConfig.PREFIX_ALERT_LIST, user_id, "*"))
+        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_ALERT_STATS, user_id))
 
         return count
 
-    @staticmethod
+    
     def get_alerts(db: Session, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> tuple[List[Alert], int]:
         """获取用户预警列表"""
-        # 尝试从缓存获取（缓存5分钟）
-        cache_key = f"alert:list:{user_id}:{status or 'all'}:{skip}:{limit}"
+        # 尝试从缓存获取
+        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_ALERT_LIST, user_id, status or 'all', skip, limit)
         cached_result = get_cached(cache_key)
         if cached_result:
             return cached_result
@@ -209,16 +214,16 @@ class AlertService:
 
         result = (alerts, total)
 
-        # 缓存结果（5分钟）
-        cache_result(cache_key, result, ttl=300)
+        # 缓存结果
+        cache_result(cache_key, result, ttl=CacheConfig.TTL_ALERT_LIST)
 
         return result
 
-    @staticmethod
+    
     def get_alert_stats(db: Session, user_id: str) -> dict:
         """获取预警统计"""
-        # 尝试从缓存获取（缓存5分钟）
-        cache_key = f"alert:stats:{user_id}"
+        # 尝试从缓存获取
+        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_ALERT_STATS, user_id)
         cached_stats = get_cached(cache_key)
         if cached_stats:
             return cached_stats
@@ -235,8 +240,8 @@ class AlertService:
             'dismissed_alerts': dismissed
         }
 
-        # 缓存结果（5分钟）
-        cache_result(cache_key, stats, ttl=300)
+        # 缓存结果
+        cache_result(cache_key, stats, ttl=CacheConfig.TTL_ALERT_STATS)
 
         return stats
 
@@ -249,7 +254,7 @@ class AlertService:
 
         return AlertService.get_user_emergency_contacts(db, user_id)
 
-    @staticmethod
+    
     def check_all_users_and_create_alerts(db: Session) -> List[Alert]:
         """检查所有用户并创建预警"""
         created_alerts = []
@@ -282,11 +287,11 @@ class AlertService:
 
         return created_alerts
 
-    @staticmethod
+    
     def get_alert(db: Session, alert_id: str) -> Optional[Alert]:
-        """获取预警"""
-        # 尝试从缓存获取（缓存10分钟）
-        cache_key = f"alert:detail:{alert_id}"
+        """获取预警详情"""
+        # 尝试从缓存获取
+        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_ALERT_DETAIL, alert_id)
         cached_alert = get_cached(cache_key)
         if cached_alert:
             return cached_alert
@@ -294,22 +299,22 @@ class AlertService:
         alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
 
         if alert:
-            # 缓存结果（10分钟）
-            cache_result(cache_key, alert, ttl=600)
+            # 缓存结果
+            cache_result(cache_key, alert, ttl=CacheConfig.TTL_ALERT_DETAIL)
 
         return alert
 
-    @staticmethod
+    
     def get_user_alerts(db: Session, user_id: str, skip: int = 0, limit: int = 100) -> List[Alert]:
         """获取用户预警列表"""
         return db.query(Alert).filter(Alert.user_id == user_id).order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
 
-    @staticmethod
+    
     def get_pending_alerts(db: Session) -> List[Alert]:
         """获取待处理的预警"""
         return db.query(Alert).filter(Alert.status == 0).order_by(Alert.trigger_time).all()
 
-    @staticmethod
+    
     def check_missed_checkin(db: Session, user_id: str) -> Optional[Alert]:
         """检查是否未签到"""
         setting = AlertService.get_setting(db, user_id)
@@ -317,7 +322,7 @@ class AlertService:
             return None
         
         # 获取最后签到时间
-        last_checkin = db.query(CheckIn).filter(CheckIn.user_id == user_id).order_by(Checkin.checkin_time.desc()).first()
+        last_checkin = db.query(CheckIn).filter(CheckIn.user_id == user_id).order_by(CheckIn.checkin_time.desc()).first()
         
         if not last_checkin:
             # 从未签到过
@@ -337,17 +342,17 @@ class AlertService:
                 # 创建新预警
                 alert_data = AlertCreate(
                     alert_type=1,
-                    trigger_time=datetime.now(),
+                    trigger_time=datetime.utcnow(),
                     abnormal_data={
                         "last_checkin_time": last_checkin.checkin_time.isoformat(),
                         "threshold_hours": setting.checkin_threshold_hours
                     }
                 )
-                return AlertService.create_alert(db, user_id, alert_data)
+                return AlertService.create_alert(db, alert_data)
         
         return None
 
-    @staticmethod
+    
     def check_abnormal_data(db: Session, user_id: str, health_data: dict) -> Optional[Alert]:
         """检查生理数据异常"""
         setting = AlertService.get_setting(db, user_id)
@@ -356,17 +361,17 @@ class AlertService:
 
         abnormal_info = {}
 
-        self._check_heart_rate_abnormal(health_data, setting, abnormal_info)
-        self._check_blood_pressure_abnormal(health_data, setting, abnormal_info)
-        self._check_blood_oxygen_abnormal(health_data, setting, abnormal_info)
+        AlertService._check_heart_rate_abnormal(health_data, setting, abnormal_info)
+        AlertService._check_blood_pressure_abnormal(health_data, setting, abnormal_info)
+        AlertService._check_blood_oxygen_abnormal(health_data, setting, abnormal_info)
 
         if abnormal_info:
             alert_data = AlertCreate(
                 alert_type=2,
-                trigger_time=datetime.now(),
+                trigger_time=datetime.utcnow(),
                 abnormal_data=abnormal_info
             )
-            return AlertService.create_alert(db, user_id, alert_data)
+            return AlertService.create_alert(db, alert_data)
 
         return None
 
@@ -426,7 +431,7 @@ class AlertService:
         else:
             return 'low'
 
-    @staticmethod
+    
     def check_user_checkin_status(db: Session, user_id: str) -> Optional[dict]:
         """检查用户签到状态"""
         setting = AlertService.get_setting(db, user_id)
@@ -447,7 +452,7 @@ class AlertService:
             }
 
         # 计算未签到时间
-        now = datetime.now()
+        now = datetime.utcnow()
         time_since_last_checkin = now - last_checkin.checkin_time
         missed_hours = time_since_last_checkin.total_seconds() / 3600
         missed_days = missed_hours / 24

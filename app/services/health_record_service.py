@@ -16,18 +16,27 @@ from app.schemas.health_record import (
     HealthRecordSummary
 )
 from app.models.user import User
+from app.services.base_service import BaseService
 
 
 class EncryptionService:
     """加密服务"""
     
     def __init__(self):
-        # 从环境变量获取加密密钥,如果没有则生成新密钥
+        # 从环境变量获取加密密钥
         key = os.getenv('ENCRYPTION_KEY')
         if not key:
-            # 在生产环境中应该从安全的地方获取密钥
-            key = Fernet.generate_key()
-        self.cipher = Fernet(key)
+            raise ValueError(
+                "ENCRYPTION_KEY environment variable is not set. "
+                "Run the following command to generate a key:\n"
+                "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n"
+                "Then set it as environment variable: export ENCRYPTION_KEY=<generated_key>"
+            )
+        # 验证密钥有效性
+        try:
+            self.cipher = Fernet(key)
+        except Exception as e:
+            raise ValueError(f"Invalid ENCRYPTION_KEY: {e}") from e
     
     def encrypt(self, text: str) -> str:
         """加密文本"""
@@ -42,10 +51,15 @@ class EncryptionService:
         return self.cipher.decrypt(encrypted_text.encode()).decode()
 
 
-class HealthRecordService:
-    """健康档案服务"""
+class HealthRecordService(BaseService[HealthRecord]):
+    """健康档案服务 - 继承BaseService"""
+    
+    model_class = HealthRecord
+    cache_prefix = "health"
+    cache_ttl = 600
     
     def __init__(self):
+        super().__init__()
         self.encryption_service = EncryptionService()
     
     def create_health_record(self, db: Session, data: HealthRecordCreate, encrypt: bool = True) -> HealthRecord:

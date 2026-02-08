@@ -4,9 +4,11 @@
 测试120一键拨打、位置发送、健康档案摘要、救护车追踪等核心功能
 """
 
+import os
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
+from cryptography.fernet import Fernet
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -49,7 +51,15 @@ def db():
 @pytest.fixture
 def emergency_center_service():
     """创建服务实例"""
-    return EmergencyCenterService()
+    # 设置测试用的加密密钥
+    test_key = Fernet.generate_key().decode()
+    os.environ['ENCRYPTION_KEY'] = test_key
+    try:
+        yield EmergencyCenterService()
+    finally:
+        # 清理环境变量
+        if 'ENCRYPTION_KEY' in os.environ:
+            del os.environ['ENCRYPTION_KEY']
 
 
 # ========== 测试数据准备 ==========

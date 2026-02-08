@@ -1,9 +1,11 @@
 """健康档案服务单元测试"""
+import os
 import pytest
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import Session
+from cryptography.fernet import Fernet
 
 from app.core.database import Base
 from app.models.health_record import (
@@ -47,7 +49,15 @@ def db():
 @pytest.fixture
 def health_service():
     """创建健康档案服务实例"""
-    return HealthRecordService()
+    # 设置测试用的加密密钥
+    test_key = Fernet.generate_key().decode()
+    os.environ['ENCRYPTION_KEY'] = test_key
+    try:
+        yield HealthRecordService()
+    finally:
+        # 清理环境变量
+        if 'ENCRYPTION_KEY' in os.environ:
+            del os.environ['ENCRYPTION_KEY']
 
 
 @pytest.fixture
