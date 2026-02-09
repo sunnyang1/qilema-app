@@ -1,11 +1,13 @@
 """健康档案数据模型"""
+from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship as db_relationship
 from ..core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class HealthRecord(Base):
+class HealthRecord(Base, BaseModelMixin):
     """健康档案主表"""
     __tablename__ = "health_records"
 
@@ -45,24 +47,18 @@ class HealthRecord(Base):
     medications = db_relationship("Medication", back_populates="health_record", cascade="all, delete-orphan", lazy="dynamic")
     allergies = db_relationship("Allergy", back_populates="health_record", cascade="all, delete-orphan", lazy="dynamic")
     
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "real_name": self.real_name,
-            "gender": self.gender,
-            "blood_type": self.blood_type,
-            "height": self.height,
-            "weight": self.weight,
-            "age": self.age,
-            "emergency_contact_name": self.emergency_contact_name,
-            "emergency_contact_phone": self.emergency_contact_phone,
-            "emergency_contact_relation": self.emergency_contact_relation,
-            "is_encrypted": self.is_encrypted,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
-        }
+    def to_dict(self, exclude: Optional[List[str]] = None, include: Optional[List[str]] = None) -> dict:
+        """
+        转换为字典
+        
+        Args:
+            exclude: 要排除的字段列表
+            include: 只包含的字段列表
+            
+        Returns:
+            dict: 健康档案的字典表示
+        """
+        return super().to_dict(exclude=exclude, include=include)
 
 
 class MedicalHistory(Base):

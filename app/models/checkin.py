@@ -4,13 +4,15 @@
 记录用户的每日签到记录,用于确认用户安全状态
 """
 
+from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Index
 from sqlalchemy.orm import relationship as db_relationship
 from ..core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class CheckIn(Base):
+class CheckIn(Base, BaseModelMixin):
     """签到记录表"""
 
     __tablename__ = "checkins"
@@ -43,31 +45,18 @@ class CheckIn(Base):
     def __repr__(self):
         return f"<CheckIn(id={self.id}, user_id={self.user_id}, date={self.checkin_date})>"
 
-    def to_dict(self):
-        """转换为字典格式"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "checkin_time": self.checkin_time.isoformat() if self.checkin_time else None,
-            "checkin_date": self.checkin_date,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-            "checkin_method": self.checkin_method,
-            "notes": self.notes
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        """从字典创建对象"""
-        return cls(
-            user_id=data.get("user_id"),
-            checkin_time=datetime.fromisoformat(data["checkin_time"]) if data.get("checkin_time") else datetime.utcnow(),
-            checkin_date=data.get("checkin_date"),
-            latitude=data.get("latitude"),
-            longitude=data.get("longitude"),
-            checkin_method=data.get("checkin_method", "manual"),
-            notes=data.get("notes")
-        )
+    def to_dict(self, exclude: Optional[List[str]] = None, include: Optional[List[str]] = None) -> dict:
+        """
+        转换为字典格式
+        
+        Args:
+            exclude: 要排除的字段列表
+            include: 只包含的字段列表
+            
+        Returns:
+            dict: 签到记录的字典表示
+        """
+        return super().to_dict(exclude=exclude, include=include)
 
 
 # 复合索引: 用户ID + 签到日期(确保每天只能签到一次)

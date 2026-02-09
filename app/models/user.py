@@ -1,7 +1,9 @@
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, Enum as SQLEnum
 from sqlalchemy.orm import relationship as db_relationship
 from sqlalchemy.sql import func
 from ..core.database import Base
+from app.models.base_mixin import BaseModelMixin
 import enum
 
 class GenderEnum(str, enum.Enum):
@@ -16,7 +18,7 @@ class BloodTypeEnum(str, enum.Enum):
     AB = "AB"
     UNKNOWN = "UNKNOWN"
 
-class User(Base):
+class User(Base, BaseModelMixin):
     """用户模型"""
     __tablename__ = "users"
     
@@ -54,17 +56,37 @@ class User(Base):
     medication_reminder_notifications = db_relationship("MedicationReminderNotification", back_populates="user", cascade="all, delete-orphan")
     medication_reminder_logs = db_relationship("MedicationReminderLog", back_populates="user", cascade="all, delete-orphan")
     
-    def to_dict(self):
-        return {
-            "user_id": self.user_id,
-            "phone": self.phone,
-            "nickname": self.nickname,
-            "gender": self.gender.value if self.gender else None,
-            "birth_date": self.birth_date.isoformat() if self.birth_date else None,
-            "blood_type": self.blood_type.value if self.blood_type else None,
-            "height": self.height,
-            "weight": self.weight,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "last_sign_in": self.last_sign_in.isoformat() if self.last_sign_in else None
-        }
+    def to_dict(self, exclude: Optional[List[str]] = None, include: Optional[List[str]] = None) -> dict:
+        """
+        将用户模型转换为字典
+        
+        自动排除敏感字段password_hash，除非显式包含
+        
+        Args:
+            exclude: 额外要排除的字段列表
+            include: 只包含的字段列表（优先级高于exclude）
+            
+        Returns:
+            dict: 用户数据的字典表示（不含敏感信息）
+            
+        示例:
+            >>> user.to_dict()
+            {'user_id': 'xxx', 'phone': '13800138000', ...}
+            
+            >>> user.to_dict(exclude=['height', 'weight'])
+            # 排除身高体重
+            
+            >>> user.to_dict(include=['user_id', 'nickname'])
+            # 只包含指定字段
+        """
+        # 默认排除敏感字段
+        default_exclude = ["password_hash"]
+        
+        # 合并用户指定的排除字段
+        if exclude:
+            exclude = list(set(default_exclude + exclude))
+        else:
+            exclude = default_exclude
+        
+        # 调用mixin的to_dict方法
+        return super().to_dict(exclude=exclude, include=include)
