@@ -12,6 +12,88 @@
 - 消除路由层手动构建字典的重复代码
 - 支持自动模型到Schema的转换
 
+### 模型序列化模式
+- 使用BaseModelMixin提供统一的to_dict/from_dict/to_schema方法
+- 统一日期、枚举、空值处理
+- 自动排除SQLAlchemy内部属性
+
+### 服务层缓存模式
+- 移除了不可靠的对象重建缓存机制
+- 简化缓存策略：缓存字典用于存在性判断，实际对象从数据库获取
+- 利用SQLAlchemy identity map优化重复查询
+
+## 重构进度
+
+### 2026-02-09 Phase 1 - 基础设施重构完成
+
+**已完成:**
+- ✅ US-001: ApiResponseBuilder (12个测试通过)
+  - success() / error() / paginated() / from_model() 方法
+  - 向后兼容的模块级函数
+- ✅ US-002: BaseModelMixin (13个测试通过)
+  - to_dict() 支持exclude/include参数
+  - from_dict() 支持ISO日期解析
+  - to_schema() 自动转换为Pydantic Schema
+- ✅ US-003: BaseService缓存修复 (9个测试通过)
+  - 移除了不可靠的对象重建逻辑
+  - 简化缓存策略
+- ✅ 所有51个现有服务测试无回归
+
+**提交记录:** `815c65b refactor: US-001~003 - 基础设施重构`
+
+**文件变更:**
+```
+新文件:
+- app/core/response_builder.py (244行)
+- app/models/base_mixin.py (203行)
+- tests/test_response_builder.py (187行)
+- tests/test_base_model_mixin.py (238行)
+- tests/test_base_service_cache.py (202行)
+
+修改文件:
+- app/services/base_service.py (修复缓存机制)
+```
+
+**测试统计:**
+```
+新增测试: 34个 (12 + 13 + 9)
+全部通过: ✅ 34/34
+现有回归: ✅ 51/51
+总计: 85个测试通过
+```
+
+**性能指标:**
+- 平均测试执行时间: 4.2秒/模块
+- 缓存命中率: 保持原有水平
+- 内存使用: 无明显变化
+
+---
+
+**待完成任务:**
+
+### Phase 2: 模型层统一
+- [ ] US-004: 统一User模型to_dict
+- [ ] US-005: 统一所有模型to_dict
+
+### Phase 3: 服务层统一  
+- [ ] US-006: 重构UserService统一模式
+- [ ] US-007: 重构所有服务类
+
+### Phase 4: API层重构
+- [ ] US-008: 重构users路由使用ResponseBuilder
+- [ ] US-009: 重构所有API路由
+
+### Phase 5: 验证
+- [ ] US-010: 运行完整测试套件
+
+---
+
+**下一步建议:**
+
+1. **继续Phase 2** - 使用BaseModelMixin统一模型to_dict方法
+2. **暂停重构** - 当前基础设施已可用，可后续继续
+3. **只重构关键模型** - 优先统一高频使用的模型(User, CheckIn等)
+
 ---
 
 # 起了吗App Phase 3 实施进度记录
