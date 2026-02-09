@@ -1,3 +1,19 @@
+# 起了吗App 代码重构进度记录
+
+## 重构项目信息
+- 分支: ralph/codebase-refactoring
+- 开始时间: 2026-02-09
+- 目标: 消除重复代码，统一架构模式
+
+## 重构代码库模式
+
+### 响应构建模式
+- 使用ApiResponseBuilder统一构建API响应
+- 消除路由层手动构建字典的重复代码
+- 支持自动模型到Schema的转换
+
+---
+
 # 起了吗App Phase 3 实施进度记录
 
 ## 项目信息
@@ -97,5 +113,112 @@ export SENDGRID_API_KEY=your_api_key
 ```bash
 python scripts/import_first_aid_knowledge.py
 ```
+
+### 2026-02-09 Phase 3 - US-008用药提醒功能完成
+
+**已完成:**
+- ✅ MedicationReminderItem模型（药品信息、剂量、单位、库存）
+- ✅ MedicationReminderSchedule模型（用药计划、频率、时间）
+- ✅ MedicationReminderNotification模型（提醒记录、状态）
+- ✅ MedicationReminderLog模型（服药记录、实际服药时间）
+- ✅ MedicationService继承BaseService（药品CRUD、库存管理）
+- ✅ MedicationScheduleService（计划管理、暂停/恢复）
+- ✅ MedicationReminderService（提醒创建、状态管理）
+- ✅ MedicationLogService（服药记录、依从性统计）
+- ✅ 用药提醒API路由（medications.py）完整CRUD
+- ✅ 17个单元测试全部通过
+
+**命名调整（避免与health_record.Medication冲突）:**
+- Medication → MedicationReminderItem
+- MedicationSchedule → MedicationReminderSchedule
+- MedicationReminder → MedicationReminderNotification
+- MedicationLog → MedicationReminderLog
+- 表名使用 medication_reminder_* 前缀
+
+**API端点:**
+- `GET/POST /api/v1/medications` - 药品列表/创建
+- `GET/PUT/DELETE /api/v1/medications/{id}` - 药品详情/更新/删除
+- `POST /api/v1/medications/{id}/take` - 记录服药
+- `GET/POST /api/v1/medication-schedules` - 用药计划
+- `GET/POST /api/v1/medication-logs` - 服药记录
+- `GET /api/v1/medication-logs/stats` - 依从性统计
+- `GET /api/v1/medication-reminders/today` - 今日提醒
+
+### 2026-02-09 Phase 3 - US-007 AED设备地图扩展完成
+
+**已完成:**
+- ✅ EmergencyResource模型扩展，添加15个AED专用字段
+- ✅ AEDStatus枚举（active/maintenance/inactive/deprecated）
+- ✅ AEDService继承BaseService，实现：
+  - 附近AED搜索（支持距离计算、到达时间预估）
+  - 多平台导航链接生成（高德/百度/腾讯/苹果/谷歌）
+  - 批量导入AED设备
+  - AED状态管理（可用率统计、过期预警）
+  - 地图边界查询（用于前端地图展示）
+- ✅ AED专用API路由（aed.py），包含8个端点：
+  - `GET /api/aed/nearby` - 附近AED查询
+  - `GET /api/aed/nearest` - 最近AED（快速获取）
+  - `GET /api/aed/{id}` - AED详情
+  - `POST /api/aed/navigation` - 导航链接
+  - `POST /api/aed/import` - 批量导入
+  - `PUT /api/aed/{id}/status` - 状态更新
+  - `GET /api/aed/statistics/overview` - 统计信息
+  - `GET /api/aed/maintenance/expiring` - 过期预警
+  - `GET /api/aed/map/bounds` - 地图边界查询
+- ✅ 13个单元测试全部通过
+
+**AED扩展字段:**
+- 设备信息: aed_brand, aed_model, aed_sn
+- 位置信息: aed_location_desc, aed_access_instructions
+- 维护信息: aed_installation_date, aed_battery_expiry, aed_pad_expiry
+- 管理信息: aed_manager_name, aed_manager_phone
+- 媒体信息: aed_image_url, aed_photos
+- 检查记录: aed_last_inspection
+
+### 2026-02-09 Phase 3 - US-009健康数据趋势报告完成
+
+**已完成:**
+- ✅ HealthReportService实现：
+  - 心率、血压、血氧、体温、步数、睡眠等指标趋势分析
+  - 按日/周/月多周期数据聚合
+  - 线性回归趋势判断（上升/下降/稳定）
+  - 统计数据计算（均值、中位数、标准差、极值）
+  - 异常检测（基于用户阈值，分级：高/中/低）
+- ✅ 综合健康报告（多指标整合评分）
+- ✅ 时期对比分析（变化百分比计算）
+- ✅ 每日健康摘要（步数目标、睡眠质量评估）
+- ✅ 健康报告API（health_reports.py），包含8个端点：
+  - `POST /api/health-reports/trend-analysis` - 趋势分析
+  - `GET /api/health-reports/comprehensive` - 综合报告
+  - `GET /api/health-reports/anomalies` - 异常检测
+  - `POST /api/health-reports/compare-periods` - 时期对比
+  - `GET /api/health-reports/daily-summary/{date}` - 每日摘要
+  - `GET /api/health-reports/daily-summary` - 今日摘要
+  - `GET /api/health-reports/metrics/available` - 可用指标
+  - `GET /api/health-reports/thresholds/default` - 默认阈值
+- ✅ 18个单元测试全部通过
+
+**健康评分算法:**
+- 基础分70分
+- 步数达标 +15分（或按完成率加分）
+- 睡眠质量良好 +15分
+- 异常数据扣分
+
+---
+
+## Phase 3 完成总结
+
+**已完成的用户故事:**
+- ✅ US-006: 急救知识库基础功能
+- ✅ US-007: AED设备地图扩展  
+- ✅ US-008: 用药提醒功能
+- ✅ US-009: 健康数据趋势报告
+
+**总交付:**
+- 4个新服务（KnowledgeService, AEDService, MedicationService, HealthReportService）
+- 4个新API模块（knowledge, aed, medications, health_reports）
+- 4个新模型文件（knowledge_base, medication, emergency_resource扩展）
+- 71个单元测试全部通过（知识库23 + 用药17 + AED 13 + 健康报告18）
+- 所有服务继承BaseService，保持架构一致性
 
 ---

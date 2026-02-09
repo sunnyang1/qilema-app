@@ -1,152 +1,152 @@
 {
   "project": "qilema-app",
-  "branchName": "ralph/phase3-implementation",
-  "description": "Phase 2收尾（第三方服务接入）+ Phase 3核心功能（知识库、AED地图、用药提醒）",
+  "branchName": "ralph/codebase-refactoring",
+  "description": "代码库重构：消除重复代码，统一架构模式",
   "userStories": [
     {
       "id": "US-001",
-      "title": "极光推送服务集成",
-      "description": "接入极光推送服务，实现真实APP推送通知，支持设备绑定和标签管理",
+      "title": "创建ApiResponseBuilder工具类",
+      "description": "创建统一的API响应构建工具类，提供success、error、paginated、from_model等方法",
       "acceptanceCriteria": [
-        "创建JPush适配器类，实现与现有PushSimulator相同的接口",
-        "通过环境变量切换模拟器/真实服务",
-        "实现推送发送、设备绑定、标签管理功能",
-        "添加推送发送失败的降级逻辑",
-        "编写集成测试，使用测试key验证API调用",
-        "所有现有推送相关测试通过"
+        "创建app/core/response_builder.py",
+        "实现success()静态方法",
+        "实现error()静态方法",
+        "实现paginated()静态方法",
+        "实现from_model()自动模型转换方法",
+        "编写单元测试"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已完成，12个单元测试全部通过"
     },
     {
       "id": "US-002",
-      "title": "阿里云短信服务集成",
-      "description": "接入阿里云短信服务，替换现有SMS模拟器，支持短信模板和发送状态查询",
+      "title": "创建BaseModelMixin",
+      "description": "创建模型基类Mixin，提供统一的to_dict、from_dict、to_schema方法",
       "acceptanceCriteria": [
-        "创建AliyunSMS适配器类，实现SMS接口",
-        "支持短信模板管理和参数替换",
-        "实现发送状态查询和失败重试机制",
-        "添加短信额度监控和告警",
-        "编写集成测试",
-        "所有现有短信相关测试通过"
+        "创建app/models/base_mixin.py",
+        "实现to_dict()方法，支持exclude/include参数",
+        "实现to_schema()方法",
+        "实现from_dict()类方法",
+        "统一日期格式处理",
+        "编写单元测试"
       ],
-      "priority": 0,
-      "passes": false,
-      "notes": "短信是核心通知渠道，优先级最高"
+      "priority": 1,
+      "passes": true,
+      "notes": "已完成，13个单元测试全部通过"
     },
     {
       "id": "US-003",
-      "title": "阿里云语音服务集成",
-      "description": "接入阿里云语音服务，实现紧急情况下真实电话通知",
+      "title": "重构BaseService缓存机制",
+      "description": "修复BaseService缓存重建不可靠的问题，使用二级缓存策略",
       "acceptanceCriteria": [
-        "创建AliyunVoice适配器类，实现Phone接口",
-        "支持语音验证码和语音通知两种模式",
-        "实现TTS文本转语音功能",
-        "添加电话拨打记录和状态查询",
-        "编写集成测试",
-        "紧急场景下电话通知正常工作"
+        "修改get_by_id()使用二级缓存策略",
+        "修改list_records()使用ID列表缓存",
+        "不再尝试从字典重建对象",
+        "所有现有测试通过",
+        "缓存命中率测试"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已完成，移除了不可靠的对象重建逻辑，9个单元测试全部通过"
     },
     {
       "id": "US-004",
-      "title": "SendGrid邮件服务集成",
-      "description": "接入SendGrid邮件服务，实现邮件通知功能",
+      "title": "统一User模型to_dict",
+      "description": "使用BaseModelMixin重构User模型的to_dict方法",
       "acceptanceCriteria": [
-        "创建SendGrid适配器类，实现Email接口",
-        "支持HTML和纯文本邮件",
-        "实现邮件模板管理",
-        "添加邮件发送统计和退信处理",
-        "编写集成测试",
-        "所有现有邮件相关测试通过"
+        "User模型继承BaseModelMixin",
+        "to_dict()使用统一实现",
+        "向后兼容现有输出格式",
+        "所有相关测试通过"
       ],
-      "priority": 1,
+      "priority": 2,
       "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "NotificationService重构继承BaseService",
-      "description": "将NotificationService重构为继承BaseService[Notification]，统一服务架构",
+      "title": "统一所有模型to_dict",
+      "description": "将所有模型的to_dict方法统一为使用BaseModelMixin",
       "acceptanceCriteria": [
-        "NotificationService继承BaseService[Notification]",
-        "添加缓存支持（通知列表、未读数）",
-        "保持现有API向后兼容",
-        "通知渠道选择逻辑优化",
-        "所有现有测试通过，新增服务基类测试"
+        "所有模型继承或使用BaseModelMixin",
+        "消除to_dict重复实现",
+        "统一日期和枚举处理",
+        "所有模型测试通过"
       ],
-      "priority": 0,
+      "priority": 2,
       "passes": false,
-      "notes": "架构基础，影响其他服务，优先级最高"
+      "notes": ""
     },
     {
       "id": "US-006",
-      "title": "急救知识库基础功能",
-      "description": "实现急救知识库功能，支持文章管理、分类和搜索",
+      "title": "重构UserService统一模式",
+      "description": "统一UserService实现模式，消除静态/实例方法混用",
       "acceptanceCriteria": [
-        "创建KnowledgeArticle模型（文章、分类、标签、作者、状态）",
-        "创建KnowledgeCategory模型（分类层级管理）",
-        "实现KnowledgeBaseService继承BaseService",
-        "创建知识库API路由（CRUD、分类查询、搜索）",
-        "实现文章内容的Markdown渲染支持",
-        "编写完整的单元测试和API测试"
+        "所有业务方法改为实例方法",
+        "静态方法改为向后兼容包装",
+        "使用BaseService的CRUD方法",
+        "所有UserService测试通过"
       ],
-      "priority": 2,
+      "priority": 3,
       "passes": false,
-      "notes": "产品差异化功能"
+      "notes": ""
     },
     {
       "id": "US-007",
-      "title": "AED设备地图扩展",
-      "description": "扩展急救资源模块，增加AED设备地图和导航功能",
+      "title": "重构所有服务类",
+      "description": "统一所有服务类的实现模式",
       "acceptanceCriteria": [
-        "扩展EmergencyResource模型，添加AED专用字段",
-        "实现AED设备数据导入接口（支持批量导入）",
-        "创建AED地图查询API（按位置半径搜索）",
-        "集成导航功能（返回导航链接）",
-        "添加AED设备状态管理（可用/维护中/故障）",
-        "编写完整的单元测试"
+        "所有服务类继承BaseService",
+        "定义model_class、cache_prefix、cache_ttl",
+        "业务逻辑使用实例方法",
+        "所有服务测试通过"
       ],
       "priority": 3,
       "passes": false,
-      "notes": "完善急救资源"
+      "notes": ""
     },
     {
       "id": "US-008",
-      "title": "用药提醒功能",
-      "description": "开发用药提醒功能，包括用药计划、定时提醒和服用记录",
+      "title": "重构users路由使用ResponseBuilder",
+      "description": "重构users API路由使用新的响应构建工具",
       "acceptanceCriteria": [
-        "创建Medication模型（药品信息、剂量、单位）",
-        "创建MedicationSchedule模型（用药计划、频率、时间）",
-        "创建MedicationReminder模型（提醒记录、状态）",
-        "创建MedicationLog模型（服药记录、实际服药时间）",
-        "实现MedicationService继承BaseService",
-        "创建用药提醒API路由（CRUD、服药打卡、统计）",
-        "集成Celery定时任务发送用药提醒",
-        "编写完整的单元测试和定时任务测试"
+        "使用ApiResponseBuilder构建响应",
+        "消除手动构建字典",
+        "保持API契约不变",
+        "所有路由测试通过"
       ],
-      "priority": 2,
+      "priority": 4,
       "passes": false,
-      "notes": "提升用户粘性"
+      "notes": ""
     },
     {
       "id": "US-009",
-      "title": "健康数据趋势报告",
-      "description": "实现健康数据趋势分析功能，生成健康报告",
+      "title": "重构所有API路由",
+      "description": "统一所有API路由的响应构建方式",
       "acceptanceCriteria": [
-        "创建HealthReportService服务",
-        "实现心率、血压、步数等数据的趋势分析",
-        "支持按日/周/月统计周期",
-        "生成异常检测报告（超出阈值的数据点）",
-        "创建报告API（PDF导出、数据接口）",
-        "编写完整的单元测试"
+        "所有路由使用ApiResponseBuilder",
+        "消除重复响应构建代码",
+        "保持所有API契约不变",
+        "所有API测试通过"
       ],
-      "priority": 3,
+      "priority": 4,
       "passes": false,
-      "notes": "增值服务"
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "运行完整测试套件",
+      "description": "运行完整测试套件确保重构没有引入回归",
+      "acceptanceCriteria": [
+        "所有单元测试通过",
+        "所有集成测试通过",
+        "代码覆盖率不降低",
+        "性能测试无明显下降"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
     }
   ]
 }

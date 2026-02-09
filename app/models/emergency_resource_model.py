@@ -1,9 +1,19 @@
 """
 急救资源SQLAlchemy模型
 """
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, Text, Boolean
+from datetime import datetime
+from enum import Enum as PyEnum
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, Text, Boolean, Enum
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+
+
+class AEDStatus(str, PyEnum):
+    """AED设备状态"""
+    ACTIVE = "active"           # 可用
+    MAINTENANCE = "maintenance" # 维护中
+    INACTIVE = "inactive"       # 不可用
+    DEPRECATED = "deprecated"   # 已废弃
 
 
 class EmergencyResource(Base):
@@ -35,9 +45,24 @@ class EmergencyResource(Base):
     bed_count = Column(Integer, nullable=True, comment="床位数")
     emergency_beds = Column(Integer, nullable=True, comment="急诊床位数")
 
-    # AED特有字段
+    # AED特有字段（基础）
     aed_status = Column(String(20), nullable=True, comment="AED状态: active/maintenance/inactive/deprecated")
     last_maintenance = Column(DateTime, nullable=True, comment="最后维护时间")
+    
+    # AED特有字段（扩展）
+    aed_brand = Column(String(100), nullable=True, comment="AED品牌/厂商")
+    aed_model = Column(String(100), nullable=True, comment="AED型号")
+    aed_sn = Column(String(100), nullable=True, comment="AED序列号")
+    aed_location_desc = Column(String(500), nullable=True, comment="AED具体位置描述（如：一楼大厅电梯旁）")
+    aed_access_instructions = Column(String(500), nullable=True, comment="AED获取说明（如：24小时开放/需联系物业）")
+    aed_installation_date = Column(DateTime, nullable=True, comment="AED安装日期")
+    aed_battery_expiry = Column(DateTime, nullable=True, comment="AED电池过期日期")
+    aed_pad_expiry = Column(DateTime, nullable=True, comment="AED电极片过期日期")
+    aed_last_inspection = Column(DateTime, nullable=True, comment="AED最后检查日期")
+    aed_manager_name = Column(String(100), nullable=True, comment="AED负责人姓名")
+    aed_manager_phone = Column(String(20), nullable=True, comment="AED负责人电话")
+    aed_image_url = Column(String(500), nullable=True, comment="AED设备照片URL")
+    aed_photos = Column(Text, nullable=True, comment="AED多角度照片URL（JSON数组）")
 
     # 营业时间
     is_24h = Column(Integer, nullable=False, default=0, comment="是否24小时营业: 0=否 1=是")
@@ -51,8 +76,61 @@ class EmergencyResource(Base):
     # 状态
     is_active = Column(Integer, nullable=False, default=1, comment="是否启用: 0=否 1=是")
 
-    created_at = Column(DateTime, nullable=False, default=lambda: __import__(datetime).datetime.now(), comment="创建时间")
-    updated_at = Column(DateTime, nullable=True, comment="更新时间")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
+    updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow, comment="更新时间")
+    
+    def to_dict(self) -> dict:
+        """转换为字典"""
+        data = {
+            "id": self.id,
+            "resource_type": self.resource_type,
+            "resource_name": self.resource_name,
+            "description": self.description,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "address": self.address,
+            "province": self.province,
+            "city": self.city,
+            "district": self.district,
+            "phone": self.phone,
+            "website": self.website,
+            "email": self.email,
+            "hospital_level": self.hospital_level,
+            "has_emergency": bool(self.has_emergency),
+            "has_ambulance": bool(self.has_ambulance),
+            "bed_count": self.bed_count,
+            "emergency_beds": self.emergency_beds,
+            "is_24h": bool(self.is_24h),
+            "open_hours": self.open_hours,
+            "distance": self.distance,
+            "rating": self.rating,
+            "review_count": self.review_count,
+            "is_active": bool(self.is_active),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+        
+        # AED专用字段
+        if self.resource_type == "aed":
+            data.update({
+                "aed_status": self.aed_status,
+                "last_maintenance": self.last_maintenance.isoformat() if self.last_maintenance else None,
+                "aed_brand": self.aed_brand,
+                "aed_model": self.aed_model,
+                "aed_sn": self.aed_sn,
+                "aed_location_desc": self.aed_location_desc,
+                "aed_access_instructions": self.aed_access_instructions,
+                "aed_installation_date": self.aed_installation_date.isoformat() if self.aed_installation_date else None,
+                "aed_battery_expiry": self.aed_battery_expiry.isoformat() if self.aed_battery_expiry else None,
+                "aed_pad_expiry": self.aed_pad_expiry.isoformat() if self.aed_pad_expiry else None,
+                "aed_last_inspection": self.aed_last_inspection.isoformat() if self.aed_last_inspection else None,
+                "aed_manager_name": self.aed_manager_name,
+                "aed_manager_phone": self.aed_manager_phone,
+                "aed_image_url": self.aed_image_url,
+                "aed_photos": self.aed_photos,
+            })
+        
+        return data
 
 
 class ResourceFacility(Base):

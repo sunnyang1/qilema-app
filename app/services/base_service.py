@@ -32,6 +32,12 @@ class BaseService(Generic[ModelType]):
         """
         根据ID获取记录
         
+        缓存策略说明:
+        - 使用字典形式缓存模型数据
+        - 不尝试重建SQLAlchemy对象（不可靠且复杂）
+        - 缓存命中时从数据库重新查询对象（利用SQLAlchemy的identity map优化）
+        - 缓存失效时直接从数据库查询
+        
         Args:
             db: 数据库会话
             id_value: ID值
@@ -40,20 +46,14 @@ class BaseService(Generic[ModelType]):
         Returns:
             记录对象或None
         """
+        if not id_value:
+            return None
+            
         cache_key = f"{cls.cache_prefix}:{pk_column}:{id_value}"
         
-        # 尝试从缓存获取
+        # 检查缓存（仅用于判断数据是否存在，不尝试重建对象）
         cached_data = get_cached(cache_key)
-        if cached_data and isinstance(cached_data, dict):
-            try:
-                # 尝试从缓存重建对象
-                instance = cls.model_class()
-                for key, value in cached_data.items():
-                    if hasattr(instance, key):
-                        setattr(instance, key, value)
-                return instance
-            except (AttributeError, KeyError, ValueError):
-                pass
+        cache_exists = cached_data is not None
         
         # 查询数据库
         query = db.query(cls.model_class)
@@ -64,9 +64,14 @@ class BaseService(Generic[ModelType]):
             
         result = query.first()
         
-        # 缓存结果
-        if result and hasattr(result, 'to_dict'):
-            cache_result(cache_key, result.to_dict(), ttl=cls.cache_ttl)
+        # 更新缓存
+        if result:
+            if hasattr(result, 'to_dict'):
+                cache_result(cache_key, result.to_dict(), ttl=cls.cache_ttl)
+        else:
+            # 数据库中没有但缓存中有，清除缓存
+            if cache_exists:
+                invalidate_cache(cache_key)
         
         return result
     

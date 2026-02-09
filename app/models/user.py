@@ -49,6 +49,10 @@ class User(Base):
     health_trends = db_relationship("HealthTrend", back_populates="user", cascade="all, delete-orphan")
     activity_patterns = db_relationship("ActivityPattern", back_populates="user", cascade="all, delete-orphan")
     health_record = db_relationship("HealthRecord", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    medication_reminder_items = db_relationship("MedicationReminderItem", back_populates="user", cascade="all, delete-orphan")
+    medication_reminder_schedules = db_relationship("MedicationReminderSchedule", back_populates="user", cascade="all, delete-orphan")
+    medication_reminder_notifications = db_relationship("MedicationReminderNotification", back_populates="user", cascade="all, delete-orphan")
+    medication_reminder_logs = db_relationship("MedicationReminderLog", back_populates="user", cascade="all, delete-orphan")
     
     def to_dict(self):
         return {

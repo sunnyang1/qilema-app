@@ -22,6 +22,10 @@ from .user_setting_model import UserSetting
 from .emergency_center_model import EmergencyCall, Ambulance, RescueRecord
 from .notification_model import Notification
 from .anomaly import Anomaly, HealthTrend, ActivityPattern
+from .medication import (
+    MedicationReminderItem, MedicationReminderSchedule,
+    MedicationReminderNotification, MedicationReminderLog
+)
 
 __all__ = [
     'User', 'EmergencyCenter', 'EmergencyResource', 'EmergencyContact', 'CheckIn', 'Alert',
@@ -31,4 +35,6 @@ __all__ = [
     'ResourceFacility', 'ResourceDepartment', 'ResourceUsageLog', 'NavigationRoute',
     'KnowledgeCategory', 'KnowledgeTag', 'KnowledgeArticle',
     'Anomaly', 'HealthTrend', 'ActivityPattern',
+    'MedicationReminderItem', 'MedicationReminderSchedule',
+    'MedicationReminderNotification', 'MedicationReminderLog',
 ]
