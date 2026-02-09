@@ -61,8 +61,8 @@
         "所有相关测试通过"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已完成，9个测试通过"
     },
     {
       "id": "US-005",
@@ -75,8 +75,8 @@
         "所有模型测试通过"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已完成4个核心模型: User, CheckIn, EmergencyContact, HealthRecord"
     },
     {
       "id": "US-006",

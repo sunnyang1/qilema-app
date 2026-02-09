@@ -28,18 +28,53 @@
 
 **已完成:**
 - ✅ US-001: ApiResponseBuilder (12个测试通过)
-  - success() / error() / paginated() / from_model() 方法
-  - 向后兼容的模块级函数
 - ✅ US-002: BaseModelMixin (13个测试通过)
-  - to_dict() 支持exclude/include参数
-  - from_dict() 支持ISO日期解析
-  - to_schema() 自动转换为Pydantic Schema
 - ✅ US-003: BaseService缓存修复 (9个测试通过)
-  - 移除了不可靠的对象重建逻辑
-  - 简化缓存策略
 - ✅ 所有51个现有服务测试无回归
 
 **提交记录:** `815c65b refactor: US-001~003 - 基础设施重构`
+
+---
+
+### 2026-02-09 Phase 2 - 模型层统一完成
+
+**已完成:**
+- ✅ US-004: User模型重构 (9个测试通过)
+  - 继承BaseModelMixin
+  - 默认排除password_hash敏感字段
+  - 向后兼容的输出格式
+- ✅ US-005: 核心模型统一 (4个模型)
+  - User - 用户模型
+  - CheckIn - 签到记录模型
+  - EmergencyContact - 紧急联系人模型
+  - HealthRecord - 健康档案模型
+
+**文件变更:**
+```
+修改文件:
+- app/models/user.py
+- app/models/checkin.py
+- app/models/emergency_contact.py
+- app/models/health_record.py
+
+新增测试:
+- tests/test_user_model.py (9个测试)
+```
+
+**提交记录:** `340a525 refactor: US-004~005 - 统一模型to_dict方法`
+
+**待完成模型:**
+- [ ] Alert / AlertSetting
+- [ ] Anomaly / HealthTrend / ActivityPattern
+- [ ] Device / DeviceData
+- [ ] EmergencyResource
+- [ ] KnowledgeBase相关模型
+- [ ] Medication相关模型
+- [ ] Notification相关模型
+- [ ] SOSRequest
+- [ ] UserSetting
+
+---
 
 **文件变更:**
 ```
