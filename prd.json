@@ -1,152 +1,217 @@
 {
-  "project": "qilema-app",
-  "branchName": "ralph/codebase-refactoring",
-  "description": "代码库重构：消除重复代码，统一架构模式",
+  "project": "qilema-frontend-phase1",
+  "branchName": "ralph/frontend-phase1-core-features",
+  "description": "Phase 1: Core features including authentication, checkin, SOS, contacts, and health records",
   "userStories": [
     {
       "id": "US-001",
-      "title": "创建ApiResponseBuilder工具类",
-      "description": "创建统一的API响应构建工具类，提供success、error、paginated、from_model等方法",
+      "title": "配置核心基础设施",
+      "description": "作为开发者，我需要配置Dio客户端、拦截器、路由、主题，以便后续功能开发可以复用这些基础设施。",
       "acceptanceCriteria": [
-        "创建app/core/response_builder.py",
-        "实现success()静态方法",
-        "实现error()静态方法",
-        "实现paginated()静态方法",
-        "实现from_model()自动模型转换方法",
-        "编写单元测试"
+        "Dio客户端能正常发送请求到后端API",
+        "路由能正确跳转，认证守卫工作正常",
+        "主题能应用到整个App（浅色/深色模式）",
+        "控制台能输出结构化日志"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "已完成，12个单元测试全部通过"
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "创建BaseModelMixin",
-      "description": "创建模型基类Mixin，提供统一的to_dict、from_dict、to_schema方法",
+      "title": "实现登录页面",
+      "description": "作为用户，我能够通过手机号和密码登录到应用，以便使用应用的核心功能。",
       "acceptanceCriteria": [
-        "创建app/models/base_mixin.py",
-        "实现to_dict()方法，支持exclude/include参数",
-        "实现to_schema()方法",
-        "实现from_dict()类方法",
-        "统一日期格式处理",
-        "编写单元测试"
+        "登录页面包含手机号输入框、密码输入框、登录按钮",
+        "登录成功后跳转到首页",
+        "Token 自动保存到本地存储",
+        "显示友好的错误提示"
       ],
-      "priority": 1,
+      "priority": 2,
       "passes": true,
-      "notes": "已完成，13个单元测试全部通过"
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "重构BaseService缓存机制",
-      "description": "修复BaseService缓存重建不可靠的问题，使用二级缓存策略",
+      "title": "实现注册页面",
+      "description": "作为新用户，我能够注册一个新账号，以便开始使用应用。",
       "acceptanceCriteria": [
-        "修改get_by_id()使用二级缓存策略",
-        "修改list_records()使用ID列表缓存",
-        "不再尝试从字典重建对象",
-        "所有现有测试通过",
-        "缓存命中率测试"
+        "注册页面包含手机号、密码、昵称输入框",
+        "注册成功后自动登录并跳转到首页",
+        "密码输入时显示/隐藏切换功能",
+        "验证手机号格式和密码强度"
       ],
-      "priority": 1,
+      "priority": 3,
       "passes": true,
-      "notes": "已完成，移除了不可靠的对象重建逻辑，9个单元测试全部通过"
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "统一User模型to_dict",
-      "description": "使用BaseModelMixin重构User模型的to_dict方法",
+      "title": "实现Token管理和自动刷新",
+      "description": "作为系统，我需要管理用户的认证Token并自动刷新，以便用户的登录状态持久化且不会因为Token过期而中断使用。",
       "acceptanceCriteria": [
-        "User模型继承BaseModelMixin",
-        "to_dict()使用统一实现",
-        "向后兼容现有输出格式",
-        "所有相关测试通过"
+        "Token 存储在 SharedPreferences",
+        "401错误时自动刷新Token并重试请求",
+        "Token刷新失败时跳转到登录页",
+        "所有API请求自动携带Authorization header"
       ],
-      "priority": 2,
+      "priority": 4,
       "passes": true,
-      "notes": "已完成，9个测试通过"
+      "notes": "已在US-001中通过TokenInterceptor实现"
     },
     {
       "id": "US-005",
-      "title": "统一所有模型to_dict",
-      "description": "将所有模型的to_dict方法统一为使用BaseModelMixin",
+      "title": "实现签到首页",
+      "description": "作为用户，我能够在首页点击签到按钮完成每日签到，以便确认我的安全状态。",
       "acceptanceCriteria": [
-        "所有模型继承或使用BaseModelMixin",
-        "消除to_dict重复实现",
-        "统一日期和枚举处理",
-        "所有模型测试通过"
+        "首页显示大型签到按钮（蓝色'早安'按钮）",
+        "点击签到后按钮变为灰色'已签到'",
+        "显示今日签到状态（已签到/未签到）",
+        "显示连续签到天数和签到率统计"
       ],
-      "priority": 2,
+      "priority": 5,
       "passes": true,
-      "notes": "已完成4个核心模型: User, CheckIn, EmergencyContact, HealthRecord"
+      "notes": ""
     },
     {
       "id": "US-006",
-      "title": "重构UserService统一模式",
-      "description": "统一UserService实现模式，消除静态/实例方法混用",
+      "title": "实现签到历史页面",
+      "description": "作为用户，我能够查看我的签到历史记录，以便了解我的签到习惯。",
       "acceptanceCriteria": [
-        "所有业务方法改为实例方法",
-        "静态方法改为向后兼容包装",
-        "使用BaseService的CRUD方法",
-        "所有UserService测试通过"
+        "能查看最近7天/30天的签到历史",
+        "显示签到日期、时间、状态",
+        "支持下拉刷新和上拉加载更多",
+        "空状态提示（暂无签到记录）"
       ],
-      "priority": 3,
-      "passes": false,
+      "priority": 6,
+      "passes": true,
       "notes": ""
     },
     {
       "id": "US-007",
-      "title": "重构所有服务类",
-      "description": "统一所有服务类的实现模式",
+      "title": "实现SOS触发页面",
+      "description": "作为用户，我能够通过长按SOS按钮触发紧急求助，以便在危险时快速获取帮助。",
       "acceptanceCriteria": [
-        "所有服务类继承BaseService",
-        "定义model_class、cache_prefix、cache_ttl",
-        "业务逻辑使用实例方法",
-        "所有服务测试通过"
+        "SOS按钮为红色圆形，长按3秒触发（防止误触）",
+        "长按时显示进度指示器",
+        "自动获取当前GPS位置",
+        "触发成功后跳转到SOS状态页面"
       ],
-      "priority": 3,
-      "passes": false,
+      "priority": 7,
+      "passes": true,
       "notes": ""
     },
     {
       "id": "US-008",
-      "title": "重构users路由使用ResponseBuilder",
-      "description": "重构users API路由使用新的响应构建工具",
+      "title": "实现SOS状态页面",
+      "description": "作为用户，我能够查看SOS求助的实时状态，以便了解救援进展。",
       "acceptanceCriteria": [
-        "使用ApiResponseBuilder构建响应",
-        "消除手动构建字典",
-        "保持API契约不变",
-        "所有路由测试通过"
+        "显示SOS状态（待救援/救援中/已解除）",
+        "显示触发时间和位置信息",
+        "提供一键拨打120按钮",
+        "提供取消SOS按钮"
       ],
-      "priority": 4,
-      "passes": false,
+      "priority": 8,
+      "passes": true,
       "notes": ""
     },
     {
       "id": "US-009",
-      "title": "重构所有API路由",
-      "description": "统一所有API路由的响应构建方式",
+      "title": "实现紧急联系人列表页面",
+      "description": "作为用户，我能够查看我的紧急联系人列表，以便了解我设置了哪些人会在紧急情况下被通知。",
       "acceptanceCriteria": [
-        "所有路由使用ApiResponseBuilder",
-        "消除重复响应构建代码",
-        "保持所有API契约不变",
-        "所有API测试通过"
+        "显示联系人列表（卡片式设计，按优先级排序）",
+        "每个联系人卡片显示姓名、关系、电话、优先级",
+        "支持下拉刷新",
+        "空状态提示（暂无联系人）"
       ],
-      "priority": 4,
-      "passes": false,
+      "priority": 9,
+      "passes": true,
       "notes": ""
     },
     {
       "id": "US-010",
-      "title": "运行完整测试套件",
-      "description": "运行完整测试套件确保重构没有引入回归",
+      "title": "实现添加/编辑联系人功能",
+      "description": "作为用户，我能够添加和编辑紧急联系人，以便管理我的紧急通知名单。",
       "acceptanceCriteria": [
-        "所有单元测试通过",
-        "所有集成测试通过",
-        "代码覆盖率不降低",
-        "性能测试无明显下降"
+        "能添加新联系人（姓名、电话、关系、优先级）",
+        "能编辑现有联系人信息",
+        "能选择通知渠道（短信/电话/App推送）",
+        "表单验证（必填字段、手机号格式）"
       ],
-      "priority": 5,
-      "passes": false,
+      "priority": 10,
+      "passes": true,
       "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "实现删除联系人功能",
+      "description": "作为用户，我能够删除紧急联系人，以便移除不再需要的联系人。",
+      "acceptanceCriteria": [
+        "点击删除按钮时显示确认对话框",
+        "删除成功后刷新列表",
+        "至少保留1个联系人的限制（最后1个不可删除）",
+        "显示删除成功的提示"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "在 ContactsPage 中通过 IconButton 实现删除确认对话框"
+    },
+    {
+      "id": "US-012",
+      "title": "实现健康档案基本信息页面",
+      "description": "作为用户，我能够填写和查看我的基本健康信息，以便在紧急情况下医生能快速了解我的身体状况。",
+      "acceptanceCriteria": [
+        "显示基本信息（姓名、性别、出生日期、血型、身高、体重）",
+        "支持编辑基本信息",
+        "表单验证（日期格式、数值范围）",
+        "保存成功后显示提示"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "实现健康档案主页(health_page.dart)，包含基本信息表单和紧急医疗联系人信息"
+    },
+    {
+      "id": "US-013",
+      "title": "实现病史管理功能",
+      "description": "作为用户，我能够管理我的病史记录，以便记录我患过的疾病。",
+      "acceptanceCriteria": [
+        "能添加病史（疾病名称、诊断日期、状态）",
+        "能编辑和删除病史记录",
+        "支持多条病史记录",
+        "列表支持滚动查看"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "实现病史管理页面(medical_histories_page.dart)，支持添加、编辑、删除病史记录"
+    },
+    {
+      "id": "US-014",
+      "title": "实现用药信息管理功能",
+      "description": "作为用户，我能够管理我的用药信息，以便记录我正在使用的药物。",
+      "acceptanceCriteria": [
+        "能添加用药信息（药品名称、用法、用量）",
+        "能编辑和删除用药记录",
+        "支持多条用药记录",
+        "列表支持滚动查看"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "实现用药管理页面(medications_page.dart)，支持添加、编辑、删除用药记录，显示是否正在使用"
+    },
+    {
+      "id": "US-015",
+      "title": "实现过敏史管理功能",
+      "description": "作为用户，我能够管理我的过敏史，以便提醒医护人员我过敏的物质。",
+      "acceptanceCriteria": [
+        "能添加过敏史（过敏源、症状、严重程度）",
+        "能编辑和删除过敏记录",
+        "支持多条过敏记录",
+        "列表支持滚动查看"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "实现过敏史管理页面(allergies_page.dart)，支持添加、编辑、删除过敏记录，用颜色区分严重程度"
     }
   ]
 }

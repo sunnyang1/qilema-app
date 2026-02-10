@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/backend/lib/
+/backend/lib64/
 parts/
 sdist/
 var/
@@ -67,5 +67,12 @@ tmp/
 
 # Test reports
 test_reports/
+
 # 测试环境配置文件
 .env.testing
+
+# Dump directory (temporary files)
+dump/
+
+# CodeBuddy internal
+.codebuddy/

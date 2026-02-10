@@ -1,615 +1,239 @@
-# 起了吗App 代码重构进度记录
+## Codebase Patterns
 
-## 重构项目信息
-- 分支: ralph/codebase-refactoring
-- 开始时间: 2026-02-09
-- 目标: 消除重复代码，统一架构模式
-
-## 重构代码库模式
-
-### 响应构建模式
-- 使用ApiResponseBuilder统一构建API响应
-- 消除路由层手动构建字典的重复代码
-- 支持自动模型到Schema的转换
-
-### 模型序列化模式
-- 使用BaseModelMixin提供统一的to_dict/from_dict/to_schema方法
-- 统一日期、枚举、空值处理
-- 自动排除SQLAlchemy内部属性
-
-### 服务层缓存模式
-- 移除了不可靠的对象重建缓存机制
-- 简化缓存策略：缓存字典用于存在性判断，实际对象从数据库获取
-- 利用SQLAlchemy identity map优化重复查询
-
-## 重构进度
-
-### 2026-02-09 Phase 1 - 基础设施重构完成
-
-**已完成:**
-- ✅ US-001: ApiResponseBuilder (12个测试通过)
-- ✅ US-002: BaseModelMixin (13个测试通过)
-- ✅ US-003: BaseService缓存修复 (9个测试通过)
-- ✅ 所有51个现有服务测试无回归
-
-**提交记录:** `815c65b refactor: US-001~003 - 基础设施重构`
+- **认证流程**: 使用 AuthService 处理 Token 的存储、刷新和清除
+- **API 调用**: 使用 ApiClient 单例进行所有网络请求
+- **状态管理**: 使用 Riverpod 的 StateNotifier 管理状态
+- **路由守卫**: 在 AppRouter 的 redirect 回调中检查认证状态
+- **Provider模式**: 每个功能模块独立的 StateNotifier 和 Provider
+- **异步状态**: 使用 Enum 定义状态（initial, loading, success, error）
 
 ---
 
-### 2026-02-09 Phase 2 - 模型层统一完成
+## Iteration Logs
 
-**已完成:**
-- ✅ US-004: User模型重构 (9个测试通过)
-  - 继承BaseModelMixin
-  - 默认排除password_hash敏感字段
-  - 向后兼容的输出格式
-- ✅ US-005: 统一所有模型to_dict方法 (18个模型)
+[2026-02-10] - 项目初始化
+- 创建 Phase1 PRD 文档
+- 转换为 prd.json
+- 准备开始 Ralph 自主迭代循环
 
-**已统一模型列表:**
-核心模型 (4个):
-- User - 用户模型
-- CheckIn - 签到记录模型
-- EmergencyContact - 紧急联系人模型
-- HealthRecord - 健康档案模型
+[2026-02-10 10:00:00] - [US-001] 配置核心基础设施
 
-预警相关 (2个):
-- Alert / AlertSetting - 预警及设置模型
+IMPLEMENTATION SUMMARY:
+- 创建了完整的网络层基础设施（Dio客户端、拦截器）
+- 创建了主题配置（浅色/深色模式）
+- 创建了路由配置和认证守卫
+- 创建了认证服务和状态管理
+- 更新 main.dart 使用新的基础设施
 
-异常检测相关 (3个):
-- Anomaly - 生理数据异常记录
-- HealthTrend - 健康数据趋势分析
-- ActivityPattern - 活动模式分析
+CHANGES:
+- Created: lib/core/config/app_config.dart
+- Created: lib/core/network/api_client.dart
+- Created: lib/core/network/interceptors/auth_interceptor.dart
+- Created: lib/core/network/interceptors/token_interceptor.dart
+- Created: lib/core/network/interceptors/logging_interceptor.dart
+- Created: lib/core/utils/logger.dart
+- Created: lib/core/theme/app_theme.dart
+- Created: lib/core/router/app_router.dart
+- Created: lib/shared/services/auth_service.dart
+- Created: lib/shared/providers/auth_provider.dart
+- Modified: frontend/lib/main.dart
 
-设备相关 (3个):
-- Device - 设备模型
-- DeviceData - 设备数据模型
-- DeviceThreshold - 设备阈值模型
+IMPORTANT LEARNINGS:
+- 路由守卫需要在 GoRouter 的 redirect 回调中异步检查认证状态
+- 拦截器按顺序执行，需要注意顺序（认证 → Token刷新 → 日志）
+- SharedPreferences 用于本地存储 Token 和用户信息
+- 使用单例模式管理 ApiClient 可以确保全局唯一
 
-SOS相关 (2个):
-- SOSRequest - SOS求助请求
-- SOSLocationHistory - SOS位置历史
+[2026-02-10 10:15:00] - [US-002] 实现登录页面
 
-通知相关 (2个):
-- Notification - 通知模型
-- NotificationPreference - 通知偏好设置
+IMPLEMENTATION SUMMARY:
+- 创建了 LoginPage UI 和 AuthApi 服务
+- 实现了登录逻辑：API调用、Token保存、状态更新
+- 实现了表单验证和错误提示
+- 添加了密码显示/隐藏功能
 
-用药提醒相关 (4个):
-- MedicationReminderItem - 药品信息
-- MedicationReminderSchedule - 用药计划
-- MedicationReminderNotification - 用药提醒
-- MedicationReminderLog - 服药记录
+CHANGES:
+- Created: lib/features/auth/services/auth_api.dart
+- Created: lib/features/auth/pages/login_page.dart
+- Modified: lib/shared/providers/auth_provider.dart
+- Modified: lib/core/router/app_router.dart
 
-知识库相关 (3个):
-- KnowledgeCategory - 知识分类
-- KnowledgeTag - 知识标签
-- KnowledgeArticle - 知识文章
+IMPORTANT LEARNINGS:
+- 表单验证使用 TextEditingController 和 Form widget
+- 需要处理异步操作的加载状态和错误状态
+- 登录成功后由路由守卫自动跳转
 
-急救资源相关 (5个):
-- EmergencyResource - 急救资源
-- ResourceFacility - 资源设施
-- ResourceDepartment - 资源科室
-- ResourceUsageLog - 资源使用日志
-- NavigationRoute - 导航路线
+[2026-02-10 10:30:00] - [US-003] 实现注册页面
 
-其他 (2个):
-- UserSetting - 用户设置
-- LoginRecord - 登录记录
+IMPLEMENTATION SUMMARY:
+- 创建了 RegisterPage UI
+- 实现了注册逻辑：API调用、自动登录
+- 添加了昵称输入和验证
+- 实现了登录/注册页面之间的导航
 
-**文件变更:**
-```
-修改文件 (11个):
-- app/models/user.py
-- app/models/checkin.py
-- app/models/emergency_contact.py
-- app/models/health_record.py
-- app/models/alert.py
-- app/models/anomaly.py
-- app/models/device.py
-- app/models/device_data.py
-- app/models/emergency_resource_model.py
-- app/models/knowledge_base.py
-- app/models/login_record.py
-- app/models/medication.py
-- app/models/notification_model.py
-- app/models/sos_request.py
-- app/models/user_setting_model.py
+CHANGES:
+- Created: lib/features/auth/pages/register_page.dart
+- Modified: lib/core/router/app_router.dart
 
-新增测试:
-- tests/test_user_model.py (9个测试)
-```
+IMPORTANT LEARNINGS:
+- 注册成功后自动调用登录API获取Token
+- 使用 context.go() 进行导航
 
-**重构模式:**
-```python
-# 修改前
-class Model(Base):
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            ...
-        }
+[2026-02-10 10:45:00] - [US-005] 实现签到首页
 
-# 修改后
-class Model(Base, BaseModelMixin):
-    pass  # 使用父类to_dict方法
-```
+IMPLEMENTATION SUMMARY:
+- 创建了 SigninApi、SigninProvider 和 HomePage
+- 实现了签到按钮和统计信息显示
+- 实现了根据时间显示不同欢迎语
+- 添加了下拉刷新功能
 
-**特殊处理案例:**
-- User: 默认排除password_hash敏感字段
-- EmergencyResource: 保留AED字段特殊处理和布尔值转换
-- KnowledgeCategory/KnowledgeTag/KnowledgeArticle: 保留额外字段计算(article_count, category_name等)
+CHANGES:
+- Created: lib/features/signin/services/signin_api.dart
+- Created: lib/features/signin/providers/signin_provider.dart
+- Created: lib/features/signin/pages/home_page.dart
+- Modified: lib/core/router/app_router.dart
 
-**提交记录:** `待提交`
+IMPORTANT LEARNINGS:
+- 使用 ConsumerWidget 来消费 Provider
+- 大型按钮使用 Container + BoxDecoration 实现圆形和阴影
+- 根据时间计算欢迎语增加用户友好性
 
-**测试状态:** ✅ 所有模型导入正常
+[2026-02-10 15:00:00] - [US-006] 实现签到历史页面
 
----
+IMPLEMENTATION SUMMARY:
+- 扩展了 SigninProvider 添加历史记录状态管理
+- 创建了 SigninHistoryItem 数据模型
+- 实现了 HistoryPage UI（过滤器、列表、下拉刷新、上拉加载）
+- 更新了路由配置添加历史页面
+- 在 HomePage 添加了历史按钮导航
 
-**文件变更:**
-```
-新文件:
-- app/core/response_builder.py (244行)
-- app/models/base_mixin.py (203行)
-- tests/test_response_builder.py (187行)
-- tests/test_base_model_mixin.py (238行)
-- tests/test_base_service_cache.py (202行)
+CHANGES:
+- Modified: lib/features/signin/providers/signin_provider.dart (添加历史记录管理)
+- Created: lib/features/signin/pages/history_page.dart
+- Modified: lib/core/router/app_router.dart (添加历史页面路由)
+- Modified: lib/features/signin/pages/home_page.dart (添加历史按钮)
 
-修改文件:
-- app/services/base_service.py (修复缓存机制)
-```
+IMPORTANT LEARNINGS:
+- 使用 Enum 定义筛选器状态
+- FilterChip 组件适合实现Tab式筛选
+- RefreshIndicator 需要返回 Future<void>
+- ScrollController 监听滚动事件实现上拉加载
+- 已弃用 withOpacity 需要使用 withValues(alpha:) 替代
 
-**测试统计:**
-```
-新增测试: 34个 (12 + 13 + 9)
-全部通过: ✅ 34/34
-现有回归: ✅ 51/51
-总计: 85个测试通过
-```
+[2026-02-10 15:30:00] - [US-007] 实现SOS触发页面
 
-**性能指标:**
-- 平均测试执行时间: 4.2秒/模块
-- 缓存命中率: 保持原有水平
-- 内存使用: 无明显变化
+IMPLEMENTATION SUMMARY:
+- 创建了 SOS API 服务（触发、查询状态、取消）
+- 创建了 SOS Provider 管理状态和位置获取
+- 实现了 SOS 触发页面 UI（长按3秒、进度指示、位置显示）
+- 更新了路由配置添加 SOS 页面
 
----
+CHANGES:
+- Created: lib/features/sos/services/sos_api.dart
+- Created: lib/features/sos/providers/sos_provider.dart
+- Created: lib/features/sos/pages/sos_page.dart
+- Modified: lib/core/router/app_router.dart (添加 SOS 页面路由)
 
-### 2026-02-09 Phase 3 - 服务层统一完成
+IMPORTANT LEARNINGS:
+- Geolocator 的 getCurrentPosition 现在使用 LocationSettings 参数而非已弃用的 desiredAccuracy
+- GestureDetector 的 onLongPress 需配合 Timer 实现长按检测
+- CircularProgressIndicator 可用于显示长按进度
+- 使用 geolocator 获取位置需要处理权限和服务启用状态
 
-**已完成:**
-- ✅ US-007: 重构 UserService
-  - 移除不可靠的字典重建对象代码
-  - 统一使用 BaseService.get_by_id() 缓存机制
-  - 更新方法为类方法（update_user, delete_user, list_users）
-  
-- ✅ US-008: 重构 CheckInService
-  - 统一使用类方法替代静态方法
-  - 使用 BaseService.invalidate_list_cache() 失效缓存
-  
-- ✅ US-009: 审查所有服务类
-  - 确认所有16个服务类继承 BaseService
-  - 确认所有服务类定义 model_class, cache_prefix, cache_ttl
+[2026-02-10 16:00:00] - [US-008] 实现SOS状态页面
 
-**服务类列表 (16个):**
-| 服务类 | 状态 |
-|--------|------|
-| UserService | ✅ 已重构 |
-| CheckInService | ✅ 已重构 |
-| EmergencyContactService | ✅ 符合模式 |
-| NotificationService | ✅ 符合模式 |
-| HealthRecordService | ✅ 符合模式 |
-| DeviceService | ✅ 符合模式 |
-| AlertService | ✅ 符合模式 |
-| KnowledgeCategoryService | ✅ 符合模式 |
-| KnowledgeTagService | ✅ 符合模式 |
-| KnowledgeArticleService | ✅ 符合模式 |
-| MedicationService | ✅ 符合模式 |
-| MedicationScheduleService | ✅ 符合模式 |
-| MedicationReminderService | ✅ 符合模式 |
-| MedicationLogService | ✅ 符合模式 |
-| AEDService | ✅ 符合模式 |
-| HealthReportService | ✅ 符合模式 |
+IMPLEMENTATION SUMMARY:
+- 创建了 SOS 状态页面 UI（状态显示、时间、位置信息）
+- 实现了拨打120功能（使用 url_launcher）
+- 实现了取消SOS功能（带确认对话框）
+- 更新了路由配置添加 SOS 状态页面路由
+- 在 HomePage 添加了 SOS 导航按钮
 
-**文件变更:**
-```
-修改文件:
-- app/services/user_service.py
-- app/services/checkin_service.py
-```
+CHANGES:
+- Created: lib/features/sos/pages/sos_status_page.dart
+- Modified: lib/core/router/app_router.dart (添加 SOS 状态页面路由)
+- Modified: lib/features/signin/pages/home_page.dart (添加 SOS 按钮)
+- Modified: pubspec.yaml (添加 url_launcher 依赖)
 
-**重构模式:**
-```python
-# UserService 重构前 - 不可靠的缓存重建
-@staticmethod
-def get_user_by_id(db, user_id):
-    cached = get_cached(f"user:id:{user_id}")
-    if cached:
-        user = User()
-        for key, value in cached.items():  # 不可靠!
-            setattr(user, key, value)
-        return user
-    # ...
+IMPORTANT LEARNINGS:
+- url_launcher 包用于拨打电话功能
+- 使用 canLaunchUrl 检查 URL 是否可启动
+- AlertDialog 用于确认操作
+- 导航使用 Navigator.of(context).pop() 返回
 
-# 重构后 - 使用 BaseService 统一缓存
-@classmethod
-def get_user_by_id(cls, db, user_id):
-    return cls.get_by_id(db, user_id, pk_column="user_id")
+[2026-02-10 16:30:00] - [US-009/010/011] 实现紧急联系人模块
 
-# CheckInService 重构前
-@staticmethod
-def create_checkin(db, user_id, data):
-    # ...
-    invalidate_cache(CacheConfig.make_pattern(...))
+IMPLEMENTATION SUMMARY:
+- 创建了 Contacts API 服务（增删改查）
+- 创建了 Contacts Provider 管理状态
+- 实现了联系人列表页面（卡片式设计、优先级排序）
+- 实现了添加/编辑联系人页面（表单验证、多选通知渠道）
+- 实现了删除联系人功能（带确认对话框）
+- 更新了路由配置添加联系人页面路由
 
-# 重构后
-@classmethod
-def create_checkin(cls, db, user_id, data):
-    # ...
-    cls.invalidate_list_cache(f"{user_id}:*")
-```
+CHANGES:
+- Created: lib/features/contacts/services/contacts_api.dart
+- Created: lib/features/contacts/providers/contacts_provider.dart
+- Created: lib/features/contacts/pages/contacts_page.dart
+- Created: lib/features/contacts/pages/contact_edit_page.dart
+- Modified: lib/core/router/app_router.dart (添加联系人页面路由)
 
-**验证结果:**
-✅ UserService 导入正常
-✅ CheckInService 导入正常
-✅ 所有服务类定义必需属性
+IMPORTANT LEARNINGS:
+- Card + ListTile 实现卡片式设计
+- DropdownButtonFormField 的 value 属性已弃用，需使用 initialValue
+- Radio 的 groupValue 和 onChanged 已弃用，但保留用于兼容性
+- ConsumerWidget 的 build 方法中有 context 参数
+- ModalRoute.of(context).settings.arguments 用于获取路由参数
+
+[2026-02-10 17:00:00] - [US-012/013/014/015] 实现健康档案模块
+
+IMPLEMENTATION SUMMARY:
+- 创建了 Health API 服务（健康档案基本信息、病史、用药、过敏史 CRUD）
+- 创建了 Health Provider 管理所有健康档案相关状态
+- 实现了健康档案主页（基本信息表单、紧急医疗联系人、快速操作入口）
+- 实现了病史管理页面（添加、编辑、删除病史记录，支持慢性病标记和严重程度）
+- 实现了用药管理页面（添加、编辑、删除用药记录，显示正在使用状态）
+- 实现了过敏史管理页面（添加、编辑、删除过敏记录，用颜色区分严重程度）
+- 更新了路由配置添加所有健康档案页面路由
+- 在首页添加了健康档案和紧急联系人的导航按钮
+
+CHANGES:
+- Created: lib/features/health/services/health_api.dart
+- Created: lib/features/health/providers/health_provider.dart
+- Created: lib/features/health/pages/health_page.dart
+- Created: lib/features/health/pages/medical_histories_page.dart
+- Created: lib/features/health/pages/medications_page.dart
+- Created: lib/features/health/pages/allergies_page.dart
+- Modified: lib/core/router/app_router.dart (添加健康档案页面路由)
+- Modified: lib/features/signin/pages/home_page.dart (添加健康档案和联系人按钮)
+
+IMPORTANT LEARNINGS:
+- 健康档案模块包含四个子模块：基本信息、病史、用药、过敏史
+- 使用 CircleAvatar + Icon 实现列表项的图标展示
+- showDatePicker 配合 TextEditingController 实现日期选择
+- CheckboxListTile 适合布尔值选择（如是否慢性病）
+- 严重程度用不同颜色标识提高视觉识别度
+- 表单验证需要在每个 TextFormField 中设置 validator
+- 删除确认对话框需要传递 WidgetRef 参数以便调用 Provider
+- StateNotifierProvider 的 refresh 方法可以重新加载数据
 
 ---
 
-**待完成任务:**
+## Phase 1 完成总结
 
-### Phase 2: 模型层统一 ✅ 已完成
-- [x] US-004: 统一User模型to_dict
-- [x] US-005: 统一所有模型to_dict (18个模型)
-
-### Phase 3: 服务层统一 ✅ 已完成
-- [x] US-007: 重构UserService统一模式
-- [x] US-008: 重构CheckInService
-- [x] US-009: 审查所有服务类
-
-### 2026-02-09 Phase 4 - API层重构完成
-
-**已完成:**
-- ✅ US-010: 重构 users 路由使用 ResponseBuilder
-  - 替换 `success_response` 为 `ApiResponseBuilder.success`
-  - 使用 `UserService` 替代直接数据库查询
-  - 使用 `user.to_dict()` 替代手动构建字典
-  
-- ✅ US-011: 修复其他路由导入问题
-  - checkin.py: 添加缺失的 `CheckInHistoryResponse` schema
-  - knowledge.py: 修复 `get_db` 导入路径
-  - medications.py: 修复 `get_current_user` 导入路径
-
-**重构示例:**
-```python
-# users.py 重构前
-from app.schemas.common import success_response
-
-data = {
-    "user_id": user.user_id,
-    "phone": user.phone,
-    "nickname": user.nickname,
-    ...
-}
-return success_response(data=data)
-
-# 重构后
-from app.core.response_builder import ApiResponseBuilder
-
-return ApiResponseBuilder.success(data=user.to_dict())
-```
-
-### Phase 5: 验证 ✅ 已完成
-- [x] US-012: 运行完整测试套件
-  - ✅ 所有模型导入正常
-  - ✅ UserService 重构后工作正常
-  - ✅ CheckInService 重构后工作正常
-  - ✅ users.py 路由重构后工作正常
-
----
-
-## 重构项目完成总结
-
-### 完成的所有任务
-
-| Phase | 任务 | 状态 |
-|-------|------|------|
-| Phase 1 | US-001: ApiResponseBuilder | ✅ |
-| Phase 1 | US-002: BaseModelMixin | ✅ |
-| Phase 1 | US-003: BaseService缓存修复 | ✅ |
-| Phase 2 | US-004: User模型重构 | ✅ |
-| Phase 2 | US-005: 18个模型to_dict统一 | ✅ |
-| Phase 3 | US-007: UserService重构 | ✅ |
-| Phase 3 | US-008: CheckInService重构 | ✅ |
-| Phase 3 | US-009: 服务类审查 | ✅ |
-| Phase 4 | US-010: users路由重构 | ✅ |
-| Phase 4 | US-011: 路由导入修复 | ✅ |
-| Phase 5 | US-012: 验证测试 | ✅ |
-
-### 新增文件
-```
-app/core/response_builder.py      # API响应构建器
-app/models/base_mixin.py          # 模型Mixin基类
-tests/test_response_builder.py    # 响应构建器测试
-tests/test_base_model_mixin.py    # 模型Mixin测试
-tests/test_base_service_cache.py  # 服务缓存测试
-tests/test_user_model.py          # User模型测试
-```
-
-### 修改文件汇总
-```
-# Phase 1 - 基础设施
-app/services/base_service.py      # 修复缓存机制
-
-# Phase 2 - 模型层 (15个文件)
-app/models/user.py
-app/models/checkin.py
-app/models/emergency_contact.py
-app/models/health_record.py
-app/models/alert.py
-app/models/anomaly.py
-app/models/device.py
-app/models/device_data.py
-app/models/emergency_resource_model.py
-app/models/knowledge_base.py
-app/models/login_record.py
-app/models/medication.py
-app/models/notification_model.py
-app/models/sos_request.py
-app/models/user_setting_model.py
-
-# Phase 3 - 服务层 (2个文件)
-app/services/user_service.py
-app/services/checkin_service.py
-
-# Phase 4 - API层 (4个文件)
-app/api/users.py
-app/schemas/checkin.py
-app/api/knowledge.py
-app/api/medications.py
-```
-
-### 代码改进统计
-
-| 指标 | 改进 |
-|------|------|
-| 重复代码消除 | 移除18个模型的重复to_dict方法 |
-| 统一响应格式 | ApiResponseBuilder替代分散的响应构建 |
-| 缓存机制优化 | 移除不可靠的对象重建逻辑 |
-| 服务层一致性 | 16个服务类统一继承BaseService |
-
-### 向后兼容性
-- ✅ 所有现有API端点保持URL不变
-- ✅ 所有模型to_dict输出格式不变
-- ✅ 服务层静态方法保留作为兼容包装
-- ✅ 数据库表结构未修改
-
-### 测试覆盖
-- ✅ 新增34个单元测试
-- ✅ 所有51个现有服务测试无回归
-- ✅ 模型导入测试通过
-- ✅ 服务类实例化测试通过
-
----
-
-**重构项目状态**: ✅ 全部完成
-**总修改文件**: 21个
-**新增文件**: 6个
-**新增测试**: 34个
-
----
-
-**下一步建议:**
-
-1. **继续Phase 2** - 使用BaseModelMixin统一模型to_dict方法
-2. **暂停重构** - 当前基础设施已可用，可后续继续
-3. **只重构关键模型** - 优先统一高频使用的模型(User, CheckIn等)
-
----
-
-# 起了吗App Phase 3 实施进度记录
-
-## 项目信息
-- 分支: ralph/phase3-implementation
-- 开始时间: 2026-02-08
-- 目标: 完成Phase 2收尾（第三方服务接入）+ Phase 3核心功能
-
-## 代码库模式 (Codebase Patterns)
-
-### 服务层模式
-- 所有服务应继承BaseService[T]，获得统一CRUD和缓存能力
-- 静态方法保持向后兼容，内部调用实例方法
-- 服务类定义: model_class, cache_prefix, cache_ttl 类属性
-
-### 缓存模式
-- 使用CacheConfig统一配置TTL和键前缀
-- 键格式: {prefix}:{identifier}
-- 写操作后需调用invalidate_cache清除相关缓存
-
-### 通知适配器模式
-- 适配器实现统一接口: send(), get_status()
-- 支持通过环境变量切换模拟器/真实服务
-- 真实服务失败时自动降级到模拟器
-
-### 测试模式
-- 单元测试使用pytest + SQLite内存数据库
-- 集成测试使用真实API测试key
-- 所有服务必须有对应的测试文件
-
-## 迭代记录
-
-### 2026-02-08 Phase 2收尾完成
-
-**已完成用户故事:**
-- ✅ US-005: NotificationService重构继承BaseService
-- ✅ US-002: 阿里云短信服务集成
-- ✅ US-001: 极光推送服务集成  
-- ✅ US-003: 阿里云语音服务集成
-- ✅ US-004: SendGrid邮件服务集成
-
-**交付物:**
-- 4个第三方服务适配器（阿里云短信/语音、极光推送、SendGrid）
-- 适配器工厂（AdapterFactory）支持环境变量切换
-- 59个适配器集成测试全部通过
-- 统一的错误码映射和降级策略
-
-**使用方式:**
-```bash
-# 使用真实服务
-export SMS_USE_REAL_SERVICE=true
-export PUSH_USE_REAL_SERVICE=true
-export PHONE_USE_REAL_SERVICE=true
-export EMAIL_USE_REAL_SERVICE=true
-
-# 配置阿里云短信
-export ALIYUN_ACCESS_KEY_ID=your_key
-export ALIYUN_ACCESS_KEY_SECRET=your_secret
-export ALIYUN_SMS_SIGN_NAME=你的签名
-
-# 配置极光推送
-export JPUSH_APP_KEY=your_app_key
-export JPUSH_MASTER_SECRET=your_master_secret
-
-# 配置阿里云语音
-export ALIYUN_VOICE_SHOW_NUMBER=0571-XXXXXXX
-
-# 配置SendGrid
-export SENDGRID_API_KEY=your_api_key
-```
-
-### 2026-02-08 Phase 3 - US-006急救知识库完成
-
-**已完成:**
-- ✅ 基于默沙东诊疗手册构建急救知识库
-- ✅ 7个知识分类、74个标签、14篇精选文章
-- ✅ 覆盖：CPR、AED、窒息、止血、骨折、烧伤、中暑、低体温、昏厥、癫痫、过敏等
-- ✅ 知识库模型、服务、API完整实现
-- ✅ 23个知识库单元测试全部通过
-
-**知识库内容:**
-1. 急救优先顺序 - 现场评估和求救方法
-2. 心搏骤停与CPR - 心肺复苏完整指南
-3. AED使用指南 - 自动体外除颤器操作
-4. 窒息与气道梗阻 - 海姆立克急救法
-5. 止血与包扎 - 各类出血处理方法
-6. 骨折与固定 - 骨折识别和固定技术
-7. 烧伤处理 - 热力/化学/电击伤处理
-8. 中暑与热射病 - 高温急症处理
-9. 低体温与冻伤 - 低温伤害处理
-10. 晕倒与昏厥 - 昏厥识别和处理
-11. 癫痫发作急救 - 抽搐发作处理
-12. 过敏反应与过敏性休克 - 肾上腺素使用
-13. 急救箱配置指南 - 家庭/车载急救包
-14. 拨打120指南 - 急救电话正确拨打
-
-**导入方法:**
-```bash
-python scripts/import_first_aid_knowledge.py
-```
-
-### 2026-02-09 Phase 3 - US-008用药提醒功能完成
-
-**已完成:**
-- ✅ MedicationReminderItem模型（药品信息、剂量、单位、库存）
-- ✅ MedicationReminderSchedule模型（用药计划、频率、时间）
-- ✅ MedicationReminderNotification模型（提醒记录、状态）
-- ✅ MedicationReminderLog模型（服药记录、实际服药时间）
-- ✅ MedicationService继承BaseService（药品CRUD、库存管理）
-- ✅ MedicationScheduleService（计划管理、暂停/恢复）
-- ✅ MedicationReminderService（提醒创建、状态管理）
-- ✅ MedicationLogService（服药记录、依从性统计）
-- ✅ 用药提醒API路由（medications.py）完整CRUD
-- ✅ 17个单元测试全部通过
-
-**命名调整（避免与health_record.Medication冲突）:**
-- Medication → MedicationReminderItem
-- MedicationSchedule → MedicationReminderSchedule
-- MedicationReminder → MedicationReminderNotification
-- MedicationLog → MedicationReminderLog
-- 表名使用 medication_reminder_* 前缀
-
-**API端点:**
-- `GET/POST /api/v1/medications` - 药品列表/创建
-- `GET/PUT/DELETE /api/v1/medications/{id}` - 药品详情/更新/删除
-- `POST /api/v1/medications/{id}/take` - 记录服药
-- `GET/POST /api/v1/medication-schedules` - 用药计划
-- `GET/POST /api/v1/medication-logs` - 服药记录
-- `GET /api/v1/medication-logs/stats` - 依从性统计
-- `GET /api/v1/medication-reminders/today` - 今日提醒
-
-### 2026-02-09 Phase 3 - US-007 AED设备地图扩展完成
-
-**已完成:**
-- ✅ EmergencyResource模型扩展，添加15个AED专用字段
-- ✅ AEDStatus枚举（active/maintenance/inactive/deprecated）
-- ✅ AEDService继承BaseService，实现：
-  - 附近AED搜索（支持距离计算、到达时间预估）
-  - 多平台导航链接生成（高德/百度/腾讯/苹果/谷歌）
-  - 批量导入AED设备
-  - AED状态管理（可用率统计、过期预警）
-  - 地图边界查询（用于前端地图展示）
-- ✅ AED专用API路由（aed.py），包含8个端点：
-  - `GET /api/aed/nearby` - 附近AED查询
-  - `GET /api/aed/nearest` - 最近AED（快速获取）
-  - `GET /api/aed/{id}` - AED详情
-  - `POST /api/aed/navigation` - 导航链接
-  - `POST /api/aed/import` - 批量导入
-  - `PUT /api/aed/{id}/status` - 状态更新
-  - `GET /api/aed/statistics/overview` - 统计信息
-  - `GET /api/aed/maintenance/expiring` - 过期预警
-  - `GET /api/aed/map/bounds` - 地图边界查询
-- ✅ 13个单元测试全部通过
-
-**AED扩展字段:**
-- 设备信息: aed_brand, aed_model, aed_sn
-- 位置信息: aed_location_desc, aed_access_instructions
-- 维护信息: aed_installation_date, aed_battery_expiry, aed_pad_expiry
-- 管理信息: aed_manager_name, aed_manager_phone
-- 媒体信息: aed_image_url, aed_photos
-- 检查记录: aed_last_inspection
-
-### 2026-02-09 Phase 3 - US-009健康数据趋势报告完成
-
-**已完成:**
-- ✅ HealthReportService实现：
-  - 心率、血压、血氧、体温、步数、睡眠等指标趋势分析
-  - 按日/周/月多周期数据聚合
-  - 线性回归趋势判断（上升/下降/稳定）
-  - 统计数据计算（均值、中位数、标准差、极值）
-  - 异常检测（基于用户阈值，分级：高/中/低）
-- ✅ 综合健康报告（多指标整合评分）
-- ✅ 时期对比分析（变化百分比计算）
-- ✅ 每日健康摘要（步数目标、睡眠质量评估）
-- ✅ 健康报告API（health_reports.py），包含8个端点：
-  - `POST /api/health-reports/trend-analysis` - 趋势分析
-  - `GET /api/health-reports/comprehensive` - 综合报告
-  - `GET /api/health-reports/anomalies` - 异常检测
-  - `POST /api/health-reports/compare-periods` - 时期对比
-  - `GET /api/health-reports/daily-summary/{date}` - 每日摘要
-  - `GET /api/health-reports/daily-summary` - 今日摘要
-  - `GET /api/health-reports/metrics/available` - 可用指标
-  - `GET /api/health-reports/thresholds/default` - 默认阈值
-- ✅ 18个单元测试全部通过
-
-**健康评分算法:**
-- 基础分70分
-- 步数达标 +15分（或按完成率加分）
-- 睡眠质量良好 +15分
-- 异常数据扣分
-
----
-
-## Phase 3 完成总结
-
-**已完成的用户故事:**
-- ✅ US-006: 急救知识库基础功能
-- ✅ US-007: AED设备地图扩展  
-- ✅ US-008: 用药提醒功能
-- ✅ US-009: 健康数据趋势报告
-
-**总交付:**
-- 4个新服务（KnowledgeService, AEDService, MedicationService, HealthReportService）
-- 4个新API模块（knowledge, aed, medications, health_reports）
-- 4个新模型文件（knowledge_base, medication, emergency_resource扩展）
-- 71个单元测试全部通过（知识库23 + 用药17 + AED 13 + 健康报告18）
-- 所有服务继承BaseService，保持架构一致性
-
----
+Phase 1 核心功能已全部完成（15/15 用户故事）：
+- US-001: 配置核心基础设施 ✓
+- US-002: 实现登录页面 ✓
+- US-003: 实现注册页面 ✓
+- US-004: Token管理和自动刷新 ✓
+- US-005: 实现签到首页 ✓
+- US-006: 实现签到历史页面 ✓
+- US-007: 实现SOS触发页面 ✓
+- US-008: 实现SOS状态页面 ✓
+- US-009: 实现紧急联系人列表页面 ✓
+- US-010: 实现添加/编辑联系人功能 ✓
+- US-011: 实现删除联系人功能 ✓
+- US-012: 实现健康档案基本信息页面 ✓
+- US-013: 实现病史管理功能 ✓
+- US-014: 实现用药信息管理功能 ✓
+- US-015: 实现过敏史管理功能 ✓
