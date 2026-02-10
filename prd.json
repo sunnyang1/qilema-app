@@ -28,7 +28,7 @@
         "显示友好的错误提示"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
