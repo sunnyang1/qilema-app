@@ -2,6 +2,7 @@
 智能设备API路由
 
 提供设备绑定、数据上传、阈值配置等RESTful接口
+使用 ApiResponseBuilder 统一构建响应
 """
 
 from typing import List
@@ -14,6 +15,7 @@ from app.core.security import get_current_user
 from app.core.exceptions import (
     ValidationException, DeviceNotFoundException, ThresholdNotFoundException
 )
+from app.core.response_builder import ApiResponseBuilder
 from app.models.user import User
 from app.schemas.device import (
     DeviceBind, DeviceUpdate, DeviceResponse, DeviceDataUpload,
@@ -29,7 +31,7 @@ device_service = DeviceService()
 
 # ========== 设备绑定管理 ==========
 
-@router.post("/bind", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/bind", status_code=status.HTTP_201_CREATED)
 def bind_device(
     device_data: DeviceBind,
     db: Session = Depends(get_db),
@@ -42,7 +44,7 @@ def bind_device(
     """
     try:
         device = device_service.bind_device(db, current_user.user_id, device_data)
-        return device
+        return ApiResponseBuilder.from_model(device, DeviceResponse, message="设备绑定成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
 
@@ -60,12 +62,12 @@ def unbind_device(
     """
     try:
         device_service.unbind_device(db, device_id, current_user.user_id)
-        return {"message": "设备解绑成功"}
+        return ApiResponseBuilder.success(message="设备解绑成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
 
 
-@router.get("", response_model=List[DeviceResponse])
+@router.get("")
 def get_user_devices(
     include_inactive: bool = False,
     db: Session = Depends(get_db),
@@ -77,10 +79,10 @@ def get_user_devices(
     include_inactive: 是否包含已解绑设备
     """
     devices = device_service.get_user_devices(db, current_user.user_id, include_inactive)
-    return devices
+    return ApiResponseBuilder.from_model(devices, DeviceResponse, message="获取设备列表成功")
 
 
-@router.get("/{device_id}", response_model=DeviceResponse)
+@router.get("/{device_id}")
 def get_device(
     device_id: str,
     db: Session = Depends(get_db),
@@ -92,7 +94,7 @@ def get_device(
     device = device_service.get_device(db, device_id, current_user.user_id)
     if not device:
         raise DeviceNotFoundException(device_id)
-    return device
+    return ApiResponseBuilder.from_model(device, DeviceResponse, message="获取设备信息成功")
 
 
 @router.put("/{device_id}", response_model=DeviceResponse)
@@ -114,7 +116,7 @@ def update_device(
         raise ValidationException(detail=str(e))
 
 
-@router.patch("/{device_id}/status", response_model=DeviceResponse)
+@router.patch("/{device_id}/status")
 def update_device_status(
     device_id: str,
     status_data: DeviceStatusUpdate,
@@ -123,12 +125,12 @@ def update_device_status(
 ):
     """
     更新设备状态
-    
+
     更新设备在线状态和电池电量
     """
     try:
         device = device_service.update_device_status(db, device_id, current_user.user_id, status_data)
-        return device
+        return ApiResponseBuilder.from_model(device, DeviceResponse, message="设备状态更新成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
 
@@ -153,7 +155,7 @@ def upload_device_data(
         raise ValidationException(detail=str(e))
 
 
-@router.post("/data/query", response_model=List[DeviceDataResponse])
+@router.post("/data/query")
 def query_device_data(
     query_params: DeviceDataQuery,
     db: Session = Depends(get_db),
@@ -161,11 +163,11 @@ def query_device_data(
 ):
     """
     查询设备数据
-    
+
     支持按设备ID、时间范围、数据类型筛选
     """
     device_data_list = device_service.get_device_data(db, current_user.user_id, query_params)
-    return device_data_list
+    return ApiResponseBuilder.from_model(device_data_list, DeviceDataResponse, message="查询设备数据成功")
 
 
 @router.get("/{device_id}/statistics")
@@ -198,7 +200,7 @@ def get_device_statistics(
 
 # ========== 阈值配置管理 ==========
 
-@router.post("/thresholds", response_model=DeviceThresholdResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/thresholds", status_code=status.HTTP_201_CREATED)
 def create_threshold(
     threshold_data: DeviceThresholdCreate,
     db: Session = Depends(get_db),
@@ -206,7 +208,7 @@ def create_threshold(
 ):
     """
     创建设备异常阈值配置
-    
+
     设置心率、血压、血氧、体温等生理数据的异常阈值
     """
     try:
@@ -216,7 +218,7 @@ def create_threshold(
             raise DeviceNotFoundException(threshold_data.device_id)
 
         threshold = device_service.create_threshold(db, threshold_data)
-        return threshold
+        return ApiResponseBuilder.from_model(threshold, DeviceThresholdResponse, message="阈值配置创建成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
 
@@ -242,7 +244,7 @@ def get_threshold(
     return threshold
 
 
-@router.put("/{device_id}/threshold", response_model=DeviceThresholdResponse)
+@router.put("/{device_id}/threshold")
 def update_threshold(
     device_id: str,
     threshold_data: DeviceThresholdUpdate,
@@ -259,7 +261,7 @@ def update_threshold(
             raise DeviceNotFoundException(device_id)
 
         threshold = device_service.update_threshold(db, device_id, threshold_data)
-        return threshold
+        return ApiResponseBuilder.from_model(threshold, DeviceThresholdResponse, message="阈值配置更新成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
 
@@ -292,7 +294,7 @@ def get_device_alerts(
     获取设备异常预警列表(管理员接口)
     """
     # 这里可以实现预警历史查询功能
-    return {
-        "message": "预警历史查询功能待实现",
-        "alerts": []
-    }
+    return ApiResponseBuilder.success(
+        data={"alerts": []},
+        message="预警历史查询功能待实现"
+    )

@@ -2,6 +2,7 @@
 急救知识库API路由
 
 提供急救知识文章、分类和标签的REST API接口
+使用 ApiResponseBuilder 统一构建响应
 """
 
 from typing import List, Optional
@@ -9,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.response_builder import ApiResponseBuilder
 from app.models.knowledge_base import KnowledgeArticle, KnowledgeCategory, KnowledgeTag
 from app.services.knowledge_service import (
     KnowledgeBaseService,
@@ -16,7 +18,6 @@ from app.services.knowledge_service import (
     KnowledgeCategoryService,
     KnowledgeTagService
 )
-from app.schemas.common import success_response
 
 router = APIRouter(prefix="/knowledge", tags=["急救知识库"])
 
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/knowledge", tags=["急救知识库"])
 async def get_homepage_data(db: Session = Depends(get_db)):
     """获取知识库首页数据"""
     data = KnowledgeBaseService.get_homepage_data(db)
-    return success_response(data=data)
+    return ApiResponseBuilder.success(data=data, message="获取首页数据成功")
 
 
 # ========== 分类管理 ==========
@@ -39,14 +40,14 @@ async def list_categories(
 ):
     """获取分类列表"""
     categories = KnowledgeCategoryService.get_active_categories(db, parent_id)
-    return success_response(data=[c.to_dict() for c in categories])
+    return ApiResponseBuilder.success(data=[c.to_dict() for c in categories], message="获取分类列表成功")
 
 
 @router.get("/categories/tree")
 async def get_category_tree(db: Session = Depends(get_db)):
     """获取分类树"""
     tree = KnowledgeCategoryService.get_category_tree(db)
-    return success_response(data=tree)
+    return ApiResponseBuilder.success(data=tree, message="获取分类树成功")
 
 
 @router.get("/categories/{category_id}")
@@ -55,7 +56,7 @@ async def get_category(category_id: int, db: Session = Depends(get_db)):
     category = KnowledgeCategoryService.get_by_id(db, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="分类不存在")
-    return success_response(data=category.to_dict(include_children=True))
+    return ApiResponseBuilder.success(data=category.to_dict(include_children=True), message="获取分类详情成功")
 
 
 @router.post("/categories")
@@ -76,7 +77,7 @@ async def create_category(
         "parent_id": parent_id
     }
     category = KnowledgeCategoryService.create_category(db, data)
-    return success_response(data=category.to_dict())
+    return ApiResponseBuilder.success(data=category.to_dict(), message="分类创建成功")
 
 
 @router.put("/categories/{category_id}")
@@ -97,11 +98,11 @@ async def update_category(
         "sort_order": sort_order,
         "is_active": is_active
     }.items() if v is not None}
-    
+
     category = KnowledgeCategoryService.update_category(db, category_id, data)
     if not category:
         raise HTTPException(status_code=404, detail="分类不存在")
-    return success_response(data=category.to_dict())
+    return ApiResponseBuilder.success(data=category.to_dict(), message="分类更新成功")
 
 
 # ========== 标签管理 ==========
@@ -117,7 +118,7 @@ async def list_tags(
         tags = KnowledgeTagService.search_tags(db, keyword, limit)
     else:
         tags = KnowledgeTagService.get_active_tags(db)
-    return success_response(data=[t.to_dict() for t in tags])
+    return ApiResponseBuilder.success(data=[t.to_dict() for t in tags], message="获取标签列表成功")
 
 
 @router.get("/tags/{tag_id}")
@@ -126,7 +127,7 @@ async def get_tag(tag_id: int, db: Session = Depends(get_db)):
     tag = KnowledgeTagService.get_by_id(db, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="标签不存在")
-    return success_response(data=tag.to_dict())
+    return ApiResponseBuilder.success(data=tag.to_dict(), message="获取标签详情成功")
 
 
 @router.post("/tags")
@@ -139,7 +140,7 @@ async def create_tag(
     """创建标签（管理员功能）"""
     data = {"name": name, "description": description, "color": color}
     tag = KnowledgeTagService.create_record(db, data)
-    return success_response(data=tag.to_dict())
+    return ApiResponseBuilder.success(data=tag.to_dict(), message="标签创建成功")
 
 
 # ========== 文章管理 ==========
@@ -157,7 +158,7 @@ async def list_articles(
     articles = KnowledgeArticleService.get_published_articles(
         db, skip=skip, limit=limit, category_id=category_id, tag_names=tag_names
     )
-    return success_response(data=[a.to_dict() for a in articles])
+    return ApiResponseBuilder.success(data=[a.to_dict() for a in articles], message="获取文章列表成功")
 
 
 @router.get("/articles/search")
@@ -169,7 +170,7 @@ async def search_articles(
 ):
     """搜索文章"""
     articles = KnowledgeArticleService.search_articles(db, keyword, skip, limit)
-    return success_response(data=[a.to_dict() for a in articles])
+    return ApiResponseBuilder.success(data=[a.to_dict() for a in articles], message="搜索文章成功")
 
 
 @router.get("/articles/{article_id}")
@@ -178,7 +179,7 @@ async def get_article(article_id: int, db: Session = Depends(get_db)):
     article = KnowledgeArticleService.get_article_detail(db, article_id)
     if not article:
         raise HTTPException(status_code=404, detail="文章不存在")
-    return success_response(data=article.to_dict(include_content=True))
+    return ApiResponseBuilder.success(data=article.to_dict(include_content=True), message="获取文章详情成功")
 
 
 @router.get("/articles/{article_id}/related")
@@ -189,7 +190,7 @@ async def get_related_articles(
 ):
     """获取相关文章"""
     articles = KnowledgeArticleService.get_related_articles(db, article_id, limit)
-    return success_response(data=[a.to_dict() for a in articles])
+    return ApiResponseBuilder.success(data=[a.to_dict() for a in articles], message="获取相关文章成功")
 
 
 @router.post("/articles/{article_id}/like")
@@ -198,7 +199,7 @@ async def like_article(article_id: int, db: Session = Depends(get_db)):
     success = KnowledgeArticleService.increment_like(db, article_id)
     if not success:
         raise HTTPException(status_code=404, detail="文章不存在")
-    return success_response(message="点赞成功")
+    return ApiResponseBuilder.success(message="点赞成功")
 
 
 @router.post("/articles")
@@ -229,7 +230,7 @@ async def create_article(
         "status": status
     }
     article = KnowledgeArticleService.create_article(db, data)
-    return success_response(data=article.to_dict())
+    return ApiResponseBuilder.success(data=article.to_dict(), message="文章创建成功")
 
 
 @router.put("/articles/{article_id}")
@@ -258,11 +259,11 @@ async def update_article(
         "is_top": is_top,
         "status": status
     }.items() if v is not None}
-    
+
     article = KnowledgeArticleService.update_article(db, article_id, data)
     if not article:
         raise HTTPException(status_code=404, detail="文章不存在")
-    return success_response(data=article.to_dict())
+    return ApiResponseBuilder.success(data=article.to_dict(), message="文章更新成功")
 
 
 @router.delete("/articles/{article_id}")
@@ -271,4 +272,4 @@ async def delete_article(article_id: int, db: Session = Depends(get_db)):
     success = KnowledgeArticleService.delete_article(db, article_id)
     if not success:
         raise HTTPException(status_code=404, detail="文章不存在")
-    return success_response(message="删除成功")
+    return ApiResponseBuilder.success(message="删除成功")

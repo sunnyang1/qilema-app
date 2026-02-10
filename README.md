@@ -174,7 +174,7 @@ flutter pub get
 #### 3. 安装后端依赖
 
 ```bash
-cd ../backend
+cd backend
 pip install -r requirements.txt
 ```
 
@@ -223,7 +223,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 ```bash
 cd backend
-python init_db.py
+python -c "from app.core.database import init_db; init_db()"
 ```
 
 #### 6. 启动Redis
@@ -245,7 +245,11 @@ sudo systemctl start redis
 #### 7. 启动后端服务
 
 ```bash
+# 方式1: 从backend目录启动
 cd backend
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# 方式2: 从项目根目录启动
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -267,14 +271,20 @@ flutter run -d chrome
 #### 9. 使用Docker启动（推荐）
 
 ```bash
-# 启动所有服务（前端、后端、数据库、Redis）
+# 启动所有服务（后端、数据库、Redis）
 docker-compose up -d
 
 # 查看日志
 docker-compose logs -f
 
+# 查看后端服务日志
+docker-compose logs -f backend
+
 # 停止服务
 docker-compose down
+
+# 完整重建（代码更新后）
+docker-compose up -d --build
 ```
 
 ---
@@ -475,6 +485,9 @@ pytest --cov=app --cov-report=html
 
 # 运行完整测试套件
 ./run_full_tests.sh
+
+# 从项目根目录运行测试
+cd backend && pytest
 ```
 
 **当前测试状态**: 427个测试通过，服务基类采用率85%+
@@ -580,14 +593,16 @@ docker-compose down
 - [x] 健康档案管理
 - [ ] APP推送通知
 
-### Phase 2：增强版（进行中）
-- [ ] 智能设备绑定和数据同步
+### Phase 2：增强版（已完成 ✓）
+- [x] 智能设备绑定和数据同步
 - [x] 生理数据监测和异常预警
 - [x] 周边急救资源地图
 - [x] 一键拨打120
-- [ ] 通知渠道扩展（邮件、电话）
+- [x] 通知渠道扩展（邮件、电话）
 - [x] 签到提醒功能
 - [x] 用户设置和个性化配置
+- [x] 项目结构整理（backend/frontend/docs分离）
+- [x] Docker部署支持
 
 ### Phase 3：完整版（规划中）
 - [ ] 与120急救中心对接

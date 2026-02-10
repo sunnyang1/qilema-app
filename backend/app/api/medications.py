@@ -2,6 +2,7 @@
 用药提醒API路由
 
 提供药品管理、用药计划、服药记录等接口
+使用 ApiResponseBuilder 统一构建响应
 """
 
 from datetime import date, datetime, timedelta
@@ -11,13 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.response_builder import ApiResponseBuilder
 from app.services.medication_service import (
     MedicationService, MedicationScheduleService,
     MedicationReminderService, MedicationLogService
 )
-from app.schemas.response import ResponseModel
 
-router = APIRouter()
+router = APIRouter(prefix="/medications", tags=["用药提醒"])
 
 # 服务实例
 medication_service = MedicationService()
@@ -28,7 +29,7 @@ log_service = MedicationLogService()
 
 # ============== 药品管理 ==============
 
-@router.get("/medications", response_model=ResponseModel)
+@router.get("/")
 async def get_medications(
     only_active: bool = True,
     db: Session = Depends(get_db),
@@ -38,13 +39,13 @@ async def get_medications(
     medications = medication_service.get_user_medications(
         db, current_user.user_id, only_active
     )
-    return ResponseModel(
+    return ApiResponseBuilder.success(
         data=[m.to_dict() for m in medications],
-        meta={"total": len(medications)}
+        message="获取药品列表成功"
     )
 
 
-@router.post("/medications", response_model=ResponseModel)
+@router.post("/")
 async def create_medication(
     medication_data: dict,
     db: Session = Depends(get_db),
@@ -54,10 +55,10 @@ async def create_medication(
     medication = medication_service.create_medication(
         db, current_user.user_id, medication_data
     )
-    return ResponseModel(data=medication.to_dict())
+    return ApiResponseBuilder.success(data=medication.to_dict(), message="药品创建成功")
 
 
-@router.get("/medications/{medication_id}", response_model=ResponseModel)
+@router.get("/{medication_id}")
 async def get_medication(
     medication_id: int,
     db: Session = Depends(get_db),
@@ -67,10 +68,10 @@ async def get_medication(
     medication = medication_service.get_by_id(db, medication_id)
     if not medication or medication.user_id != current_user.user_id:
         raise HTTPException(status_code=404, detail="药品不存在")
-    return ResponseModel(data=medication.to_dict())
+    return ApiResponseBuilder.success(data=medication.to_dict(), message="获取药品详情成功")
 
 
-@router.put("/medications/{medication_id}", response_model=ResponseModel)
+@router.put("/{medication_id}")
 async def update_medication(
     medication_id: int,
     update_data: dict,
@@ -83,10 +84,10 @@ async def update_medication(
     )
     if not medication:
         raise HTTPException(status_code=404, detail="药品不存在")
-    return ResponseModel(data=medication.to_dict())
+    return ApiResponseBuilder.success(data=medication.to_dict(), message="药品更新成功")
 
 
-@router.delete("/medications/{medication_id}", response_model=ResponseModel)
+@router.delete("/{medication_id}")
 async def delete_medication(
     medication_id: int,
     db: Session = Depends(get_db),
@@ -98,12 +99,12 @@ async def delete_medication(
     )
     if not success:
         raise HTTPException(status_code=404, detail="药品不存在")
-    return ResponseModel(message="删除成功")
+    return ApiResponseBuilder.success(message="药品删除成功")
 
 
 # ============== 用药计划 ==============
 
-@router.get("/schedules", response_model=ResponseModel)
+@router.get("/schedules/")
 async def get_schedules(
     medication_id: Optional[int] = None,
     only_active: bool = True,
@@ -119,13 +120,13 @@ async def get_schedules(
         schedules = schedule_service.get_user_schedules(
             db, current_user.user_id, only_active
         )
-    return ResponseModel(
+    return ApiResponseBuilder.success(
         data=[s.to_dict() for s in schedules],
-        meta={"total": len(schedules)}
+        message="获取用药计划列表成功"
     )
 
 
-@router.post("/schedules", response_model=ResponseModel)
+@router.post("/schedules/")
 async def create_schedule(
     schedule_data: dict,
     db: Session = Depends(get_db),
@@ -135,10 +136,10 @@ async def create_schedule(
     schedule = schedule_service.create_schedule(
         db, current_user.user_id, schedule_data
     )
-    return ResponseModel(data=schedule.to_dict())
+    return ApiResponseBuilder.success(data=schedule.to_dict(), message="用药计划创建成功")
 
 
-@router.get("/schedules/{schedule_id}", response_model=ResponseModel)
+@router.get("/schedules/{schedule_id}")
 async def get_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
@@ -148,10 +149,10 @@ async def get_schedule(
     schedule = schedule_service.get_by_id(db, schedule_id)
     if not schedule or schedule.user_id != current_user.user_id:
         raise HTTPException(status_code=404, detail="用药计划不存在")
-    return ResponseModel(data=schedule.to_dict())
+    return ApiResponseBuilder.success(data=schedule.to_dict(), message="获取用药计划详情成功")
 
 
-@router.put("/schedules/{schedule_id}", response_model=ResponseModel)
+@router.put("/schedules/{schedule_id}")
 async def update_schedule(
     schedule_id: int,
     update_data: dict,
@@ -164,10 +165,10 @@ async def update_schedule(
     )
     if not schedule:
         raise HTTPException(status_code=404, detail="用药计划不存在")
-    return ResponseModel(data=schedule.to_dict())
+    return ApiResponseBuilder.success(data=schedule.to_dict(), message="用药计划更新成功")
 
 
-@router.post("/schedules/{schedule_id}/pause", response_model=ResponseModel)
+@router.post("/schedules/{schedule_id}/pause")
 async def pause_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
@@ -179,10 +180,10 @@ async def pause_schedule(
     )
     if not schedule:
         raise HTTPException(status_code=404, detail="用药计划不存在")
-    return ResponseModel(data=schedule.to_dict())
+    return ApiResponseBuilder.success(data=schedule.to_dict(), message="用药计划已暂停")
 
 
-@router.post("/schedules/{schedule_id}/resume", response_model=ResponseModel)
+@router.post("/schedules/{schedule_id}/resume")
 async def resume_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
@@ -194,10 +195,10 @@ async def resume_schedule(
     )
     if not schedule:
         raise HTTPException(status_code=404, detail="用药计划不存在")
-    return ResponseModel(data=schedule.to_dict())
+    return ApiResponseBuilder.success(data=schedule.to_dict(), message="用药计划已恢复")
 
 
-@router.delete("/schedules/{schedule_id}", response_model=ResponseModel)
+@router.delete("/schedules/{schedule_id}")
 async def delete_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
@@ -209,12 +210,12 @@ async def delete_schedule(
     )
     if not success:
         raise HTTPException(status_code=404, detail="用药计划不存在")
-    return ResponseModel(message="删除成功")
+    return ApiResponseBuilder.success(message="用药计划删除成功")
 
 
 # ============== 提醒管理 ==============
 
-@router.get("/reminders", response_model=ResponseModel)
+@router.get("/reminders/")
 async def get_reminders(
     reminder_date: Optional[date] = None,
     status: Optional[str] = None,
@@ -223,39 +224,39 @@ async def get_reminders(
 ):
     """获取用药提醒列表"""
     from app.models.medication import ReminderStatus
-    
+
     reminder_status = None
     if status:
         try:
             reminder_status = ReminderStatus(status)
         except ValueError:
             pass
-    
+
     reminders = reminder_service.get_user_reminders(
         db, current_user.user_id, reminder_date, reminder_status
     )
-    return ResponseModel(
+    return ApiResponseBuilder.success(
         data=[r.to_dict() for r in reminders],
-        meta={"total": len(reminders)}
+        message="获取用药提醒列表成功"
     )
 
 
-@router.get("/reminders/today", response_model=ResponseModel)
+@router.get("/reminders/today")
 async def get_today_reminders(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """获取今日提醒"""
     reminders = reminder_service.get_today_reminders(db, current_user.user_id)
-    return ResponseModel(
+    return ApiResponseBuilder.success(
         data=[r.to_dict() for r in reminders],
-        meta={"total": len(reminders)}
+        message="获取今日提醒成功"
     )
 
 
 # ============== 服药记录 ==============
 
-@router.get("/logs", response_model=ResponseModel)
+@router.get("/logs/")
 async def get_logs(
     medication_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -267,13 +268,13 @@ async def get_logs(
     logs = log_service.get_user_logs(
         db, current_user.user_id, start_date, end_date, medication_id
     )
-    return ResponseModel(
+    return ApiResponseBuilder.success(
         data=[log.to_dict() for log in logs],
-        meta={"total": len(logs)}
+        message="获取服药记录成功"
     )
 
 
-@router.post("/logs/taken", response_model=ResponseModel)
+@router.post("/logs/taken")
 async def record_taken(
     data: dict,
     db: Session = Depends(get_db),
@@ -284,18 +285,18 @@ async def record_taken(
     reminder_id = data.get("reminder_id")
     dosage_taken = data.get("dosage_taken")
     notes = data.get("notes")
-    
+
     if not medication_id:
         raise HTTPException(status_code=400, detail="药品ID不能为空")
-    
+
     log = log_service.record_taken(
         db, current_user.user_id, medication_id,
         reminder_id, dosage_taken, notes
     )
-    return ResponseModel(data=log.to_dict())
+    return ApiResponseBuilder.success(data=log.to_dict(), message="服药记录成功")
 
 
-@router.post("/logs/skipped", response_model=ResponseModel)
+@router.post("/logs/skipped")
 async def record_skipped(
     data: dict,
     db: Session = Depends(get_db),
@@ -305,17 +306,17 @@ async def record_skipped(
     medication_id = data.get("medication_id")
     reminder_id = data.get("reminder_id")
     reason = data.get("reason")
-    
+
     if not medication_id:
         raise HTTPException(status_code=400, detail="药品ID不能为空")
-    
+
     log = log_service.record_skipped(
         db, current_user.user_id, medication_id, reminder_id, reason
     )
-    return ResponseModel(data=log.to_dict())
+    return ApiResponseBuilder.success(data=log.to_dict(), message="跳过服药记录成功")
 
 
-@router.get("/logs/stats", response_model=ResponseModel)
+@router.get("/logs/stats")
 async def get_adherence_stats(
     medication_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -327,42 +328,42 @@ async def get_adherence_stats(
     stats = log_service.get_adherence_stats(
         db, current_user.user_id, medication_id, start_date, end_date
     )
-    return ResponseModel(data=stats)
+    return ApiResponseBuilder.success(data=stats, message="获取服药依从性统计成功")
 
 
 # ============== 仪表盘 ==============
 
-@router.get("/dashboard", response_model=ResponseModel)
+@router.get("/dashboard")
 async def get_dashboard(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """获取用药仪表盘数据"""
     today = date.today()
-    
+
     # 今日提醒
     today_reminders = reminder_service.get_today_reminders(db, current_user.user_id)
-    
+
     # 活跃计划数
     active_schedules = schedule_service.get_user_schedules(
         db, current_user.user_id, only_active=True
     )
-    
+
     # 药品数量
     medications = medication_service.get_user_medications(
         db, current_user.user_id, only_active=True
     )
-    
+
     # 本周依从性
     week_start = today - timedelta(days=today.weekday())
     stats = log_service.get_adherence_stats(
         db, current_user.user_id, start_date=week_start, end_date=today
     )
-    
-    return ResponseModel(data={
+
+    return ApiResponseBuilder.success(data={
         "today_reminders": [r.to_dict() for r in today_reminders],
         "today_reminders_count": len(today_reminders),
         "active_schedules_count": len(active_schedules),
         "medications_count": len(medications),
         "weekly_adherence": stats
-    })
+    }, message="获取用药仪表盘数据成功")

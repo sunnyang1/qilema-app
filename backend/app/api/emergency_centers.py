@@ -2,11 +2,13 @@
 120急救中心对接API路由
 
 提供一键拨打120、救护车追踪、救援记录等RESTful接口
+使用 ApiResponseBuilder 统一构建响应
 """
 
 from typing import List
 from fastapi import APIRouter, Depends, status
 from app.core.exceptions import ValidationException, NotFoundException, ForbiddenException
+from app.core.response_builder import ApiResponseBuilder
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -28,7 +30,7 @@ emergency_center_service = EmergencyCenterService()
 
 # ========== 120一键拨打 ==========
 
-@router.post("/call-120", response_model=Call120Response, status_code=status.HTTP_201_CREATED)
+@router.post("/call-120", status_code=status.HTTP_201_CREATED)
 def call_120(
     request: Call120Request,
     db: Session = Depends(get_db),
@@ -36,12 +38,12 @@ def call_120(
 ):
     """
     一键拨打120
-    
+
     创建急救呼叫记录,拨打120电话,自动发送位置和健康档案
     """
     try:
         response = emergency_center_service.call_120(db, request)
-        return response
+        return ApiResponseBuilder.success(data=response, message="120急救呼叫成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
 
@@ -270,17 +272,17 @@ def get_rescue_statistics(
 ):
     """
     获取救援统计信息(管理员接口)
-    
+
     返回救援次数、成功率、平均响应时间等统计数据
     """
     # 这里应该实现详细的统计分析
-    return {
+    return ApiResponseBuilder.success(data={
         "total_rescues": 0,
         "successful_rescues": 0,
         "average_response_time": 0,
         "average_duration": 0,
         "user_satisfaction": 0
-    }
+    }, message="获取救援统计成功")
 
 
 # ========== 快捷接口 ==========
@@ -295,7 +297,7 @@ def quick_call_120(
 ):
     """
     快速拨打120
-    
+
     使用当前位置快速拨打120,简化版接口
     """
     request = Call120Request(
@@ -303,9 +305,9 @@ def quick_call_120(
         caller_location=f"{current_lon},{current_lat}",
         send_health_summary=send_health_summary
     )
-    
+
     response = emergency_center_service.call_120(db, request)
-    return response
+    return ApiResponseBuilder.success(data=response, message="快速拨打120成功")
 
 
 @router.get("/my-health-summary", response_model=HealthSummary)

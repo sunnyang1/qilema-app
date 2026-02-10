@@ -1,5 +1,7 @@
 """
 签到打卡API路由
+
+使用 ApiResponseBuilder 统一构建响应
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -13,11 +15,11 @@ from app.core.exceptions import (
     AlreadyCheckedInException,
     ValidationException
 )
+from app.core.response_builder import ApiResponseBuilder
 from app.models.user import User
 from app.schemas.checkin import (
     CheckInCreate,
     CheckInResponse,
-    CheckInHistoryResponse,
     CheckInStatsResponse,
     CheckInStatusResponse,
     CheckInDateQuery
@@ -28,7 +30,7 @@ from app.services.checkin_service import CheckInService
 router = APIRouter(prefix="/checkins", tags=["签到打卡"])
 
 
-@router.post("/", response_model=CheckInResponse)
+@router.post("/")
 async def create_checkin(
     checkin_data: CheckInCreate,
     current_user: User = Depends(get_current_user),
@@ -48,23 +50,14 @@ async def create_checkin(
         # TODO: 发送签到成功通知给紧急联系人
         # await send_checkin_notification(current_user.user_id, checkin)
 
-        return CheckInResponse(
-            id=checkin.id,
-            user_id=checkin.user_id,
-            checkin_time=checkin.checkin_time,
-            checkin_date=checkin.checkin_date,
-            latitude=checkin.latitude,
-            longitude=checkin.longitude,
-            checkin_method=checkin.checkin_method,
-            notes=checkin.notes
-        )
+        return ApiResponseBuilder.from_model(checkin, CheckInResponse, message="签到成功")
     except ValueError as e:
         if "已签到" in str(e):
             raise AlreadyCheckedInException(message=str(e))
         raise ValidationException(message=str(e))
 
 
-@router.get("/history", response_model=CheckInHistoryResponse)
+@router.get("/history")
 async def get_checkin_history(
     days: int = Query(30, ge=1, le=365, description="查询天数"),
     start_date: Optional[str] = Query(None, description="开始日期(YYYY-MM-DD)"),
@@ -92,26 +85,12 @@ async def get_checkin_history(
             end_date=end
         )
 
-        return CheckInHistoryResponse(
-            total_count=len(checkins),
-            checkins=[
-                CheckInResponse(
-                    id=c.id,
-                    user_id=c.user_id,
-                    checkin_time=c.checkin_time,
-                    checkin_date=c.checkin_date,
-                    latitude=c.latitude,
-                    longitude=c.longitude,
-                    checkin_method=c.checkin_method,
-                    notes=c.notes
-                ) for c in checkins
-            ]
-        )
+        return ApiResponseBuilder.from_model(checkins, CheckInResponse, message="获取签到历史成功")
     except ValueError as e:
         raise ValidationException(message=f"日期格式错误: {str(e)}")
 
 
-@router.get("/stats", response_model=CheckInStatsResponse)
+@router.get("/stats")
 async def get_checkin_stats(
     days: int = Query(30, ge=1, le=365, description="统计天数"),
     current_user: User = Depends(get_current_user),
@@ -129,10 +108,10 @@ async def get_checkin_stats(
     - checkin_rate: 签到率(%)
     """
     stats = CheckInService.get_checkin_stats(db, current_user.user_id, days)
-    return stats
+    return ApiResponseBuilder.success(data=stats, message="获取签到统计成功")
 
 
-@router.post("/status", response_model=CheckInStatusResponse)
+@router.post("/status")
 async def get_checkin_status(
     query: CheckInDateQuery,
     current_user: User = Depends(get_current_user),
@@ -150,12 +129,12 @@ async def get_checkin_status(
     try:
         target_date = date.fromisoformat(query.date)
         status = CheckInService.get_checkin_status(db, current_user.user_id, target_date)
-        return status
+        return ApiResponseBuilder.success(data=status, message="获取签到状态成功")
     except ValueError as e:
         raise ValidationException(message=f"日期格式错误: {str(e)}")
 
 
-@router.get("/today", response_model=CheckInStatusResponse)
+@router.get("/today")
 async def get_today_checkin_status(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -168,4 +147,4 @@ async def get_today_checkin_status(
     - checkin_time: 签到时间(如果已签到)
     """
     status = CheckInService.get_checkin_status(db, current_user.user_id)
-    return status
+    return ApiResponseBuilder.success(data=status, message="获取今日签到状态成功")

@@ -2,6 +2,7 @@
 消息通知API路由
 
 提供通知发送、查询、管理等RESTful接口
+使用 ApiResponseBuilder 统一构建响应
 """
 
 from typing import List
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.response_builder import ApiResponseBuilder
 from app.models.user import User
 from app.schemas.notification import (
     NotificationCreate, NotificationUpdate, NotificationResponse, NotificationQuery, NotificationStatistics,
@@ -28,7 +30,7 @@ notification_service = NotificationService()
 
 # ========== 通知发送 ==========
 
-@router.post("/send", response_model=NotificationResponse)
+@router.post("/send")
 def send_notification(
     request: SendNotificationRequest,
     db: Session = Depends(get_db),
@@ -36,21 +38,21 @@ def send_notification(
 ):
     """
     发送通知
-    
+
     根据通知偏好设置,选择合适的通知渠道发送通知
     """
     # 验证用户ID是否为当前用户
     if request.user_id != current_user.user_id:
         raise ForbiddenException("无权发送给其他用户")
-    
+
     notification = notification_service.send_notification(db, request)
     if not notification:
         raise ValidationException("发送通知失败")
-    
-    return notification
+
+    return ApiResponseBuilder.from_model(notification, NotificationResponse, message="通知发送成功")
 
 
-@router.post("/batch-send", response_model=List[NotificationResponse])
+@router.post("/batch-send")
 def batch_send_notification(
     request: BatchSendNotificationRequest,
     db: Session = Depends(get_db),
@@ -58,16 +60,16 @@ def batch_send_notification(
 ):
     """
     批量发送通知
-    
+
     向多个用户发送相同的通知
     """
     notifications = notification_service.batch_send_notification(db, request)
-    return notifications
+    return ApiResponseBuilder.from_model(notifications, NotificationResponse, message="批量发送通知成功")
 
 
 # ========== 通知查询和管理 ==========
 
-@router.get("/list", response_model=List[NotificationResponse])
+@router.get("/list")
 def get_notifications(
     query_params: NotificationQuery,
     db: Session = Depends(get_db),
@@ -75,15 +77,15 @@ def get_notifications(
 ):
     """
     查询通知记录
-    
+
     支持按类型、渠道、状态、时间范围、是否未读等条件筛选
     """
     # 验证用户ID是否为当前用户
     if query_params.user_id != current_user.user_id:
         raise ForbiddenException("无权查看其他用户的通知")
-    
+
     notifications = notification_service.get_notifications(db, query_params)
-    return notifications
+    return ApiResponseBuilder.from_model(notifications, NotificationResponse, message="获取通知列表成功")
 
 
 @router.post("/mark-as-read")
@@ -94,19 +96,19 @@ def mark_as_read(
 ):
     """
     标记通知为已读
-    
+
     批量标记指定的通知为已读
     """
     # 验证通知所有权
     from app.models.notification import Notification
     notifications = db.query(Notification).filter(Notification.id.in_(request.notification_ids)).all()
-    
+
     for notification in notifications:
         if notification.user_id != current_user.user_id:
             raise ForbiddenException("无权标记其他用户的通知")
-    
+
     count = notification_service.mark_as_read(db, request.notification_ids)
-    return {"message": f"已标记 {count} 条通知为已读", "count": count}
+    return ApiResponseBuilder.success(data={"count": count}, message=f"已标记 {count} 条通知为已读")
 
 
 @router.get("/unread-count")
@@ -118,7 +120,7 @@ def get_unread_count(
     获取未读通知数量
     """
     count = notification_service.get_unread_count(db, current_user.user_id)
-    return {"unread_count": count}
+    return ApiResponseBuilder.success(data={"unread_count": count}, message="获取未读通知数量成功")
 
 
 @router.get("/statistics")
@@ -130,16 +132,16 @@ def get_notification_statistics(
 ):
     """
     获取通知统计数据
-    
+
     统计指定时间段内的通知发送、送达、阅读等数据
     """
     statistics = notification_service.get_statistics(db, current_user.user_id, start_date, end_date)
-    return statistics
+    return ApiResponseBuilder.success(data=statistics, message="获取通知统计成功")
 
 
 # ========== 通知偏好管理 ==========
 
-@router.post("/preferences", response_model=NotificationPreferenceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/preferences", status_code=status.HTTP_201_CREATED)
 def create_preference(
     preference_data: NotificationPreferenceCreate,
     db: Session = Depends(get_db),
@@ -151,12 +153,12 @@ def create_preference(
     # 验证用户ID是否为当前用户
     if preference_data.user_id != current_user.user_id:
         raise ForbiddenException("无权设置其他用户的偏好")
-    
+
     preference = notification_service.create_preference(db, preference_data)
-    return preference
+    return ApiResponseBuilder.from_model(preference, NotificationPreferenceResponse, message="通知偏好创建成功")
 
 
-@router.get("/preferences", response_model=NotificationPreferenceResponse)
+@router.get("/preferences")
 def get_preference(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -170,11 +172,11 @@ def get_preference(
         from app.schemas.notification import NotificationPreferenceCreate
         default_preference = NotificationPreferenceCreate(user_id=current_user.user_id)
         preference = notification_service.create_preference(db, default_preference)
-    
-    return preference
+
+    return ApiResponseBuilder.from_model(preference, NotificationPreferenceResponse, message="获取通知偏好成功")
 
 
-@router.put("/preferences", response_model=NotificationPreferenceResponse)
+@router.put("/preferences")
 def update_preference(
     update_data: NotificationPreferenceUpdate,
     db: Session = Depends(get_db),
@@ -186,13 +188,13 @@ def update_preference(
     preference = notification_service.update_preference(db, current_user.user_id, update_data)
     if not preference:
         raise NotFoundException("通知偏好设置不存在")
-    
-    return preference
+
+    return ApiResponseBuilder.from_model(preference, NotificationPreferenceResponse, message="通知偏好更新成功")
 
 
 # ========== 通知模板管理 ==========
 
-@router.post("/templates", response_model=NotificationTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/templates", status_code=status.HTTP_201_CREATED)
 def create_template(
     template_data: NotificationTemplateCreate,
     db: Session = Depends(get_db),
@@ -200,14 +202,14 @@ def create_template(
 ):
     """
     创建通知模板
-    
+
     一般由系统管理员创建
     """
     template = notification_service.create_template(db, template_data)
-    return template
+    return ApiResponseBuilder.from_model(template, NotificationTemplateResponse, message="通知模板创建成功")
 
 
-@router.get("/templates/{template_code}", response_model=NotificationTemplateResponse)
+@router.get("/templates/{template_code}")
 def get_template(
     template_code: str,
     db: Session = Depends(get_db),
@@ -219,8 +221,8 @@ def get_template(
     template = notification_service.get_template(db, template_code)
     if not template:
         raise NotFoundException("通知模板不存在")
-    
-    return template
+
+    return ApiResponseBuilder.from_model(template, NotificationTemplateResponse, message="获取通知模板成功")
 
 
 # ========== 管理员接口 ==========
@@ -234,7 +236,7 @@ def get_admin_statistics(
 ):
     """
     获取全局通知统计数据
-    
+
     管理员接口,统计全局或指定用户的通知数据
     """
     # 验证管理员权限
@@ -260,5 +262,5 @@ def get_admin_statistics(
             device_count=0,
             reminder_count=0
         )
-    
-    return statistics
+
+    return ApiResponseBuilder.success(data=statistics, message="获取通知统计成功")

@@ -2,6 +2,7 @@
 健康数据报告API路由
 
 提供健康趋势分析、综合报告、异常检测等RESTful接口
+使用 ApiResponseBuilder 统一构建响应
 """
 
 from typing import List, Optional
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_active_user
 from app.core.exceptions import NotFoundException, ValidationException
+from app.core.response_builder import ApiResponseBuilder
 from app.models.user import User
 from app.services.health_report_service import HealthReportService, ReportPeriod
 
@@ -38,65 +40,9 @@ class PeriodComparisonRequest(BaseModel):
     previous_end: date = Field(..., description="对比时期结束")
 
 
-class TrendAnalysisResponse(BaseModel):
-    """趋势分析响应"""
-    metric_type: str
-    period: str
-    date_range: dict
-    data_points: List[dict]
-    statistics: Optional[dict]
-    trend: str
-    thresholds: dict
-    anomalies: List[dict]
-    total_readings: int
-
-
-class ComprehensiveReportResponse(BaseModel):
-    """综合健康报告响应"""
-    report_id: str
-    user_id: str
-    report_type: str
-    report_date: str
-    period: dict
-    overall_health_score: float
-    health_level: str
-    metrics: dict
-    suggestions: List[str]
-    user_profile: dict
-    generated_at: str
-
-
-class AnomalyReportResponse(BaseModel):
-    """异常检测报告响应"""
-    report_period: str
-    start_date: str
-    end_date: str
-    total_anomalies: int
-    severity_distribution: dict
-    anomalies: List[dict]
-    summary: str
-
-
-class DailySummaryResponse(BaseModel):
-    """每日健康摘要响应"""
-    date: str
-    user_id: str
-    metrics: dict
-    daily_score: float
-    health_status: str
-
-
-class PeriodComparisonResponse(BaseModel):
-    """时期对比响应"""
-    metric_type: str
-    current_period: dict
-    previous_period: dict
-    changes: dict
-
-
 # ========== API端点 ==========
 
-@router.post("/trend-analysis", response_model=TrendAnalysisResponse)
+@router.post("/trend-analysis")
 def get_trend_analysis(
     request: TrendAnalysisRequest,
     db: Session = Depends(get_db),
@@ -104,12 +50,12 @@ def get_trend_analysis(
 ):
     """
     获取健康数据趋势分析
-    
+
     分析指定健康指标在时间段内的趋势、统计值、异常点
     """
     if request.start_date > request.end_date:
         raise ValidationException("开始日期不能晚于结束日期")
-    
+
     result = HealthReportService.get_trend_analysis(
         db,
         user_id=current_user.user_id,
@@ -118,11 +64,11 @@ def get_trend_analysis(
         end_date=request.end_date,
         period=request.period
     )
-    
-    return TrendAnalysisResponse(**result)
+
+    return ApiResponseBuilder.success(data=result, message="获取趋势分析成功")
 
 
-@router.get("/comprehensive", response_model=ComprehensiveReportResponse)
+@router.get("/comprehensive")
 def get_comprehensive_report(
     report_date: date = Query(default_factory=date.today, description="报告日期"),
     period: ReportPeriod = Query(default=ReportPeriod.WEEK, description="报告周期"),
@@ -131,7 +77,7 @@ def get_comprehensive_report(
 ):
     """
     获取综合健康报告
-    
+
     生成包含心率、血压、步数、睡眠等多项指标的综合健康报告
     """
     result = HealthReportService.get_comprehensive_report(
@@ -140,11 +86,11 @@ def get_comprehensive_report(
         report_date=report_date,
         period=period
     )
-    
-    return ComprehensiveReportResponse(**result)
+
+    return ApiResponseBuilder.success(data=result, message="获取综合健康报告成功")
 
 
-@router.get("/anomalies", response_model=AnomalyReportResponse)
+@router.get("/anomalies")
 def get_anomaly_report(
     days: int = Query(default=7, ge=1, le=90, description="查询天数"),
     severity: Optional[str] = Query(default=None, description="严重程度筛选: high/medium/low"),
@@ -153,7 +99,7 @@ def get_anomaly_report(
 ):
     """
     获取异常检测报告
-    
+
     查询指定天数内的健康数据异常，支持按严重程度筛选
     """
     result = HealthReportService.get_anomaly_report(
@@ -162,11 +108,11 @@ def get_anomaly_report(
         days=days,
         severity=severity
     )
-    
-    return AnomalyReportResponse(**result)
+
+    return ApiResponseBuilder.success(data=result, message="获取异常检测报告成功")
 
 
-@router.post("/compare-periods", response_model=PeriodComparisonResponse)
+@router.post("/compare-periods")
 def compare_periods(
     request: PeriodComparisonRequest,
     db: Session = Depends(get_db),
@@ -174,7 +120,7 @@ def compare_periods(
 ):
     """
     对比两个时期的数据
-    
+
     对比当前时期和上一时期的数据变化，计算变化百分比
     """
     result = HealthReportService.compare_periods(
@@ -186,11 +132,11 @@ def compare_periods(
         previous_start=request.previous_start,
         previous_end=request.previous_end
     )
-    
-    return PeriodComparisonResponse(**result)
+
+    return ApiResponseBuilder.success(data=result, message="时期对比成功")
 
 
-@router.get("/daily-summary/{summary_date}", response_model=DailySummaryResponse)
+@router.get("/daily-summary/{summary_date}")
 def get_daily_summary(
     summary_date: date,
     db: Session = Depends(get_db),
@@ -198,7 +144,7 @@ def get_daily_summary(
 ):
     """
     获取每日健康摘要
-    
+
     返回指定日期的健康数据摘要，包括步数、心率、睡眠等
     """
     result = HealthReportService.get_daily_summary(
@@ -206,18 +152,18 @@ def get_daily_summary(
         user_id=current_user.user_id,
         summary_date=summary_date
     )
-    
-    return DailySummaryResponse(**result)
+
+    return ApiResponseBuilder.success(data=result, message="获取每日健康摘要成功")
 
 
-@router.get("/daily-summary", response_model=DailySummaryResponse)
+@router.get("/daily-summary")
 def get_today_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
     获取今日健康摘要
-    
+
     快捷接口，返回今天的健康数据摘要
     """
     result = HealthReportService.get_daily_summary(
@@ -225,8 +171,8 @@ def get_today_summary(
         user_id=current_user.user_id,
         summary_date=date.today()
     )
-    
-    return DailySummaryResponse(**result)
+
+    return ApiResponseBuilder.success(data=result, message="获取今日健康摘要成功")
 
 
 @router.get("/metrics/available")
@@ -235,10 +181,10 @@ def get_available_metrics(
 ):
     """
     获取可用的健康指标列表
-    
+
     返回系统支持的所有健康指标类型及其说明
     """
-    return {
+    return ApiResponseBuilder.success(data={
         "metrics": [
             {
                 "type": "heart_rate",
@@ -283,7 +229,7 @@ def get_available_metrics(
                 "normal_range": "6-10小时"
             }
         ]
-    }
+    }, message="获取可用健康指标列表成功")
 
 
 @router.get("/thresholds/default")
@@ -292,9 +238,9 @@ def get_default_thresholds(
 ):
     """
     获取默认健康阈值
-    
+
     返回系统默认的健康指标阈值范围
     """
-    return {
+    return ApiResponseBuilder.success(data={
         "thresholds": HealthReportService.DEFAULT_THRESHOLDS
-    }
+    }, message="获取默认健康阈值成功")
