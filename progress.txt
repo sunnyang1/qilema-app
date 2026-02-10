@@ -119,3 +119,23 @@ IMPORTANT LEARNINGS:
 - RefreshIndicator 需要返回 Future<void>
 - ScrollController 监听滚动事件实现上拉加载
 - 已弃用 withOpacity 需要使用 withValues(alpha:) 替代
+
+[2026-02-10 15:30:00] - [US-007] 实现SOS触发页面
+
+IMPLEMENTATION SUMMARY:
+- 创建了 SOS API 服务（触发、查询状态、取消）
+- 创建了 SOS Provider 管理状态和位置获取
+- 实现了 SOS 触发页面 UI（长按3秒、进度指示、位置显示）
+- 更新了路由配置添加 SOS 页面
+
+CHANGES:
+- Created: lib/features/sos/services/sos_api.dart
+- Created: lib/features/sos/providers/sos_provider.dart
+- Created: lib/features/sos/pages/sos_page.dart
+- Modified: lib/core/router/app_router.dart (添加 SOS 页面路由)
+
+IMPORTANT LEARNINGS:
+- Geolocator 的 getCurrentPosition 现在使用 LocationSettings 参数而非已弃用的 desiredAccuracy
+- GestureDetector 的 onLongPress 需配合 Timer 实现长按检测
+- CircularProgressIndicator 可用于显示长按进度
+- 使用 geolocator 获取位置需要处理权限和服务启用状态

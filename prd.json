@@ -98,7 +98,7 @@
         "触发成功后跳转到SOS状态页面"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
