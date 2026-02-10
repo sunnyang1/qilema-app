@@ -4,13 +4,15 @@
 - **API 调用**: 使用 ApiClient 单例进行所有网络请求
 - **状态管理**: 使用 Riverpod 的 StateNotifier 管理状态
 - **路由守卫**: 在 AppRouter 的 redirect 回调中检查认证状态
+- **Provider模式**: 每个功能模块独立的 StateNotifier 和 Provider
+- **异步状态**: 使用 Enum 定义状态（initial, loading, success, error）
 
 ---
 
 ## Iteration Logs
 
 [2026-02-10] - 项目初始化
-- 创建 Phase 1 PRD 文档
+- 创建 Phase1 PRD 文档
 - 转换为 prd.json
 - 准备开始 Ralph 自主迭代循环
 
@@ -41,3 +43,57 @@ IMPORTANT LEARNINGS:
 - 拦截器按顺序执行，需要注意顺序（认证 → Token刷新 → 日志）
 - SharedPreferences 用于本地存储 Token 和用户信息
 - 使用单例模式管理 ApiClient 可以确保全局唯一
+
+[2026-02-10 10:15:00] - [US-002] 实现登录页面
+
+IMPLEMENTATION SUMMARY:
+- 创建了 LoginPage UI 和 AuthApi 服务
+- 实现了登录逻辑：API调用、Token保存、状态更新
+- 实现了表单验证和错误提示
+- 添加了密码显示/隐藏功能
+
+CHANGES:
+- Created: lib/features/auth/services/auth_api.dart
+- Created: lib/features/auth/pages/login_page.dart
+- Modified: lib/shared/providers/auth_provider.dart
+- Modified: lib/core/router/app_router.dart
+
+IMPORTANT LEARNINGS:
+- 表单验证使用 TextEditingController 和 Form widget
+- 需要处理异步操作的加载状态和错误状态
+- 登录成功后由路由守卫自动跳转
+
+[2026-02-10 10:30:00] - [US-003] 实现注册页面
+
+IMPLEMENTATION SUMMARY:
+- 创建了 RegisterPage UI
+- 实现了注册逻辑：API调用、自动登录
+- 添加了昵称输入和验证
+- 实现了登录/注册页面之间的导航
+
+CHANGES:
+- Created: lib/features/auth/pages/register_page.dart
+- Modified: lib/core/router/app_router.dart
+
+IMPORTANT LEARNINGS:
+- 注册成功后自动调用登录API获取Token
+- 使用 context.go() 进行导航
+
+[2026-02-10 10:45:00] - [US-005] 实现签到首页
+
+IMPLEMENTATION SUMMARY:
+- 创建了 SigninApi、SigninProvider 和 HomePage
+- 实现了签到按钮和统计信息显示
+- 实现了根据时间显示不同欢迎语
+- 添加了下拉刷新功能
+
+CHANGES:
+- Created: lib/features/signin/services/signin_api.dart
+- Created: lib/features/signin/providers/signin_provider.dart
+- Created: lib/features/signin/pages/home_page.dart
+- Modified: lib/core/router/app_router.dart
+
+IMPORTANT LEARNINGS:
+- 使用 ConsumerWidget 来消费 Provider
+- 大型按钮使用 Container + BoxDecoration 实现圆形和阴影
+- 根据时间计算欢迎语增加用户友好性

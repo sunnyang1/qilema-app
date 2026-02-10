@@ -70,7 +70,7 @@
         "显示连续签到天数和签到率统计"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
