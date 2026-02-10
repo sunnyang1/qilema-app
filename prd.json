@@ -1,152 +1,172 @@
 {
-  "project": "qilema-frontend-improvements",
-  "branchName": "ralph/frontend-improvements",
-  "description": "Frontend code improvements: fix compilation errors, complete TODOs, improve code quality",
+  "project": "qilema-frontend-phase2",
+  "branchName": "ralph/frontend-phase2-features",
+  "description": "Phase 2: Extended features including devices, emergency resources, knowledge base, and medication reminders",
   "userStories": [
     {
       "id": "US-001",
-      "title": "修复 AppColors 缺失问题",
-      "description": "在 app_theme.dart 中定义 AppColors 类，包含所有需要的颜色常量",
+      "title": "创建设备列表页面",
+      "description": "作为用户，我能够查看已绑定的智能设备列表",
       "acceptanceCriteria": [
-        "在 app_theme.dart 中定义 AppColors 类",
-        "包含 primary, primaryDark, error, warning, textPrimary 等颜色",
-        "所有引用 AppColors 的页面能正常编译"
+        "显示设备列表（设备名称、类型、连接状态、电量）",
+        "支持下拉刷新",
+        "空状态提示（暂无设备）",
+        "添加设备按钮"
       ],
       "priority": 1,
       "passes": false,
-      "notes": "编译错误，必须首先修复"
+      "notes": "智能设备模块"
     },
     {
       "id": "US-002",
-      "title": "修复 SOS 页面导航问题",
-      "description": "将 Navigator.pushNamed 改为 context.go 以保持一致性",
+      "title": "实现设备绑定功能",
+      "description": "作为用户，我能够绑定新的智能设备",
       "acceptanceCriteria": [
-        "将 Navigator.of(context).pushNamed 改为 context.go()",
-        "确保导航到 /sos/status 正常工作"
+        "扫描附近的蓝牙设备",
+        "显示可绑定设备列表",
+        "点击绑定设备",
+        "显示绑定成功/失败提示"
       ],
       "priority": 2,
       "passes": false,
-      "notes": ""
+      "notes": "智能设备模块"
     },
     {
       "id": "US-003",
-      "title": "完成注册功能",
-      "description": "实现 auth_provider.dart 中的 register 方法，调用注册 API",
+      "title": "实现设备解绑功能",
+      "description": "作为用户，我能够解绑已连接的设备",
       "acceptanceCriteria": [
-        "实现 register 方法调用注册 API",
-        "注册成功后自动登录",
-        "处理错误情况"
+        "设备卡片上显示解绑按钮",
+        "解绑前显示确认对话框",
+        "解绑成功后刷新列表"
       ],
       "priority": 3,
       "passes": false,
-      "notes": "当前只有状态变更，无实际API调用"
+      "notes": "智能设备模块"
     },
     {
       "id": "US-004",
-      "title": "完成登录页面功能",
-      "description": "实现忘记密码和注册跳转功能",
+      "title": "创建设备数据页面",
+      "description": "作为用户，我能够查看设备的实时数据",
       "acceptanceCriteria": [
-        "实现忘记密码按钮功能",
-        "启用立即注册跳转功能",
-        "移除被注释的代码"
+        "显示设备实时数据（心率、步数、血压等）",
+        "数据图表展示（趋势图）",
+        "显示最后更新时间",
+        "支持下拉刷新数据"
       ],
       "priority": 4,
       "passes": false,
-      "notes": ""
+      "notes": "智能设备模块"
     },
     {
       "id": "US-005",
-      "title": "完成联系人拨打电话功能",
-      "description": "实现 contacts_page.dart 中的拨打电话功能",
+      "title": "创建 AED 地图页面",
+      "description": "作为用户，我能够在地图上查看附近的 AED 设备",
       "acceptanceCriteria": [
-        "实现 _makePhoneCall 方法",
-        "使用 url_launcher 拨打电话",
-        "处理权限和错误情况"
+        "显示地图（高德地图）",
+        "显示当前位置",
+        "显示附近 AED 设备标记",
+        "点击标记显示设备详情"
       ],
       "priority": 5,
       "passes": false,
-      "notes": ""
+      "notes": "急救资源模块"
     },
     {
       "id": "US-006",
-      "title": "修复 Health API 用户ID获取",
-      "description": "从认证状态获取真实用户ID，移除硬编码值",
+      "title": "创建医院列表页面",
+      "description": "作为用户，我能够查看附近的医院列表",
       "acceptanceCriteria": [
-        "从全局认证状态获取当前用户ID",
-        "移除硬编码的 'current_user_id'",
-        "所有 API 调用使用正确的用户ID"
+        "显示医院列表（名称、地址、距离、电话）",
+        "按距离排序",
+        "支持下拉刷新",
+        "点击可导航/拨打电话"
       ],
       "priority": 6,
       "passes": false,
-      "notes": ""
+      "notes": "急救资源模块"
     },
     {
       "id": "US-007",
-      "title": "提取数据模型到独立文件",
-      "description": "将数据模型从 API 服务文件中分离，提升可维护性",
+      "title": "创建急救知识分类页面",
+      "description": "作为用户，我能够浏览急救知识分类",
       "acceptanceCriteria": [
-        "为每个功能模块创建 models/ 目录",
-        "将数据模型类移到独立的模型文件",
-        "更新所有导入语句",
-        "确保没有循环依赖"
+        "显示知识分类（CPR、AED、止血、骨折等）",
+        "分类卡片设计",
+        "点击分类进入文章列表"
       ],
       "priority": 7,
       "passes": false,
-      "notes": "架构改进"
+      "notes": "急救知识库模块"
     },
     {
       "id": "US-008",
-      "title": "创建统一的表单验证工具",
-      "description": "创建 validators.dart 工具类，统一表单验证逻辑",
+      "title": "创建文章列表页面",
+      "description": "作为用户，我能够查看分类下的文章列表",
       "acceptanceCriteria": [
-        "创建 lib/core/utils/validators.dart",
-        "实现通用的验证方法",
-        "在所有表单页面中使用验证工具",
-        "移除重复的验证逻辑"
+        "显示文章列表（标题、摘要、封面图）",
+        "支持下拉刷新和上拉加载",
+        "点击文章进入详情"
       ],
       "priority": 8,
       "passes": false,
-      "notes": "代码质量改进"
+      "notes": "急救知识库模块"
     },
     {
       "id": "US-009",
-      "title": "创建统一的错误处理机制",
-      "description": "创建 ApiResponse 封装类和全局错误处理",
+      "title": "创建文章详情页面",
+      "description": "作为用户，我能够阅读急救知识文章",
       "acceptanceCriteria": [
-        "创建 ApiResponse 封装类",
-        "创建全局错误处理 Provider",
-        "统一错误提示样式",
-        "更新所有 API 调用"
+        "显示文章标题、内容、图片",
+        "支持步骤说明展示",
+        "收藏/分享功能（可选）"
       ],
       "priority": 9,
       "passes": false,
-      "notes": "代码质量改进"
+      "notes": "急救知识库模块"
     },
     {
       "id": "US-010",
-      "title": "修复潜在的空安全问题",
-      "description": "修复代码中的空安全问题，避免运行时异常",
+      "title": "创建用药提醒列表页面",
+      "description": "作为用户，我能够查看我的用药提醒计划",
       "acceptanceCriteria": [
-        "修复 medical_histories_page.dart 中的 ref! 使用",
-        "修复 medications_page.dart 中的 ref! 使用",
-        "修复 allergies_page.dart 中的 ref! 使用",
-        "检查并修复其他潜在的空安全问题"
+        "显示用药计划列表（药品名称、时间、剂量）",
+        "区分今日用药和全部用药",
+        "标记已服用/未服用状态",
+        "添加用药计划按钮"
       ],
       "priority": 10,
       "passes": false,
-      "notes": ""
+      "notes": "用药提醒模块"
     },
     {
       "id": "US-011",
-      "title": "修复 HealthPage 表单初始化逻辑",
-      "description": "修复表单初始化逻辑，避免重复初始化问题",
+      "title": "实现添加用药提醒功能",
+      "description": "作为用户，我能够添加新的用药提醒",
       "acceptanceCriteria": [
-        "使用更可靠的方式判断表单是否已初始化",
-        "确保用户清空输入后不会意外重新初始化"
+        "选择药品（从健康档案用药列表）",
+        "设置用药时间",
+        "设置用药频率（每天/每周/自定义）",
+        "设置剂量",
+        "保存提醒计划"
       ],
       "priority": 11,
       "passes": false,
-      "notes": ""
+      "notes": "用药提醒模块"
+    },
+    {
+      "id": "US-012",
+      "title": "实现用药提醒通知",
+      "description": "作为用户，我能够在用药时间收到提醒通知",
+      "acceptanceCriteria": [
+        "本地推送通知",
+        "通知显示药品名称和剂量",
+        "点击通知进入应用",
+        "标记已服用"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "用药提醒模块"
     }
   ]
 }

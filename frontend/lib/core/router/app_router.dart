@@ -13,6 +13,8 @@ import 'package:qilema_app/features/health/pages/health_page.dart';
 import 'package:qilema_app/features/health/pages/medical_histories_page.dart';
 import 'package:qilema_app/features/health/pages/medications_page.dart';
 import 'package:qilema_app/features/health/pages/allergies_page.dart';
+import 'package:qilema_app/features/devices/pages/devices_page.dart';
+import 'package:qilema_app/features/devices/pages/device_data_page.dart';
 
 /// 路由配置
 class AppRouter {
@@ -96,6 +98,19 @@ class AppRouter {
         path: '/allergies',
         builder: (context, state) => const AllergiesPage(),
         name: 'allergies',
+      ),
+      GoRoute(
+        path: '/devices',
+        builder: (context, state) => const DevicesPage(),
+        name: 'devices',
+      ),
+      GoRoute(
+        path: '/devices/:deviceId/data',
+        builder: (context, state) {
+          final deviceId = state.pathParameters['deviceId']!;
+          return DeviceDataPage(deviceId: deviceId);
+        },
+        name: 'device-data',
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
