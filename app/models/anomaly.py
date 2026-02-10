@@ -5,10 +5,12 @@
 """
 
 from datetime import datetime
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship as db_relationship
 from sqlalchemy.sql import func
 from ..core.database import Base
+from app.models.base_mixin import BaseModelMixin
 import enum
 
 
@@ -44,7 +46,7 @@ class AnomalyStatus(str, enum.Enum):
     DISMISSED = "dismissed"      # 已忽略
 
 
-class Anomaly(Base):
+class Anomaly(Base, BaseModelMixin):
     """生理数据异常记录"""
     __tablename__ = "anomalies"
     
@@ -61,9 +63,7 @@ class Anomaly(Base):
     severity = Column(SQLEnum(SeverityLevel), nullable=False, index=True, comment="严重程度")
     status = Column(SQLEnum(AnomalyStatus), default=AnomalyStatus.PENDING, index=True, comment="异常状态")
 
-    # 异常数据 (device_data_id 暂时注释,等待 DeviceData 模型实现)
-    # device_data_id = Column(Integer, ForeignKey("device_data.id", ondelete="SET NULL"),
-    #                         nullable=True, comment="设备数据ID")
+    # 异常数据
     anomaly_value = Column(Float, nullable=True, comment="异常数值")
     threshold_value = Column(Float, nullable=True, comment="阈值参考")
     deviation_ratio = Column(Float, nullable=True, comment="偏离比例(%)")
@@ -89,32 +89,10 @@ class Anomaly(Base):
     # 关联关系
     user = db_relationship("User", back_populates="anomalies")
     device = db_relationship("Device", back_populates="anomalies")
-    # device_data = db_relationship("DeviceData", back_populates="anomalies")  # 等待 DeviceData 模型实现
     sos_request = db_relationship("SOSRequest", back_populates="anomalies")
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "device_id": self.device_id,
-            "anomaly_type": self.anomaly_type.value if self.anomaly_type else None,
-            "severity": self.severity.value if self.severity else None,
-            "status": self.status.value if self.status else None,
-            "device_data_id": None,
-            "anomaly_value": self.anomaly_value,
-            "threshold_value": self.threshold_value,
-            "deviation_ratio": self.deviation_ratio,
-            "description": self.description,
-            "trigger_condition": self.trigger_condition,
-            "detected_at": self.detected_at.isoformat() if self.detected_at else None,
-            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
-            "action_taken": self.action_taken,
-            "sos_triggered": self.sos_triggered,
-            "created_at": self.created_at.isoformat() if self.created_at else None
-        }
 
 
-class HealthTrend(Base):
+class HealthTrend(Base, BaseModelMixin):
     """健康数据趋势分析"""
     __tablename__ = "health_trends"
 
@@ -158,32 +136,9 @@ class HealthTrend(Base):
     # 关联关系
     user = db_relationship("User", back_populates="health_trends")
     device = db_relationship("Device", back_populates="health_trends")
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "device_id": self.device_id,
-            "metric_type": self.metric_type,
-            "period_type": self.period_type,
-            "start_date": self.start_date.isoformat() if self.start_date else None,
-            "end_date": self.end_date.isoformat() if self.end_date else None,
-            "avg_value": self.avg_value,
-            "min_value": self.min_value,
-            "max_value": self.max_value,
-            "std_deviation": self.std_deviation,
-            "trend_direction": self.trend_direction,
-            "trend_percentage": self.trend_percentage,
-            "sample_count": self.sample_count,
-            "missing_count": self.missing_count,
-            "quality_score": self.quality_score,
-            "insights": self.insights,
-            "recommendations": self.recommendations,
-            "generated_at": self.generated_at.isoformat() if self.generated_at else None
-        }
 
 
-class ActivityPattern(Base):
+class ActivityPattern(Base, BaseModelMixin):
     """活动模式分析"""
     __tablename__ = "activity_patterns"
     
@@ -226,25 +181,3 @@ class ActivityPattern(Base):
     # 关联关系
     user = db_relationship("User", back_populates="activity_patterns")
     device = db_relationship("Device", back_populates="activity_patterns")
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "device_id": self.device_id,
-            "analysis_date": self.analysis_date.isoformat() if self.analysis_date else None,
-            "period_type": self.period_type,
-            "total_steps": self.total_steps,
-            "active_minutes": self.active_minutes,
-            "sedentary_minutes": self.sedentary_minutes,
-            "sleep_hours": self.sleep_hours,
-            "calories_burned": self.calories_burned,
-            "peak_activity_hours": self.peak_activity_hours,
-            "inactive_periods": self.inactive_periods,
-            "is_inactive": self.is_inactive,
-            "inactive_hours": self.inactive_hours,
-            "activity_score": self.activity_score,
-            "activity_insights": self.activity_insights,
-            "improvement_suggestions": self.improvement_suggestions,
-            "generated_at": self.generated_at.isoformat() if self.generated_at else None
-        }

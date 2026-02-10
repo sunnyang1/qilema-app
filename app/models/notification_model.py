@@ -1,12 +1,14 @@
 """
 消息通知SQLAlchemy模型
 """
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, JSON, Boolean
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class Notification(Base):
+class Notification(Base, BaseModelMixin):
     """通知模型"""
     __tablename__ = "notifications"
 
@@ -42,7 +44,7 @@ class Notification(Base):
     user = db_relationship("User", back_populates="notifications")
 
 
-class NotificationPreference(Base):
+class NotificationPreference(Base, BaseModelMixin):
     """通知偏好设置模型"""
     __tablename__ = "notification_preferences"
 

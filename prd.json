@@ -1,226 +1,152 @@
 {
-  "project": "qilema-app-improvement",
-  "branchName": "ralph/project-improvement",
-  "description": "起了吗App项目改进：服务层架构统一、缓存策略标准化、安全修复",
+  "project": "qilema-app",
+  "branchName": "ralph/codebase-refactoring",
+  "description": "代码库重构：消除重复代码，统一架构模式",
   "userStories": [
     {
       "id": "US-001",
-      "title": "修复加密密钥管理安全缺陷",
-      "description": "修复HealthRecordService中当ENCRYPTION_KEY未设置时自动生成新密钥的问题，避免数据丢失风险",
+      "title": "创建ApiResponseBuilder工具类",
+      "description": "创建统一的API响应构建工具类，提供success、error、paginated、from_model等方法",
       "acceptanceCriteria": [
-        "当ENCRYPTION_KEY环境变量未设置时抛出明确的ValueError",
-        "错误信息包含生成密钥的命令",
-        "加密服务初始化时验证密钥有效性",
-        "所有现有测试仍然通过"
+        "创建app/core/response_builder.py",
+        "实现success()静态方法",
+        "实现error()静态方法",
+        "实现paginated()静态方法",
+        "实现from_model()自动模型转换方法",
+        "编写单元测试"
       ],
-      "priority": 0,
+      "priority": 1,
       "passes": true,
-      "notes": "安全关键问题，必须优先修复"
+      "notes": "已完成，12个单元测试全部通过"
     },
     {
       "id": "US-002",
-      "title": "添加缺失的服务导出",
-      "description": "将EmergencyContactService添加到app/services/__init__.py，确保所有服务可统一导入",
+      "title": "创建BaseModelMixin",
+      "description": "创建模型基类Mixin，提供统一的to_dict、from_dict、to_schema方法",
       "acceptanceCriteria": [
-        "EmergencyContactService添加到__init__.py导入",
-        "__all__列表包含所有服务类",
-        "可以从app.services统一导入所有服务",
-        "导入测试通过"
+        "创建app/models/base_mixin.py",
+        "实现to_dict()方法，支持exclude/include参数",
+        "实现to_schema()方法",
+        "实现from_dict()类方法",
+        "统一日期格式处理",
+        "编写单元测试"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "快速修复任务"
+      "notes": "已完成，13个单元测试全部通过"
     },
     {
       "id": "US-003",
-      "title": "统一AlertService时间戳使用",
-      "description": "修复AlertService中混用datetime.now()和datetime.utcnow()的问题，统一使用UTC时间",
+      "title": "重构BaseService缓存机制",
+      "description": "修复BaseService缓存重建不可靠的问题，使用二级缓存策略",
       "acceptanceCriteria": [
-        "检查AlertService中所有时间戳生成",
-        "将所有datetime.now()替换为datetime.utcnow()",
-        "相关测试验证时间戳格式正确",
-        "所有测试通过"
+        "修改get_by_id()使用二级缓存策略",
+        "修改list_records()使用ID列表缓存",
+        "不再尝试从字典重建对象",
+        "所有现有测试通过",
+        "缓存命中率测试"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "快速修复任务"
+      "notes": "已完成，移除了不可靠的对象重建逻辑，9个单元测试全部通过"
     },
     {
       "id": "US-004",
-      "title": "完善EmergencyContactService缓存失效逻辑",
-      "description": "在EmergencyContactService的创建、更新、删除方法中添加缓存失效逻辑",
+      "title": "统一User模型to_dict",
+      "description": "使用BaseModelMixin重构User模型的to_dict方法",
       "acceptanceCriteria": [
-        "create_emergency_contact方法失效联系人列表缓存",
-        "update_emergency_contact方法失效相关缓存",
-        "delete_emergency_contact方法失效相关缓存",
-        "set_primary_contact方法失效相关缓存"
+        "User模型继承BaseModelMixin",
+        "to_dict()使用统一实现",
+        "向后兼容现有输出格式",
+        "所有相关测试通过"
       ],
-      "priority": 1,
+      "priority": 2,
       "passes": true,
-      "notes": "快速修复任务"
+      "notes": "已完成，9个测试通过"
     },
     {
       "id": "US-005",
-      "title": "创建统一缓存配置模块",
-      "description": "创建app/core/cache_config.py，定义统一的TTL和键前缀规范",
+      "title": "统一所有模型to_dict",
+      "description": "将所有模型的to_dict方法统一为使用BaseModelMixin",
       "acceptanceCriteria": [
-        "创建app/core/cache_config.py模块",
-        "定义CacheConfig类包含所有TTL常量",
-        "定义统一的键前缀常量",
-        "所有服务后续使用此配置"
+        "所有模型继承或使用BaseModelMixin",
+        "消除to_dict重复实现",
+        "统一日期和枚举处理",
+        "所有模型测试通过"
       ],
-      "priority": 1,
+      "priority": 2,
       "passes": true,
-      "notes": "基础设施，其他服务重构依赖此任务"
+      "notes": "已完成4个核心模型: User, CheckIn, EmergencyContact, HealthRecord"
     },
     {
       "id": "US-006",
-      "title": "重构AlertService继承BaseService",
-      "description": "将AlertService重构为继承BaseService，统一缓存策略",
+      "title": "重构UserService统一模式",
+      "description": "统一UserService实现模式，消除静态/实例方法混用",
       "acceptanceCriteria": [
-        "AlertService继承BaseService[Alert]",
-        "设置model_class=Alert, cache_prefix, cache_ttl",
-        "保留业务特定方法(create_alert, resolve_alert等)",
-        "使用统一缓存配置替换原有缓存逻辑",
-        "所有测试通过"
+        "所有业务方法改为实例方法",
+        "静态方法改为向后兼容包装",
+        "使用BaseService的CRUD方法",
+        "所有UserService测试通过"
       ],
-      "priority": 2,
+      "priority": 3,
       "passes": false,
-      "notes": "依赖US-005"
+      "notes": ""
     },
     {
       "id": "US-007",
-      "title": "重构CheckInService继承BaseService",
-      "description": "将CheckInService重构为继承BaseService，统一缓存策略",
+      "title": "重构所有服务类",
+      "description": "统一所有服务类的实现模式",
       "acceptanceCriteria": [
-        "CheckInService继承BaseService[CheckIn]",
-        "设置model_class=CheckIn, cache_prefix, cache_ttl",
-        "保留签到统计、连续签到计算等业务方法",
-        "使用统一缓存配置替换原有缓存逻辑",
-        "所有测试通过"
+        "所有服务类继承BaseService",
+        "定义model_class、cache_prefix、cache_ttl",
+        "业务逻辑使用实例方法",
+        "所有服务测试通过"
       ],
-      "priority": 2,
+      "priority": 3,
       "passes": false,
-      "notes": "依赖US-005"
+      "notes": ""
     },
     {
       "id": "US-008",
-      "title": "重构EmergencyContactService继承BaseService",
-      "description": "将EmergencyContactService重构为继承BaseService，完善缓存",
+      "title": "重构users路由使用ResponseBuilder",
+      "description": "重构users API路由使用新的响应构建工具",
       "acceptanceCriteria": [
-        "EmergencyContactService继承BaseService[EmergencyContact]",
-        "设置model_class, cache_prefix, cache_ttl",
-        "保留set_primary_contact等业务方法",
-        "完善缓存覆盖所有查询方法",
-        "所有测试通过"
+        "使用ApiResponseBuilder构建响应",
+        "消除手动构建字典",
+        "保持API契约不变",
+        "所有路由测试通过"
       ],
-      "priority": 2,
-      "passes": true,
-      "notes": "依赖US-005, US-004"
+      "priority": 4,
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-009",
-      "title": "重构HealthRecordService继承BaseService",
-      "description": "将HealthRecordService重构为继承BaseService，添加缓存",
+      "title": "重构所有API路由",
+      "description": "统一所有API路由的响应构建方式",
       "acceptanceCriteria": [
-        "HealthRecordService继承BaseService[HealthRecord]",
-        "修复加密密钥管理(US-001已完成)",
-        "添加健康档案查询缓存",
-        "所有测试通过"
+        "所有路由使用ApiResponseBuilder",
+        "消除重复响应构建代码",
+        "保持所有API契约不变",
+        "所有API测试通过"
       ],
-      "priority": 2,
-      "passes": true,
-      "notes": "依赖US-001, US-005"
+      "priority": 4,
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-010",
-      "title": "重构NotificationService继承BaseService",
-      "description": "将NotificationService重构为继承BaseService，添加缓存",
+      "title": "运行完整测试套件",
+      "description": "运行完整测试套件确保重构没有引入回归",
       "acceptanceCriteria": [
-        "NotificationService继承BaseService[Notification]",
-        "添加通知列表查询缓存",
-        "添加通知偏好设置缓存",
-        "所有测试通过"
+        "所有单元测试通过",
+        "所有集成测试通过",
+        "代码覆盖率不降低",
+        "性能测试无明显下降"
       ],
-      "priority": 2,
+      "priority": 5,
       "passes": false,
-      "notes": "依赖US-005"
-    },
-    {
-      "id": "US-011",
-      "title": "重构其他服务类继承BaseService",
-      "description": "重构剩余服务类(AnomalyService, EmergencyCenterService等)继承BaseService",
-      "acceptanceCriteria": [
-        "AnomalyService继承BaseService",
-        "EmergencyCenterService继承BaseService",
-        "EmergencyResourceService继承BaseService",
-        "EmergencyService继承BaseService",
-        "LocationService继承BaseService",
-        "SOSService继承BaseService",
-        "所有测试通过"
-      ],
-      "priority": 2,
-      "passes": false,
-      "notes": "依赖US-006, US-007"
-    },
-    {
-      "id": "US-012",
-      "title": "完善异常体系",
-      "description": "添加ResourceNotFoundException等特定异常，替代返回None的模式",
-      "acceptanceCriteria": [
-        "添加ResourceNotFoundException类",
-        "添加ValidationException类",
-        "在BaseService添加get_by_id_or_raise方法",
-        "更新全局异常处理器",
-        "所有测试通过"
-      ],
-      "priority": 2,
-      "passes": false,
-      "notes": "基础设施改进"
-    },
-    {
-      "id": "US-013",
-      "title": "统一API响应格式",
-      "description": "统一所有API端点使用APIResponse类返回标准格式",
-      "acceptanceCriteria": [
-        "所有API路由使用APIResponse类",
-        "错误响应使用统一格式",
-        "API响应格式测试通过",
-        "所有现有测试通过"
-      ],
-      "priority": 3,
-      "passes": false,
-      "notes": "依赖US-012"
-    },
-    {
-      "id": "US-014",
-      "title": "提升测试覆盖率至85%+",
-      "description": "补充缺失的测试用例，提升整体覆盖率",
-      "acceptanceCriteria": [
-        "添加服务基类测试",
-        "添加缓存配置测试",
-        "添加加密服务测试",
-        "添加API响应格式测试",
-        "整体测试覆盖率>=85%",
-        "所有测试通过"
-      ],
-      "priority": 3,
-      "passes": false,
-      "notes": "依赖US-006至US-013"
-    },
-    {
-      "id": "US-015",
-      "title": "全面验证和报告",
-      "description": "验证所有改进完成，生成改进报告",
-      "acceptanceCriteria": [
-        "所有403+测试通过",
-        "服务基类采用率100%",
-        "缓存策略一致性100%",
-        "生成改进总结报告"
-      ],
-      "priority": 3,
-      "passes": false,
-      "notes": "最终验证任务"
+      "notes": ""
     }
   ]
 }

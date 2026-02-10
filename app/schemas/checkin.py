@@ -2,7 +2,7 @@
 签到相关的Schema验证
 """
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -103,6 +103,12 @@ class CheckInStatsResponse(BaseModel):
     current_streak: int
     longest_streak: int
     checkin_rate: float
+
+
+class CheckInHistoryResponse(BaseModel):
+    """签到历史响应"""
+    total_count: int
+    checkins: List[CheckInResponse]
 
 
 class CheckInStatusResponse(BaseModel):

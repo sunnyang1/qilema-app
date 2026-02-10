@@ -1,12 +1,14 @@
 """
 用户设置SQLAlchemy模型
 """
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class UserSetting(Base):
+class UserSetting(Base, BaseModelMixin):
     """用户设置模型"""
     __tablename__ = "user_settings"
 

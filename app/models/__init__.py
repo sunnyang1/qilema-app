@@ -7,6 +7,7 @@ Models包初始化文件
 from .user import User
 from .emergency_center_model import EmergencyCenter
 from .emergency_resource_model import EmergencyResource, ResourceFacility, ResourceDepartment, ResourceUsageLog, NavigationRoute
+from .knowledge_base import KnowledgeCategory, KnowledgeTag, KnowledgeArticle
 
 # 关联模型（依赖User）
 from .emergency_contact import EmergencyContact
@@ -20,12 +21,20 @@ from .login_record import LoginRecord
 from .user_setting_model import UserSetting
 from .emergency_center_model import EmergencyCall, Ambulance, RescueRecord
 from .notification_model import Notification
-# from .anomaly import Anomaly  # 暂时注释,等待修复外键引用
+from .anomaly import Anomaly, HealthTrend, ActivityPattern
+from .medication import (
+    MedicationReminderItem, MedicationReminderSchedule,
+    MedicationReminderNotification, MedicationReminderLog
+)
 
 __all__ = [
     'User', 'EmergencyCenter', 'EmergencyResource', 'EmergencyContact', 'CheckIn', 'Alert',
     'SOSRequest', 'Device', 'HealthRecord',
     'DeviceData', 'DeviceThreshold', 'LoginRecord', 'UserSetting',
     'EmergencyCall', 'Ambulance', 'RescueRecord', 'Notification',
-    'ResourceFacility', 'ResourceDepartment', 'ResourceUsageLog', 'NavigationRoute',  # 'Anomaly',
+    'ResourceFacility', 'ResourceDepartment', 'ResourceUsageLog', 'NavigationRoute',
+    'KnowledgeCategory', 'KnowledgeTag', 'KnowledgeArticle',
+    'Anomaly', 'HealthTrend', 'ActivityPattern',
+    'MedicationReminderItem', 'MedicationReminderSchedule',
+    'MedicationReminderNotification', 'MedicationReminderLog',
 ]

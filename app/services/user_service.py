@@ -127,104 +127,53 @@ class UserService(BaseService[User]):
 
         return user
 
-    @staticmethod
-    def get_user_by_id(db: Session, user_id: str) -> Optional[User]:
-        """根据ID获取用户"""
-        # 尝试从缓存获取
-        from app.core.cache import get_cached
-        cached_user_data = get_cached(f"user:id:{user_id}")
-        if cached_user_data:
-            # 缓存命中，转换为User对象
-            try:
-                user_dict = cached_user_data
-                if isinstance(user_dict, dict):
-                    # 从字典创建User对象
-                    user = User()
-                    for key, value in user_dict.items():
-                        if hasattr(user, key):
-                            setattr(user, key, value)
-                    return user
-            except (AttributeError, KeyError, ValueError) as e:
-                # 缓存数据格式错误，继续查询数据库
-                pass
+    @classmethod
+    def get_user_by_id(cls, db: Session, user_id: str) -> Optional[User]:
+        """根据ID获取用户
+        
+        使用 BaseService 的统一缓存机制
+        """
+        return cls.get_by_id(db, user_id, pk_column="user_id")
 
-        # 查询数据库
-        user = db.query(User).filter(User.user_id == user_id).first()
-        # 如果找到用户，缓存结果
-        if user:
-            cache_result(f"user:id:{user_id}", user.to_dict(), ttl=300)
-        return user
+    @classmethod
+    def get_user_by_phone(cls, db: Session, phone: str) -> Optional[User]:
+        """根据手机号获取用户
+        
+        使用 BaseService 的字段查询方法
+        """
+        return cls.get_by_field(db, "phone", phone)
 
-    @staticmethod
-    def get_user_by_phone(db: Session, phone: str) -> Optional[User]:
-        """根据手机号获取用户"""
-        # 尝试从缓存获取
-        from app.core.cache import get_cached
-        cached_user_data = get_cached(f"user:phone:{phone}")
-        if cached_user_data:
-            # 缓存命中，转换为User对象
-            try:
-                user_dict = cached_user_data
-                if isinstance(user_dict, dict):
-                    # 从字典创建User对象
-                    user = User()
-                    for key, value in user_dict.items():
-                        if hasattr(user, key):
-                            setattr(user, key, value)
-                    return user
-            except (AttributeError, KeyError, ValueError) as e:
-                # 缓存数据格式错误，继续查询数据库
-                pass
-
-        # 查询数据库
-        user = db.query(User).filter(User.phone == phone).first()
-        # 如果找到用户，缓存结果
-        if user:
-            cache_result(f"user:phone:{phone}", user.to_dict(), ttl=300)
-        return user
-
-    @staticmethod
-    def update_user(db: Session, user_id: str, update_data: dict) -> User:
-        """更新用户信息"""
-        user = db.query(User).filter(User.user_id == user_id).first()
+    @classmethod
+    def update_user(cls, db: Session, user_id: str, update_data: dict) -> User:
+        """更新用户信息
+        
+        使用 BaseService 的统一更新方法
+        """
+        user = cls.get_user_by_id(db, user_id)
         if not user:
             raise ValueError("用户不存在")
 
-        for field in ["nickname", "avatar", "email", "bio"]:
-            if field in update_data:
-                setattr(user, field, update_data[field])
+        # 过滤允许更新的字段
+        allowed_fields = ["nickname", "avatar", "email", "bio"]
+        filtered_data = {k: v for k, v in update_data.items() if k in allowed_fields}
+        
+        return cls.update_record(db, user_id, filtered_data, pk_column="user_id")
 
-        user.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(user)
+    @classmethod
+    def delete_user(cls, db: Session, user_id: str) -> bool:
+        """删除用户
+        
+        使用 BaseService 的统一删除方法
+        """
+        return cls.delete_record(db, user_id, pk_column="user_id")
 
-        # 失效相关缓存
-        invalidate_cache(f"user:id:{user_id}")
-        if user.phone:
-            invalidate_cache(f"user:phone:{user.phone}")
-
-        return user
-
-    @staticmethod
-    def delete_user(db: Session, user_id: str) -> bool:
-        """删除用户"""
-        user = db.query(User).filter(User.user_id == user_id).first()
-        if not user:
-            raise ValueError("用户不存在")
-
-        db.delete(user)
-        db.commit()
-        return True
-
-    @staticmethod
-    def list_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
-        """获取用户列表"""
-        # 使用缓存装饰器，较短的TTL因为列表可能变化
-        @cache(ttl=60, key_prefix="user", key_builder=lambda *args, **kwargs: f"list:{skip}:{limit}")
-        def _list_users():
-            return db.query(User).offset(skip).limit(limit).all()
-
-        return _list_users()
+    @classmethod
+    def list_users(cls, db: Session, skip: int = 0, limit: int = 100) -> List[User]:
+        """获取用户列表
+        
+        使用 BaseService 的统一列表查询方法
+        """
+        return cls.list_records(db, skip=skip, limit=limit, order_by="created_at", order_desc=True)
 
     @staticmethod
     def authenticate_user(db: Session, phone: str, password: str) -> Optional[User]:

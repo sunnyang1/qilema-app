@@ -1,12 +1,14 @@
 """
 设备SQLAlchemy模型
 """
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Text, Boolean
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class Device(Base):
+class Device(Base, BaseModelMixin):
     """设备模型"""
     __tablename__ = "devices"
 

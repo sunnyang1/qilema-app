@@ -1,12 +1,14 @@
 """
 设备数据SQLAlchemy模型
 """
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Float, Text
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class DeviceData(Base):
+class DeviceData(Base, BaseModelMixin):
     """设备数据模型"""
     __tablename__ = "device_data"
 
@@ -46,7 +48,7 @@ class DeviceData(Base):
     device = db_relationship("Device", back_populates="device_data")
 
 
-class DeviceThreshold(Base):
+class DeviceThreshold(Base, BaseModelMixin):
     """设备阈值模型"""
     __tablename__ = "device_thresholds"
 

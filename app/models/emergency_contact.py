@@ -1,12 +1,14 @@
 """
 紧急联系人SQLAlchemy模型
 """
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class EmergencyContact(Base):
+class EmergencyContact(Base, BaseModelMixin):
     """紧急联系人模型"""
     __tablename__ = "emergency_contacts"
 
@@ -25,18 +27,15 @@ class EmergencyContact(Base):
     # 关系
     user = db_relationship("User", back_populates="emergency_contacts")
 
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "contact_id": self.contact_id,
-            "user_id": self.user_id,
-            "name": self.name,
-            "phone": self.phone,
-            "relationship": self.relationship,
-            "is_primary": self.is_primary,
-            "priority": self.priority,
-            "notify_channels": self.notify_channels,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
-        }
+    def to_dict(self, exclude: Optional[List[str]] = None, include: Optional[List[str]] = None) -> dict:
+        """
+        转换为字典
+        
+        Args:
+            exclude: 要排除的字段列表
+            include: 只包含的字段列表
+            
+        Returns:
+            dict: 紧急联系人的字典表示
+        """
+        return super().to_dict(exclude=exclude, include=include)

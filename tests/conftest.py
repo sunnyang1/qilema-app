@@ -35,6 +35,30 @@ def test_database_url():
     return "sqlite:///test.db"
 
 
+@pytest.fixture
+def db():
+    """创建测试数据库会话"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.core.database import Base
+    
+    # 使用内存数据库进行测试
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    
+    # 创建所有表
+    Base.metadata.create_all(bind=engine)
+    
+    # 创建会话
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        # 清理数据库
+        Base.metadata.drop_all(bind=engine)
+
+
 # 测试配置
 TEST_CONFIG = {
     # 超时配置(秒)

@@ -1,9 +1,11 @@
 """SOS求助数据模型"""
 from datetime import datetime
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Enum as SQLEnum, Boolean, ForeignKey
 from sqlalchemy.orm import relationship as db_relationship
 from sqlalchemy.sql import func
 from ..core.database import Base
+from app.models.base_mixin import BaseModelMixin
 import enum
 
 
@@ -22,7 +24,7 @@ class SOSStatusEnum(str, enum.Enum):
     CANCELLED = "cancelled"  # 已取消
 
 
-class SOSRequest(Base):
+class SOSRequest(Base, BaseModelMixin):
     """SOS求助请求模型"""
     __tablename__ = "sos_requests"
     
@@ -58,34 +60,10 @@ class SOSRequest(Base):
     # 关联关系
     user = db_relationship("User", back_populates="sos_requests")
     location_histories = db_relationship("SOSLocationHistory", back_populates="sos_request", cascade="all, delete-orphan")
-    # emergency_calls = db_relationship("EmergencyCall", back_populates="sos_request")  # 等待 EmergencyCall 模型实现
     anomalies = db_relationship("Anomaly", back_populates="sos_request")
-    
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "sos_type": self.sos_type.value if self.sos_type else None,
-            "status": self.status.value if self.status else None,
-            "emergency_reason": self.emergency_reason,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-            "address": self.address,
-            "location_accuracy": self.location_accuracy,
-            "call_120": self.call_120,
-            "ambulance_contact": self.ambulance_contact,
-            "ambulance_eta": self.ambulance_eta,
-            "trigger_time": self.trigger_time.isoformat() if self.trigger_time else None,
-            "rescue_start_time": self.rescue_start_time.isoformat() if self.rescue_start_time else None,
-            "resolve_time": self.resolve_time.isoformat() if self.resolve_time else None,
-            "location_share_end_time": self.location_share_end_time.isoformat() if self.location_share_end_time else None,
-            "status_change_reason": self.status_change_reason,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
-        }
 
 
-class SOSLocationHistory(Base):
+class SOSLocationHistory(Base, BaseModelMixin):
     """SOS位置历史记录模型"""
     __tablename__ = "sos_location_histories"
     
@@ -103,15 +81,3 @@ class SOSLocationHistory(Base):
     
     # 关联关系
     sos_request = db_relationship("SOSRequest", back_populates="location_histories")
-    
-    def to_dict(self):
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "sos_request_id": self.sos_request_id,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-            "address": self.address,
-            "location_accuracy": self.location_accuracy,
-            "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None
-        }
