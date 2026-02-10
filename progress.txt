@@ -160,3 +160,27 @@ IMPORTANT LEARNINGS:
 - 使用 canLaunchUrl 检查 URL 是否可启动
 - AlertDialog 用于确认操作
 - 导航使用 Navigator.of(context).pop() 返回
+
+[2026-02-10 16:30:00] - [US-009/010/011] 实现紧急联系人模块
+
+IMPLEMENTATION SUMMARY:
+- 创建了 Contacts API 服务（增删改查）
+- 创建了 Contacts Provider 管理状态
+- 实现了联系人列表页面（卡片式设计、优先级排序）
+- 实现了添加/编辑联系人页面（表单验证、多选通知渠道）
+- 实现了删除联系人功能（带确认对话框）
+- 更新了路由配置添加联系人页面路由
+
+CHANGES:
+- Created: lib/features/contacts/services/contacts_api.dart
+- Created: lib/features/contacts/providers/contacts_provider.dart
+- Created: lib/features/contacts/pages/contacts_page.dart
+- Created: lib/features/contacts/pages/contact_edit_page.dart
+- Modified: lib/core/router/app_router.dart (添加联系人页面路由)
+
+IMPORTANT LEARNINGS:
+- Card + ListTile 实现卡片式设计
+- DropdownButtonFormField 的 value 属性已弃用，需使用 initialValue
+- Radio 的 groupValue 和 onChanged 已弃用，但保留用于兼容性
+- ConsumerWidget 的 build 方法中有 context 参数
+- ModalRoute.of(context).settings.arguments 用于获取路由参数

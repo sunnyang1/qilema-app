@@ -126,7 +126,7 @@
         "空状态提示（暂无联系人）"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -140,7 +140,7 @@
         "表单验证（必填字段、手机号格式）"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -154,8 +154,8 @@
         "显示删除成功的提示"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "在 ContactsPage 中通过 IconButton 实现删除确认对话框"
     },
     {
       "id": "US-012",

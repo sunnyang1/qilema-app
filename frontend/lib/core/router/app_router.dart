@@ -7,6 +7,8 @@ import 'package:qilema_app/features/signin/pages/home_page.dart';
 import 'package:qilema_app/features/signin/pages/history_page.dart';
 import 'package:qilema_app/features/sos/pages/sos_page.dart';
 import 'package:qilema_app/features/sos/pages/sos_status_page.dart';
+import 'package:qilema_app/features/contacts/pages/contacts_page.dart';
+import 'package:qilema_app/features/contacts/pages/contact_edit_page.dart';
 
 /// 路由配置
 class AppRouter {
@@ -60,6 +62,16 @@ class AppRouter {
         path: '/sos/status',
         builder: (context, state) => const SosStatusPage(),
         name: 'sos-status',
+      ),
+      GoRoute(
+        path: '/contacts',
+        builder: (context, state) => const ContactsPage(),
+        name: 'contacts',
+      ),
+      GoRoute(
+        path: '/contacts/edit',
+        builder: (context, state) => const ContactEditPage(),
+        name: 'contact-edit',
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
