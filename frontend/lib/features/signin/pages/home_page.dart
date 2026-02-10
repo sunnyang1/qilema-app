@@ -17,6 +17,27 @@ class HomePage extends ConsumerWidget {
         title: const Text('签到'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.emergency_share),
+            onPressed: () {
+              context.go('/aed-map');
+            },
+            tooltip: '急救资源',
+          ),
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            onPressed: () {
+              context.go('/knowledge');
+            },
+            tooltip: '急救知识',
+          ),
+          IconButton(
+            icon: const Icon(Icons.medication),
+            onPressed: () {
+              context.go('/medication');
+            },
+            tooltip: '用药提醒',
+          ),
+          IconButton(
             icon: const Icon(Icons.devices),
             onPressed: () {
               context.go('/devices');

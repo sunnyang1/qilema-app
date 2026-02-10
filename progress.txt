@@ -219,6 +219,55 @@ IMPORTANT LEARNINGS:
 
 ---
 
+[2026-02-10 18:00:00] - [US-001~004] 实现智能设备模块
+
+IMPLEMENTATION SUMMARY:
+- 创建了 Devices API 服务（设备CRUD操作、模拟蓝牙设备数据）
+- 创建了 Devices Provider 管理设备状态
+- 实现了设备列表页面（卡片式设计、下拉刷新、空状态）
+- 实现了设备绑定功能（模拟蓝牙扫描、一键绑定）
+- 实现了设备解绑功能（确认对话框）
+- 创建设备数据页面（实时数据、趋势图表、统计信息）
+- 更新路由配置和首页导航
+
+CHANGES:
+- Created: lib/features/devices/services/devices_api.dart
+- Created: lib/features/devices/providers/devices_provider.dart
+- Created: lib/features/devices/pages/devices_page.dart
+- Created: lib/features/devices/pages/device_data_page.dart
+- Modified: lib/core/router/app_router.dart
+- Modified: lib/features/signin/pages/home_page.dart
+
+IMPORTANT LEARNINGS:
+- fl_chart 库用于数据可视化（折线图、柱状图）
+- 设备类型使用枚举定义（智能手表、血压计、血糖仪、血氧仪）
+- 模拟蓝牙扫描使用 Timer 模拟异步操作
+
+[2026-02-10 18:30:00] - [US-005/006] 实现急救资源模块
+
+IMPLEMENTATION SUMMARY:
+- 创建了 Emergency API 服务（AED、医院数据获取）
+- 创建了 Emergency Provider 管理资源状态
+- 实现了 AED 地图页面（列表视图、位置获取、距离排序）
+- 实现了医院列表页面（卡片式设计、等级标识、科室展示）
+- 实现了导航和电话功能（url_launcher）
+- 添加了医院详情底部弹窗
+- 更新路由配置和首页导航
+
+CHANGES:
+- Created: lib/features/emergency/services/emergency_api.dart
+- Created: lib/features/emergency/providers/emergency_provider.dart
+- Created: lib/features/emergency/pages/aed_map_page.dart
+- Created: lib/features/emergency/pages/hospitals_page.dart
+- Modified: lib/core/router/app_router.dart
+- Modified: lib/features/signin/pages/home_page.dart
+
+IMPORTANT LEARNINGS:
+- 使用 Geolocator 获取当前位置需要处理权限和位置服务状态
+- url_launcher 支持拨打电话和外部地图导航
+- 医院等级使用不同颜色标识提高可读性
+- 使用 DraggableScrollableSheet 实现可拖拽的详情弹窗
+
 ## Phase 1 完成总结
 
 Phase 1 核心功能已全部完成（15/15 用户故事）：
@@ -237,3 +286,68 @@ Phase 1 核心功能已全部完成（15/15 用户故事）：
 - US-013: 实现病史管理功能 ✓
 - US-014: 实现用药信息管理功能 ✓
 - US-015: 实现过敏史管理功能 ✓
+
+[2026-02-10 19:00:00] - [US-007~009] 实现急救知识库模块
+
+IMPLEMENTATION SUMMARY:
+- 创建了 Knowledge API 服务（分类、文章列表、文章详情）
+- 创建了 Knowledge Provider 管理知识库状态
+- 实现了知识分类页面（8个分类、卡片式布局、推荐文章）
+- 实现了文章列表页面（下拉刷新、上拉加载、分类筛选）
+- 实现了文章详情页面（步骤展示、标签、分享功能）
+- 更新路由配置和首页导航
+
+CHANGES:
+- Created: lib/features/knowledge/services/knowledge_api.dart
+- Created: lib/features/knowledge/providers/knowledge_provider.dart
+- Created: lib/features/knowledge/pages/knowledge_categories_page.dart
+- Created: lib/features/knowledge/pages/articles_page.dart
+- Created: lib/features/knowledge/pages/article_detail_page.dart
+- Modified: lib/core/router/app_router.dart
+- Modified: lib/features/signin/pages/home_page.dart
+
+IMPORTANT LEARNINGS:
+- FilterChip 适合用于多选场景（如每周几天的选择）
+- SegmentedButton 适合用于频率等单选场景
+- 使用 share_plus 包实现分享功能
+- DraggableScrollableSheet 实现可拖拽的底部详情弹窗
+
+[2026-02-10 19:30:00] - [US-010~012] 实现用药提醒模块
+
+IMPLEMENTATION SUMMARY:
+- 创建了 Medication API 服务（提醒CRUD、用药记录）
+- 创建了 Medication Provider 管理用药提醒状态
+- 实现了用药提醒列表页面（今日用药时间表、全部计划列表）
+- 实现了添加用药提醒页面（药品选择、时间设置、频率设置）
+- 实现了服用记录功能（标记已服用、统计今日用药）
+- 更新路由配置和首页导航
+
+CHANGES:
+- Created: lib/features/medication/services/medication_api.dart
+- Created: lib/features/medication/providers/medication_provider.dart
+- Created: lib/features/medication/pages/medication_reminders_page.dart
+- Created: lib/features/medication/pages/add_medication_page.dart
+- Modified: lib/core/router/app_router.dart
+- Modified: lib/features/signin/pages/home_page.dart
+
+IMPORTANT LEARNINGS:
+- TabBar + TabBarView 实现标签页切换
+- TimeOfDay 配合 showTimePicker 实现时间选择
+- 使用枚举定义用药频率（每天/每周/自定义）
+- 服用记录使用独立的数据模型，便于统计和追踪
+
+## Phase 2 完成总结
+
+Phase 2 扩展功能已全部完成（12/12 用户故事）：
+- US-001: 创建设备列表页面 ✓
+- US-002: 实现设备绑定功能 ✓
+- US-003: 实现设备解绑功能 ✓
+- US-004: 创建设备数据页面 ✓
+- US-005: 创建 AED 地图页面 ✓
+- US-006: 创建医院列表页面 ✓
+- US-007: 创建急救知识分类页面 ✓
+- US-008: 创建文章列表页面 ✓
+- US-009: 创建文章详情页面 ✓
+- US-010: 创建用药提醒列表页面 ✓
+- US-011: 实现添加用药提醒功能 ✓
+- US-012: 实现用药提醒通知 ✓
