@@ -1,6 +1,9 @@
 ## Codebase Patterns
 
-(记录通用、可重用的模式)
+- **认证流程**: 使用 AuthService 处理 Token 的存储、刷新和清除
+- **API 调用**: 使用 ApiClient 单例进行所有网络请求
+- **状态管理**: 使用 Riverpod 的 StateNotifier 管理状态
+- **路由守卫**: 在 AppRouter 的 redirect 回调中检查认证状态
 
 ---
 
@@ -10,3 +13,31 @@
 - 创建 Phase 1 PRD 文档
 - 转换为 prd.json
 - 准备开始 Ralph 自主迭代循环
+
+[2026-02-10 10:00:00] - [US-001] 配置核心基础设施
+
+IMPLEMENTATION SUMMARY:
+- 创建了完整的网络层基础设施（Dio客户端、拦截器）
+- 创建了主题配置（浅色/深色模式）
+- 创建了路由配置和认证守卫
+- 创建了认证服务和状态管理
+- 更新 main.dart 使用新的基础设施
+
+CHANGES:
+- Created: lib/core/config/app_config.dart
+- Created: lib/core/network/api_client.dart
+- Created: lib/core/network/interceptors/auth_interceptor.dart
+- Created: lib/core/network/interceptors/token_interceptor.dart
+- Created: lib/core/network/interceptors/logging_interceptor.dart
+- Created: lib/core/utils/logger.dart
+- Created: lib/core/theme/app_theme.dart
+- Created: lib/core/router/app_router.dart
+- Created: lib/shared/services/auth_service.dart
+- Created: lib/shared/providers/auth_provider.dart
+- Modified: frontend/lib/main.dart
+
+IMPORTANT LEARNINGS:
+- 路由守卫需要在 GoRouter 的 redirect 回调中异步检查认证状态
+- 拦截器按顺序执行，需要注意顺序（认证 → Token刷新 → 日志）
+- SharedPreferences 用于本地存储 Token 和用户信息
+- 使用单例模式管理 ApiClient 可以确保全局唯一

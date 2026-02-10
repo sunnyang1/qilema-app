@@ -14,7 +14,7 @@
         "控制台能输出结构化日志"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
