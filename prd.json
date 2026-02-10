@@ -168,8 +168,8 @@
         "保存成功后显示提示"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "实现健康档案主页(health_page.dart)，包含基本信息表单和紧急医疗联系人信息"
     },
     {
       "id": "US-013",
@@ -182,8 +182,8 @@
         "列表支持滚动查看"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "实现病史管理页面(medical_histories_page.dart)，支持添加、编辑、删除病史记录"
     },
     {
       "id": "US-014",
@@ -196,8 +196,8 @@
         "列表支持滚动查看"
       ],
       "priority": 14,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "实现用药管理页面(medications_page.dart)，支持添加、编辑、删除用药记录，显示是否正在使用"
     },
     {
       "id": "US-015",
@@ -210,8 +210,8 @@
         "列表支持滚动查看"
       ],
       "priority": 15,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "实现过敏史管理页面(allergies_page.dart)，支持添加、编辑、删除过敏记录，用颜色区分严重程度"
     }
   ]
 }

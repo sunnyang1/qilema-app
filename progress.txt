@@ -184,3 +184,56 @@ IMPORTANT LEARNINGS:
 - Radio 的 groupValue 和 onChanged 已弃用，但保留用于兼容性
 - ConsumerWidget 的 build 方法中有 context 参数
 - ModalRoute.of(context).settings.arguments 用于获取路由参数
+
+[2026-02-10 17:00:00] - [US-012/013/014/015] 实现健康档案模块
+
+IMPLEMENTATION SUMMARY:
+- 创建了 Health API 服务（健康档案基本信息、病史、用药、过敏史 CRUD）
+- 创建了 Health Provider 管理所有健康档案相关状态
+- 实现了健康档案主页（基本信息表单、紧急医疗联系人、快速操作入口）
+- 实现了病史管理页面（添加、编辑、删除病史记录，支持慢性病标记和严重程度）
+- 实现了用药管理页面（添加、编辑、删除用药记录，显示正在使用状态）
+- 实现了过敏史管理页面（添加、编辑、删除过敏记录，用颜色区分严重程度）
+- 更新了路由配置添加所有健康档案页面路由
+- 在首页添加了健康档案和紧急联系人的导航按钮
+
+CHANGES:
+- Created: lib/features/health/services/health_api.dart
+- Created: lib/features/health/providers/health_provider.dart
+- Created: lib/features/health/pages/health_page.dart
+- Created: lib/features/health/pages/medical_histories_page.dart
+- Created: lib/features/health/pages/medications_page.dart
+- Created: lib/features/health/pages/allergies_page.dart
+- Modified: lib/core/router/app_router.dart (添加健康档案页面路由)
+- Modified: lib/features/signin/pages/home_page.dart (添加健康档案和联系人按钮)
+
+IMPORTANT LEARNINGS:
+- 健康档案模块包含四个子模块：基本信息、病史、用药、过敏史
+- 使用 CircleAvatar + Icon 实现列表项的图标展示
+- showDatePicker 配合 TextEditingController 实现日期选择
+- CheckboxListTile 适合布尔值选择（如是否慢性病）
+- 严重程度用不同颜色标识提高视觉识别度
+- 表单验证需要在每个 TextFormField 中设置 validator
+- 删除确认对话框需要传递 WidgetRef 参数以便调用 Provider
+- StateNotifierProvider 的 refresh 方法可以重新加载数据
+
+---
+
+## Phase 1 完成总结
+
+Phase 1 核心功能已全部完成（15/15 用户故事）：
+- US-001: 配置核心基础设施 ✓
+- US-002: 实现登录页面 ✓
+- US-003: 实现注册页面 ✓
+- US-004: Token管理和自动刷新 ✓
+- US-005: 实现签到首页 ✓
+- US-006: 实现签到历史页面 ✓
+- US-007: 实现SOS触发页面 ✓
+- US-008: 实现SOS状态页面 ✓
+- US-009: 实现紧急联系人列表页面 ✓
+- US-010: 实现添加/编辑联系人功能 ✓
+- US-011: 实现删除联系人功能 ✓
+- US-012: 实现健康档案基本信息页面 ✓
+- US-013: 实现病史管理功能 ✓
+- US-014: 实现用药信息管理功能 ✓
+- US-015: 实现过敏史管理功能 ✓

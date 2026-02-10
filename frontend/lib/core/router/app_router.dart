@@ -9,6 +9,10 @@ import 'package:qilema_app/features/sos/pages/sos_page.dart';
 import 'package:qilema_app/features/sos/pages/sos_status_page.dart';
 import 'package:qilema_app/features/contacts/pages/contacts_page.dart';
 import 'package:qilema_app/features/contacts/pages/contact_edit_page.dart';
+import 'package:qilema_app/features/health/pages/health_page.dart';
+import 'package:qilema_app/features/health/pages/medical_histories_page.dart';
+import 'package:qilema_app/features/health/pages/medications_page.dart';
+import 'package:qilema_app/features/health/pages/allergies_page.dart';
 
 /// 路由配置
 class AppRouter {
@@ -72,6 +76,26 @@ class AppRouter {
         path: '/contacts/edit',
         builder: (context, state) => const ContactEditPage(),
         name: 'contact-edit',
+      ),
+      GoRoute(
+        path: '/health',
+        builder: (context, state) => const HealthPage(),
+        name: 'health',
+      ),
+      GoRoute(
+        path: '/medical-histories',
+        builder: (context, state) => const MedicalHistoriesPage(),
+        name: 'medical-histories',
+      ),
+      GoRoute(
+        path: '/medications',
+        builder: (context, state) => const MedicationsPage(),
+        name: 'medications',
+      ),
+      GoRoute(
+        path: '/allergies',
+        builder: (context, state) => const AllergiesPage(),
+        name: 'allergies',
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
