@@ -5,12 +5,13 @@
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List as TypingList
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Boolean
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
 # 文章-标签关联表
@@ -22,7 +23,7 @@ article_tag_association = Table(
 )
 
 
-class KnowledgeCategory(Base):
+class KnowledgeCategory(Base, BaseModelMixin):
     """知识库分类模型"""
     __tablename__ = "knowledge_categories"
 
@@ -44,28 +45,33 @@ class KnowledgeCategory(Base):
     def __repr__(self):
         return f"<KnowledgeCategory(id={self.id}, name={self.name})>"
 
-    def to_dict(self, include_children: bool = False) -> dict:
-        """转换为字典"""
-        data = {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "icon": self.icon,
-            "sort_order": self.sort_order,
-            "is_active": self.is_active,
-            "parent_id": self.parent_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "article_count": len(self.articles) if self.articles else 0
-        }
+    def to_dict(self, exclude: Optional[TypingList[str]] = None, include: Optional[TypingList[str]] = None, include_children: bool = False) -> dict:
+        """
+        转换为字典
         
+        Args:
+            exclude: 要排除的字段列表
+            include: 只包含的字段列表
+            include_children: 是否包含子分类
+            
+        Returns:
+            dict: 分类的字典表示
+        """
+        # 获取基础数据
+        data = super().to_dict(exclude=exclude, include=include)
+        
+        # 添加文章计数
+        if "articles" not in (exclude or []):
+            data["article_count"] = len(self.articles) if self.articles else 0
+        
+        # 添加子分类
         if include_children and self.children:
             data["children"] = [child.to_dict() for child in self.children if child.is_active]
         
         return data
 
 
-class KnowledgeTag(Base):
+class KnowledgeTag(Base, BaseModelMixin):
     """知识库标签模型"""
     __tablename__ = "knowledge_tags"
 
@@ -87,20 +93,27 @@ class KnowledgeTag(Base):
     def __repr__(self):
         return f"<KnowledgeTag(id={self.id}, name={self.name})>"
 
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "color": self.color,
-            "is_active": self.is_active,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "article_count": len(self.articles) if self.articles else 0
-        }
+    def to_dict(self, exclude: Optional[TypingList[str]] = None, include: Optional[TypingList[str]] = None) -> dict:
+        """
+        转换为字典
+        
+        Args:
+            exclude: 要排除的字段列表
+            include: 只包含的字段列表
+            
+        Returns:
+            dict: 标签的字典表示
+        """
+        data = super().to_dict(exclude=exclude, include=include)
+        
+        # 添加文章计数
+        if "articles" not in (exclude or []):
+            data["article_count"] = len(self.articles) if self.articles else 0
+        
+        return data
 
 
-class KnowledgeArticle(Base):
+class KnowledgeArticle(Base, BaseModelMixin):
     """知识库文章模型"""
     __tablename__ = "knowledge_articles"
 
@@ -133,28 +146,29 @@ class KnowledgeArticle(Base):
     def __repr__(self):
         return f"<KnowledgeArticle(id={self.id}, title={self.title})>"
 
-    def to_dict(self, include_content: bool = False) -> dict:
-        """转换为字典"""
-        data = {
-            "id": self.id,
-            "title": self.title,
-            "summary": self.summary,
-            "cover_image": self.cover_image,
-            "author": self.author,
-            "source": self.source,
-            "view_count": self.view_count,
-            "like_count": self.like_count,
-            "is_top": self.is_top,
-            "is_active": self.is_active,
-            "status": self.status,
-            "category_id": self.category_id,
-            "category_name": self.category.name if self.category else None,
-            "tags": [tag.name for tag in self.tags] if self.tags else [],
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "published_at": self.published_at.isoformat() if self.published_at else None
-        }
+    def to_dict(self, exclude: Optional[TypingList[str]] = None, include: Optional[TypingList[str]] = None, include_content: bool = False) -> dict:
+        """
+        转换为字典
         
+        Args:
+            exclude: 要排除的字段列表
+            include: 只包含的字段列表
+            include_content: 是否包含文章内容
+            
+        Returns:
+            dict: 文章的字典表示
+        """
+        # 获取基础数据
+        data = super().to_dict(exclude=exclude, include=include)
+        
+        # 添加关联数据
+        if "category" not in (exclude or []):
+            data["category_name"] = self.category.name if self.category else None
+        
+        if "tags" not in (exclude or []):
+            data["tags"] = [tag.name for tag in self.tags] if self.tags else []
+        
+        # 添加内容（如果请求）
         if include_content:
             data["content"] = self.content
             data["html_content"] = self.html_content

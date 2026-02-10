@@ -5,13 +5,14 @@
 """
 
 from datetime import datetime, time, date
-from typing import Optional, List
+from typing import Optional, List as TypingList
 from enum import Enum as PyEnum
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Time, ForeignKey, Enum, Float, Boolean
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
 class MedicationType(str, PyEnum):
@@ -65,7 +66,7 @@ class LogStatus(str, PyEnum):
     DELAYED = "delayed"        # 延迟服用
 
 
-class MedicationReminderItem(Base):
+class MedicationReminderItem(Base, BaseModelMixin):
     """药品信息模型"""
     __tablename__ = "medication_reminder_items"
 
@@ -116,36 +117,8 @@ class MedicationReminderItem(Base):
     def __repr__(self):
         return f"<MedicationReminderItem(id={self.id}, name={self.name})>"
 
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "name": self.name,
-            "generic_name": self.generic_name,
-            "brand_name": self.brand_name,
-            "medication_type": self.medication_type.value if self.medication_type else None,
-            "dosage": self.dosage,
-            "unit": self.unit.value if self.unit else None,
-            "strength": self.strength,
-            "color": self.color,
-            "shape": self.shape,
-            "imprint": self.imprint,
-            "instructions": self.instructions,
-            "side_effects": self.side_effects,
-            "storage": self.storage,
-            "prescription_info": self.prescription_info,
-            "expiry_date": self.expiry_date.isoformat() if self.expiry_date else None,
-            "total_quantity": self.total_quantity,
-            "remaining_quantity": self.remaining_quantity,
-            "is_active": self.is_active,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "schedule_count": len(self.schedules) if self.schedules else 0
-        }
 
-
-class MedicationReminderSchedule(Base):
+class MedicationReminderSchedule(Base, BaseModelMixin):
     """用药计划模型"""
     __tablename__ = "medication_reminder_schedules"
 
@@ -211,37 +184,8 @@ class MedicationReminderSchedule(Base):
             return []
         return [t.strip() for t in self.times_of_day.split(",")]
 
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "medication_item_id": self.medication_item_id,
-            "medication_name": self.medication_item.name if self.medication_item else None,
-            "name": self.name,
-            "frequency": self.frequency.value if self.frequency else None,
-            "times_of_day": self.times_of_day,
-            "times_list": self.get_times_list(),
-            "days_of_week": self.days_of_week,
-            "specific_dates": self.specific_dates,
-            "start_date": self.start_date.isoformat() if self.start_date else None,
-            "end_date": self.end_date.isoformat() if self.end_date else None,
-            "custom_dosage": self.custom_dosage,
-            "custom_unit": self.custom_unit.value if self.custom_unit else None,
-            "reminder_enabled": self.reminder_enabled,
-            "reminder_minutes_before": self.reminder_minutes_before,
-            "timezone": self.timezone,
-            "is_active": self.is_active,
-            "is_paused": self.is_paused,
-            "pause_until": self.pause_until.isoformat() if self.pause_until else None,
-            "total_doses": self.total_doses,
-            "completed_doses": self.completed_doses,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
-        }
 
-
-class MedicationReminderNotification(Base):
+class MedicationReminderNotification(Base, BaseModelMixin):
     """用药提醒记录模型"""
     __tablename__ = "medication_reminder_notifications"
 
@@ -285,29 +229,8 @@ class MedicationReminderNotification(Base):
     def __repr__(self):
         return f"<MedicationReminderNotification(id={self.id}, status={self.status})>"
 
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "schedule_id": self.schedule_id,
-            "medication_item_id": self.medication_item_id,
-            "medication_name": self.medication_item.name if self.medication_item else None,
-            "scheduled_time": self.scheduled_time.isoformat() if self.scheduled_time else None,
-            "reminder_date": self.reminder_date.isoformat() if self.reminder_date else None,
-            "reminder_time": self.reminder_time.isoformat() if self.reminder_time else None,
-            "status": self.status.value if self.status else None,
-            "sent_at": self.sent_at.isoformat() if self.sent_at else None,
-            "notification_type": self.notification_type,
-            "notification_sent": self.notification_sent,
-            "responded_at": self.responded_at.isoformat() if self.responded_at else None,
-            "response_action": self.response_action,
-            "log_id": self.log_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None
-        }
 
-
-class MedicationReminderLog(Base):
+class MedicationReminderLog(Base, BaseModelMixin):
     """服药记录模型"""
     __tablename__ = "medication_reminder_logs"
     
@@ -351,26 +274,3 @@ class MedicationReminderLog(Base):
     
     def __repr__(self):
         return f"<MedicationReminderLog(id={self.id}, status={self.status})>"
-
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "medication_item_id": self.medication_item_id,
-            "medication_name": self.medication_item.name if self.medication_item else None,
-            "schedule_id": self.schedule_id,
-            "reminder_id": self.reminder_id,
-            "scheduled_date": self.scheduled_date.isoformat() if self.scheduled_date else None,
-            "scheduled_time": self.scheduled_time.isoformat() if self.scheduled_time else None,
-            "taken_at": self.taken_at.isoformat() if self.taken_at else None,
-            "status": self.status.value if self.status else None,
-            "dosage_taken": self.dosage_taken,
-            "unit": self.unit.value if self.unit else None,
-            "notes": self.notes,
-            "side_effects_noted": self.side_effects_noted,
-            "skipped_reason": self.skipped_reason,
-            "location": self.location,
-            "device_id": self.device_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None
-        }

@@ -1,12 +1,14 @@
 """
 用户登录记录SQLAlchemy模型
 """
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class LoginRecord(Base):
+class LoginRecord(Base, BaseModelMixin):
     """用户登录记录模型"""
     __tablename__ = "login_records"
 

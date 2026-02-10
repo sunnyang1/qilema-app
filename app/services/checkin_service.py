@@ -22,14 +22,18 @@ from app.services.base_service import BaseService
 
 
 class CheckInService(BaseService[CheckIn]):
-    """签到服务类 - 继承BaseService"""
+    """签到服务类 - 继承BaseService
+    
+    提供签到记录的创建、查询、统计等功能
+    统一使用类方法，便于利用 BaseService 的缓存机制
+    """
     
     model_class = CheckIn
     cache_prefix = CacheConfig.PREFIX_CHECKIN
     cache_ttl = CacheConfig.TTL_CHECKIN_LIST
 
-    @staticmethod
-    def create_checkin(db: Session, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
+    @classmethod
+    def create_checkin(cls, db: Session, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
         """
         创建签到记录
         
@@ -74,12 +78,13 @@ class CheckInService(BaseService[CheckIn]):
         db.refresh(db_checkin)
         
         # 失效相关缓存
-        invalidate_cache(CacheConfig.make_pattern(CacheConfig.PREFIX_CHECKIN, user_id, "*"))
+        cls.invalidate_list_cache(f"{user_id}:*")
         
         return db_checkin
 
-    @staticmethod
+    @classmethod
     def get_user_checkins(
+        cls,
         db: Session, 
         user_id: str, 
         days: int = 30,
@@ -99,32 +104,21 @@ class CheckInService(BaseService[CheckIn]):
         Returns:
             签到记录列表
         """
-        # 尝试从缓存获取
-        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_CHECKIN_LIST, user_id, days, start_date or '', end_date or '')
-        cached_checkins = get_cached(cache_key)
-        if cached_checkins:
-            return cached_checkins
-
         if start_date is None:
             start_date = date.today() - timedelta(days=days)
         if end_date is None:
             end_date = date.today()
 
-        checkins = db.query(CheckIn).filter(
-            and_(
-                CheckIn.user_id == user_id,
-                CheckIn.checkin_date >= start_date.strftime('%Y-%m-%d'),
-                CheckIn.checkin_date <= end_date.strftime('%Y-%m-%d')
-            )
-        ).order_by(desc(CheckIn.checkin_date)).all()
+        # 使用 BaseService 的列表查询方法
+        return cls.list_records(
+            db,
+            user_id=user_id,
+            order_by="checkin_date",
+            order_desc=True
+        )
 
-        # 缓存结果
-        cache_result(cache_key, checkins, ttl=CacheConfig.TTL_CHECKIN_LIST)
-
-        return checkins
-
-    @staticmethod
-    def get_checkin_stats(db: Session, user_id: str, days: int = 30) -> CheckInStatsResponse:
+    @classmethod
+    def get_checkin_stats(cls, db: Session, user_id: str, days: int = 30) -> CheckInStatsResponse:
         """
         获取用户签到统计信息
 
@@ -171,8 +165,8 @@ class CheckInService(BaseService[CheckIn]):
 
         return stats
 
-    @staticmethod
-    def get_checkin_status(db: Session, user_id: str, target_date: Optional[date] = None) -> CheckInStatusResponse:
+    @classmethod
+    def get_checkin_status(cls, db: Session, user_id: str, target_date: Optional[date] = None) -> CheckInStatusResponse:
         """
         查询指定日期的签到状态
 
@@ -189,12 +183,6 @@ class CheckInService(BaseService[CheckIn]):
 
         date_str = target_date.strftime('%Y-%m-%d')
 
-        # 尝试从缓存获取
-        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_CHECKIN, "status", user_id, date_str)
-        cached_status = get_cached(cache_key)
-        if cached_status:
-            return cached_status
-
         checkin = db.query(CheckIn).filter(
             and_(
                 CheckIn.user_id == user_id,
@@ -202,18 +190,13 @@ class CheckInService(BaseService[CheckIn]):
             )
         ).first()
 
-        status = CheckInStatusResponse(
+        return CheckInStatusResponse(
             is_checked_in=bool(checkin),
             checkin_time=checkin.checkin_time if checkin else None
         )
 
-        # 缓存结果
-        cache_result(cache_key, status, ttl=CacheConfig.TTL_SHORT)
-
-        return status
-
-    @staticmethod
-    def get_emergency_contacts_for_notification(db: Session, user_id: str) -> List[EmergencyContact]:
+    @classmethod
+    def get_emergency_contacts_for_notification(cls, db: Session, user_id: str) -> List[EmergencyContact]:
         """
         获取用户的紧急联系人(用于签到通知)
         
@@ -224,13 +207,12 @@ class CheckInService(BaseService[CheckIn]):
         Returns:
             紧急联系人列表
         """
-        # 直接从EmergencyContactService获取，不缓存
         return db.query(EmergencyContact).filter(
             EmergencyContact.user_id == user_id
         ).order_by(EmergencyContact.priority).all()
 
-    @staticmethod
-    def _calculate_streak(db: Session, user_id: str, from_date: date) -> int:
+    @classmethod
+    def _calculate_streak(cls, db: Session, user_id: str, from_date: date) -> int:
         """
         计算从指定日期开始的连续签到天数
         
@@ -248,7 +230,6 @@ class CheckInService(BaseService[CheckIn]):
         while True:
             date_str = current_date.strftime('%Y-%m-%d')
             
-            # 查询该日期的签到记录
             checkin = db.query(CheckIn).filter(
                 and_(
                     CheckIn.user_id == user_id,
@@ -262,14 +243,13 @@ class CheckInService(BaseService[CheckIn]):
             else:
                 break
             
-            # 防止无限循环,最多查询365天
             if streak >= 365:
                 break
         
         return streak
 
-    @staticmethod
-    def _calculate_longest_streak(db: Session, user_id: str, days: int) -> int:
+    @classmethod
+    def _calculate_longest_streak(cls, db: Session, user_id: str, days: int) -> int:
         """
         计算指定天数内的最长连续签到天数
         

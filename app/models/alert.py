@@ -1,12 +1,14 @@
 """
 预警SQLAlchemy模型
 """
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, JSON, Boolean, Float
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
-class Alert(Base):
+class Alert(Base, BaseModelMixin):
     """预警模型"""
     __tablename__ = "alerts"
     
@@ -30,7 +32,7 @@ class Alert(Base):
     user = db_relationship("User", back_populates="alerts")
 
 
-class AlertSetting(Base):
+class AlertSetting(Base, BaseModelMixin):
     """预警设置模型"""
     __tablename__ = "alert_settings"
     

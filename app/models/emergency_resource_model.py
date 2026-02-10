@@ -3,9 +3,11 @@
 """
 from datetime import datetime
 from enum import Enum as PyEnum
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, Text, Boolean, Enum
 from sqlalchemy.orm import relationship as db_relationship
 from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
 class AEDStatus(str, PyEnum):
@@ -16,7 +18,7 @@ class AEDStatus(str, PyEnum):
     DEPRECATED = "deprecated"   # 已废弃
 
 
-class EmergencyResource(Base):
+class EmergencyResource(Base, BaseModelMixin):
     """急救资源模型"""
     __tablename__ = "emergency_resources"
 
@@ -79,61 +81,49 @@ class EmergencyResource(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
     updated_at = Column(DateTime, nullable=True, onupdate=datetime.utcnow, comment="更新时间")
     
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        data = {
-            "id": self.id,
-            "resource_type": self.resource_type,
-            "resource_name": self.resource_name,
-            "description": self.description,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-            "address": self.address,
-            "province": self.province,
-            "city": self.city,
-            "district": self.district,
-            "phone": self.phone,
-            "website": self.website,
-            "email": self.email,
-            "hospital_level": self.hospital_level,
-            "has_emergency": bool(self.has_emergency),
-            "has_ambulance": bool(self.has_ambulance),
-            "bed_count": self.bed_count,
-            "emergency_beds": self.emergency_beds,
-            "is_24h": bool(self.is_24h),
-            "open_hours": self.open_hours,
-            "distance": self.distance,
-            "rating": self.rating,
-            "review_count": self.review_count,
-            "is_active": bool(self.is_active),
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
+    def to_dict(self, exclude: Optional[List[str]] = None, include: Optional[List[str]] = None) -> dict:
+        """
+        转换为字典
         
-        # AED专用字段
-        if self.resource_type == "aed":
-            data.update({
-                "aed_status": self.aed_status,
-                "last_maintenance": self.last_maintenance.isoformat() if self.last_maintenance else None,
-                "aed_brand": self.aed_brand,
-                "aed_model": self.aed_model,
-                "aed_sn": self.aed_sn,
-                "aed_location_desc": self.aed_location_desc,
-                "aed_access_instructions": self.aed_access_instructions,
-                "aed_installation_date": self.aed_installation_date.isoformat() if self.aed_installation_date else None,
-                "aed_battery_expiry": self.aed_battery_expiry.isoformat() if self.aed_battery_expiry else None,
-                "aed_pad_expiry": self.aed_pad_expiry.isoformat() if self.aed_pad_expiry else None,
-                "aed_last_inspection": self.aed_last_inspection.isoformat() if self.aed_last_inspection else None,
-                "aed_manager_name": self.aed_manager_name,
-                "aed_manager_phone": self.aed_manager_phone,
-                "aed_image_url": self.aed_image_url,
-                "aed_photos": self.aed_photos,
-            })
+        保留AED专用字段的特殊处理逻辑
+        
+        Args:
+            exclude: 要排除的字段列表
+            include: 只包含的字段列表
+            
+        Returns:
+            dict: 急救资源的字典表示
+        """
+        # 获取基础字段（使用mixin的方法）
+        data = super().to_dict(exclude=exclude, include=include)
+        
+        # 特殊处理: 将整数布尔值转换为真正的布尔值
+        bool_fields = ['has_emergency', 'has_ambulance', 'is_24h', 'is_active']
+        for field in bool_fields:
+            if field in data and data[field] is not None:
+                data[field] = bool(data[field])
+        
+        # AED专用字段处理（如果资源类型是AED且没有指定include）
+        if self.resource_type == "aed" and include is None:
+            aed_fields = [
+                "aed_status", "last_maintenance", "aed_brand", "aed_model", "aed_sn",
+                "aed_location_desc", "aed_access_instructions", "aed_installation_date",
+                "aed_battery_expiry", "aed_pad_expiry", "aed_last_inspection",
+                "aed_manager_name", "aed_manager_phone", "aed_image_url", "aed_photos"
+            ]
+            for field in aed_fields:
+                if hasattr(self, field):
+                    value = getattr(self, field)
+                    # 日期字段特殊处理
+                    if hasattr(value, 'isoformat'):
+                        data[field] = value.isoformat()
+                    else:
+                        data[field] = value
         
         return data
 
 
-class ResourceFacility(Base):
+class ResourceFacility(Base, BaseModelMixin):
     """资源设施模型"""
     __tablename__ = "resource_facilities"
 
@@ -147,7 +137,7 @@ class ResourceFacility(Base):
     updated_at = Column(DateTime, nullable=True, comment="更新时间")
 
 
-class ResourceDepartment(Base):
+class ResourceDepartment(Base, BaseModelMixin):
     """资源科室模型"""
     __tablename__ = "resource_departments"
 
@@ -162,7 +152,7 @@ class ResourceDepartment(Base):
     updated_at = Column(DateTime, nullable=True, comment="更新时间")
 
 
-class ResourceUsageLog(Base):
+class ResourceUsageLog(Base, BaseModelMixin):
     """资源使用日志模型"""
     __tablename__ = "resource_usage_logs"
 
@@ -175,7 +165,7 @@ class ResourceUsageLog(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: __import__(datetime).datetime.now(), comment="创建时间")
 
 
-class NavigationRoute(Base):
+class NavigationRoute(Base, BaseModelMixin):
     """导航路线模型"""
     __tablename__ = "navigation_routes"
 
