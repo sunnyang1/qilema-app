@@ -42,7 +42,7 @@
         "验证手机号格式和密码强度"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -56,8 +56,8 @@
         "所有API请求自动携带Authorization header"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "已在US-001中通过TokenInterceptor实现"
     },
     {
       "id": "US-005",
