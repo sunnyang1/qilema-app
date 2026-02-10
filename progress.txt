@@ -97,3 +97,25 @@ IMPORTANT LEARNINGS:
 - 使用 ConsumerWidget 来消费 Provider
 - 大型按钮使用 Container + BoxDecoration 实现圆形和阴影
 - 根据时间计算欢迎语增加用户友好性
+
+[2026-02-10 15:00:00] - [US-006] 实现签到历史页面
+
+IMPLEMENTATION SUMMARY:
+- 扩展了 SigninProvider 添加历史记录状态管理
+- 创建了 SigninHistoryItem 数据模型
+- 实现了 HistoryPage UI（过滤器、列表、下拉刷新、上拉加载）
+- 更新了路由配置添加历史页面
+- 在 HomePage 添加了历史按钮导航
+
+CHANGES:
+- Modified: lib/features/signin/providers/signin_provider.dart (添加历史记录管理)
+- Created: lib/features/signin/pages/history_page.dart
+- Modified: lib/core/router/app_router.dart (添加历史页面路由)
+- Modified: lib/features/signin/pages/home_page.dart (添加历史按钮)
+
+IMPORTANT LEARNINGS:
+- 使用 Enum 定义筛选器状态
+- FilterChip 组件适合实现Tab式筛选
+- RefreshIndicator 需要返回 Future<void>
+- ScrollController 监听滚动事件实现上拉加载
+- 已弃用 withOpacity 需要使用 withValues(alpha:) 替代
