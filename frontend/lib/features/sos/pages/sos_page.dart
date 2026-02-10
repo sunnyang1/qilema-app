@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qilema_app/features/sos/providers/sos_provider.dart';
 
 /// SOS触发页面
@@ -53,7 +54,7 @@ class _SosPageState extends ConsumerState<SosPage> {
     await ref.read(sosProvider.notifier).triggerSOS();
 
     if (mounted && ref.read(sosProvider).isTriggered) {
-      Navigator.of(context).pushNamed('/sos/status');
+      context.go('/sos/status');
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/features/auth/services/auth_api.dart';
 import 'package:qilema_app/shared/services/auth_service.dart';
 
 /// 认证状态
@@ -36,6 +37,8 @@ class AuthState {
 
 /// 认证状态管理器
 class AuthNotifier extends StateNotifier<AuthState> {
+  final AuthApi _authApi = AuthApi();
+
   AuthNotifier() : super(const AuthState()) {
     _init();
   }
@@ -65,10 +68,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// 注册
   Future<void> register(String phone, String password, String nickname) async {
-    // TODO: 实现注册逻辑
     state = const AuthState(status: AuthStatus.loading);
-    // 注册成功后
-    state = const AuthState(status: AuthStatus.authenticated);
+    try {
+      // 1. 调用注册 API
+      final registerData = await _authApi.register(phone, password, nickname);
+      final userId = registerData['user_id'] as String;
+
+      // 2. 注册成功后自动登录
+      final loginData = await _authApi.login(phone, password);
+      final accessToken = loginData['access_token'] as String;
+      final refreshToken = loginData['refresh_token'] as String;
+
+      // 3. 保存登录信息
+      await AuthService.saveAuthData(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        userId: userId,
+      );
+
+      // 4. 更新状态
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        userId: userId,
+      );
+    } catch (e) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+      rethrow;
+    }
   }
 
   /// 登出
