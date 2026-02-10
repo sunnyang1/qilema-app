@@ -17,6 +17,13 @@ class HomePage extends ConsumerWidget {
         title: const Text('签到'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.emergency),
+            onPressed: () {
+              context.go('/sos');
+            },
+            tooltip: '紧急求助',
+          ),
+          IconButton(
             icon: const Icon(Icons.history),
             onPressed: () {
               context.go('/history');

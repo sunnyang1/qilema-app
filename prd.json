@@ -112,7 +112,7 @@
         "提供取消SOS按钮"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

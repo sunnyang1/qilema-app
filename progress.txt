@@ -139,3 +139,24 @@ IMPORTANT LEARNINGS:
 - GestureDetector 的 onLongPress 需配合 Timer 实现长按检测
 - CircularProgressIndicator 可用于显示长按进度
 - 使用 geolocator 获取位置需要处理权限和服务启用状态
+
+[2026-02-10 16:00:00] - [US-008] 实现SOS状态页面
+
+IMPLEMENTATION SUMMARY:
+- 创建了 SOS 状态页面 UI（状态显示、时间、位置信息）
+- 实现了拨打120功能（使用 url_launcher）
+- 实现了取消SOS功能（带确认对话框）
+- 更新了路由配置添加 SOS 状态页面路由
+- 在 HomePage 添加了 SOS 导航按钮
+
+CHANGES:
+- Created: lib/features/sos/pages/sos_status_page.dart
+- Modified: lib/core/router/app_router.dart (添加 SOS 状态页面路由)
+- Modified: lib/features/signin/pages/home_page.dart (添加 SOS 按钮)
+- Modified: pubspec.yaml (添加 url_launcher 依赖)
+
+IMPORTANT LEARNINGS:
+- url_launcher 包用于拨打电话功能
+- 使用 canLaunchUrl 检查 URL 是否可启动
+- AlertDialog 用于确认操作
+- 导航使用 Navigator.of(context).pop() 返回
