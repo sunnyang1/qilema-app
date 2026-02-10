@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:qilema_app/features/contacts/providers/contacts_provider.dart';
 import 'package:qilema_app/features/contacts/services/contacts_api.dart';
 
@@ -175,7 +176,7 @@ class ContactsPage extends ConsumerWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.call),
-              onPressed: () => _makePhoneCall(contact.phone),
+              onPressed: () => _makePhoneCall(context, contact.phone),
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(width: 8),
@@ -204,8 +205,24 @@ class ContactsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _makePhoneCall(String phone) async {
+  Future<void> _makePhoneCall(BuildContext context, String phone) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phone);
-    // TODO: 使用 url_launcher 包拨打电话
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('无法拨打电话')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('拨打电话失败: $e')),
+        );
+      }
+    }
   }
 }

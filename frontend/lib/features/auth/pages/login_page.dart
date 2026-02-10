@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qilema_app/shared/providers/auth_provider.dart';
 import 'package:qilema_app/features/auth/services/auth_api.dart';
 import 'package:qilema_app/shared/services/auth_service.dart';
@@ -198,7 +199,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {
-                        // TODO: 实现忘记密码功能
+                        // 显示功能开发中提示
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('提示'),
+                            content: const Text('忘记密码功能正在开发中，请联系客服重置密码。'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('确定'),
+                              ),
+                            ],
+                          ),
+                        );
                       },
                       child: const Text('忘记密码？'),
                     ),
@@ -231,7 +245,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       const Text('还没有账户？'),
                       TextButton(
                         onPressed: () {
-                          // TODO: 跳转到注册页面
+                          context.go('/register');
                         },
                         child: const Text('立即注册'),
                       ),

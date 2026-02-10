@@ -1,5 +1,6 @@
 import 'package:qilema_app/core/network/api_client.dart';
 import 'package:qilema_app/core/utils/logger.dart';
+import 'package:qilema_app/shared/services/auth_service.dart';
 
 /// 健康档案基本信息
 class HealthRecord {
@@ -201,10 +202,13 @@ class Allergy {
 class HealthApi {
   final ApiClient _apiClient = ApiClient();
 
-  /// 获取当前用户ID（这里简化处理，实际应该从认证状态获取）
+  /// 获取当前用户ID
   Future<String> getCurrentUserId() async {
-    // TODO: 从全局认证状态获取当前用户ID
-    return 'current_user_id';
+    final userId = await AuthService.getUserId();
+    if (userId == null || userId.isEmpty) {
+      throw Exception('用户未登录');
+    }
+    return userId;
   }
 
   /// 获取健康档案

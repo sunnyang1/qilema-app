@@ -1,217 +1,152 @@
 {
-  "project": "qilema-frontend-phase1",
-  "branchName": "ralph/frontend-phase1-core-features",
-  "description": "Phase 1: Core features including authentication, checkin, SOS, contacts, and health records",
+  "project": "qilema-frontend-improvements",
+  "branchName": "ralph/frontend-improvements",
+  "description": "Frontend code improvements: fix compilation errors, complete TODOs, improve code quality",
   "userStories": [
     {
       "id": "US-001",
-      "title": "配置核心基础设施",
-      "description": "作为开发者，我需要配置Dio客户端、拦截器、路由、主题，以便后续功能开发可以复用这些基础设施。",
+      "title": "修复 AppColors 缺失问题",
+      "description": "在 app_theme.dart 中定义 AppColors 类，包含所有需要的颜色常量",
       "acceptanceCriteria": [
-        "Dio客户端能正常发送请求到后端API",
-        "路由能正确跳转，认证守卫工作正常",
-        "主题能应用到整个App（浅色/深色模式）",
-        "控制台能输出结构化日志"
+        "在 app_theme.dart 中定义 AppColors 类",
+        "包含 primary, primaryDark, error, warning, textPrimary 等颜色",
+        "所有引用 AppColors 的页面能正常编译"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "编译错误，必须首先修复"
     },
     {
       "id": "US-002",
-      "title": "实现登录页面",
-      "description": "作为用户，我能够通过手机号和密码登录到应用，以便使用应用的核心功能。",
+      "title": "修复 SOS 页面导航问题",
+      "description": "将 Navigator.pushNamed 改为 context.go 以保持一致性",
       "acceptanceCriteria": [
-        "登录页面包含手机号输入框、密码输入框、登录按钮",
-        "登录成功后跳转到首页",
-        "Token 自动保存到本地存储",
-        "显示友好的错误提示"
+        "将 Navigator.of(context).pushNamed 改为 context.go()",
+        "确保导航到 /sos/status 正常工作"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "实现注册页面",
-      "description": "作为新用户，我能够注册一个新账号，以便开始使用应用。",
+      "title": "完成注册功能",
+      "description": "实现 auth_provider.dart 中的 register 方法，调用注册 API",
       "acceptanceCriteria": [
-        "注册页面包含手机号、密码、昵称输入框",
-        "注册成功后自动登录并跳转到首页",
-        "密码输入时显示/隐藏切换功能",
-        "验证手机号格式和密码强度"
+        "实现 register 方法调用注册 API",
+        "注册成功后自动登录",
+        "处理错误情况"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "当前只有状态变更，无实际API调用"
     },
     {
       "id": "US-004",
-      "title": "实现Token管理和自动刷新",
-      "description": "作为系统，我需要管理用户的认证Token并自动刷新，以便用户的登录状态持久化且不会因为Token过期而中断使用。",
+      "title": "完成登录页面功能",
+      "description": "实现忘记密码和注册跳转功能",
       "acceptanceCriteria": [
-        "Token 存储在 SharedPreferences",
-        "401错误时自动刷新Token并重试请求",
-        "Token刷新失败时跳转到登录页",
-        "所有API请求自动携带Authorization header"
+        "实现忘记密码按钮功能",
+        "启用立即注册跳转功能",
+        "移除被注释的代码"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "已在US-001中通过TokenInterceptor实现"
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "实现签到首页",
-      "description": "作为用户，我能够在首页点击签到按钮完成每日签到，以便确认我的安全状态。",
+      "title": "完成联系人拨打电话功能",
+      "description": "实现 contacts_page.dart 中的拨打电话功能",
       "acceptanceCriteria": [
-        "首页显示大型签到按钮（蓝色'早安'按钮）",
-        "点击签到后按钮变为灰色'已签到'",
-        "显示今日签到状态（已签到/未签到）",
-        "显示连续签到天数和签到率统计"
+        "实现 _makePhoneCall 方法",
+        "使用 url_launcher 拨打电话",
+        "处理权限和错误情况"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-006",
-      "title": "实现签到历史页面",
-      "description": "作为用户，我能够查看我的签到历史记录，以便了解我的签到习惯。",
+      "title": "修复 Health API 用户ID获取",
+      "description": "从认证状态获取真实用户ID，移除硬编码值",
       "acceptanceCriteria": [
-        "能查看最近7天/30天的签到历史",
-        "显示签到日期、时间、状态",
-        "支持下拉刷新和上拉加载更多",
-        "空状态提示（暂无签到记录）"
+        "从全局认证状态获取当前用户ID",
+        "移除硬编码的 'current_user_id'",
+        "所有 API 调用使用正确的用户ID"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-007",
-      "title": "实现SOS触发页面",
-      "description": "作为用户，我能够通过长按SOS按钮触发紧急求助，以便在危险时快速获取帮助。",
+      "title": "提取数据模型到独立文件",
+      "description": "将数据模型从 API 服务文件中分离，提升可维护性",
       "acceptanceCriteria": [
-        "SOS按钮为红色圆形，长按3秒触发（防止误触）",
-        "长按时显示进度指示器",
-        "自动获取当前GPS位置",
-        "触发成功后跳转到SOS状态页面"
+        "为每个功能模块创建 models/ 目录",
+        "将数据模型类移到独立的模型文件",
+        "更新所有导入语句",
+        "确保没有循环依赖"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "架构改进"
     },
     {
       "id": "US-008",
-      "title": "实现SOS状态页面",
-      "description": "作为用户，我能够查看SOS求助的实时状态，以便了解救援进展。",
+      "title": "创建统一的表单验证工具",
+      "description": "创建 validators.dart 工具类，统一表单验证逻辑",
       "acceptanceCriteria": [
-        "显示SOS状态（待救援/救援中/已解除）",
-        "显示触发时间和位置信息",
-        "提供一键拨打120按钮",
-        "提供取消SOS按钮"
+        "创建 lib/core/utils/validators.dart",
+        "实现通用的验证方法",
+        "在所有表单页面中使用验证工具",
+        "移除重复的验证逻辑"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "代码质量改进"
     },
     {
       "id": "US-009",
-      "title": "实现紧急联系人列表页面",
-      "description": "作为用户，我能够查看我的紧急联系人列表，以便了解我设置了哪些人会在紧急情况下被通知。",
+      "title": "创建统一的错误处理机制",
+      "description": "创建 ApiResponse 封装类和全局错误处理",
       "acceptanceCriteria": [
-        "显示联系人列表（卡片式设计，按优先级排序）",
-        "每个联系人卡片显示姓名、关系、电话、优先级",
-        "支持下拉刷新",
-        "空状态提示（暂无联系人）"
+        "创建 ApiResponse 封装类",
+        "创建全局错误处理 Provider",
+        "统一错误提示样式",
+        "更新所有 API 调用"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "代码质量改进"
     },
     {
       "id": "US-010",
-      "title": "实现添加/编辑联系人功能",
-      "description": "作为用户，我能够添加和编辑紧急联系人，以便管理我的紧急通知名单。",
+      "title": "修复潜在的空安全问题",
+      "description": "修复代码中的空安全问题，避免运行时异常",
       "acceptanceCriteria": [
-        "能添加新联系人（姓名、电话、关系、优先级）",
-        "能编辑现有联系人信息",
-        "能选择通知渠道（短信/电话/App推送）",
-        "表单验证（必填字段、手机号格式）"
+        "修复 medical_histories_page.dart 中的 ref! 使用",
+        "修复 medications_page.dart 中的 ref! 使用",
+        "修复 allergies_page.dart 中的 ref! 使用",
+        "检查并修复其他潜在的空安全问题"
       ],
       "priority": 10,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-011",
-      "title": "实现删除联系人功能",
-      "description": "作为用户，我能够删除紧急联系人，以便移除不再需要的联系人。",
+      "title": "修复 HealthPage 表单初始化逻辑",
+      "description": "修复表单初始化逻辑，避免重复初始化问题",
       "acceptanceCriteria": [
-        "点击删除按钮时显示确认对话框",
-        "删除成功后刷新列表",
-        "至少保留1个联系人的限制（最后1个不可删除）",
-        "显示删除成功的提示"
+        "使用更可靠的方式判断表单是否已初始化",
+        "确保用户清空输入后不会意外重新初始化"
       ],
       "priority": 11,
-      "passes": true,
-      "notes": "在 ContactsPage 中通过 IconButton 实现删除确认对话框"
-    },
-    {
-      "id": "US-012",
-      "title": "实现健康档案基本信息页面",
-      "description": "作为用户，我能够填写和查看我的基本健康信息，以便在紧急情况下医生能快速了解我的身体状况。",
-      "acceptanceCriteria": [
-        "显示基本信息（姓名、性别、出生日期、血型、身高、体重）",
-        "支持编辑基本信息",
-        "表单验证（日期格式、数值范围）",
-        "保存成功后显示提示"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "实现健康档案主页(health_page.dart)，包含基本信息表单和紧急医疗联系人信息"
-    },
-    {
-      "id": "US-013",
-      "title": "实现病史管理功能",
-      "description": "作为用户，我能够管理我的病史记录，以便记录我患过的疾病。",
-      "acceptanceCriteria": [
-        "能添加病史（疾病名称、诊断日期、状态）",
-        "能编辑和删除病史记录",
-        "支持多条病史记录",
-        "列表支持滚动查看"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "实现病史管理页面(medical_histories_page.dart)，支持添加、编辑、删除病史记录"
-    },
-    {
-      "id": "US-014",
-      "title": "实现用药信息管理功能",
-      "description": "作为用户，我能够管理我的用药信息，以便记录我正在使用的药物。",
-      "acceptanceCriteria": [
-        "能添加用药信息（药品名称、用法、用量）",
-        "能编辑和删除用药记录",
-        "支持多条用药记录",
-        "列表支持滚动查看"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": "实现用药管理页面(medications_page.dart)，支持添加、编辑、删除用药记录，显示是否正在使用"
-    },
-    {
-      "id": "US-015",
-      "title": "实现过敏史管理功能",
-      "description": "作为用户，我能够管理我的过敏史，以便提醒医护人员我过敏的物质。",
-      "acceptanceCriteria": [
-        "能添加过敏史（过敏源、症状、严重程度）",
-        "能编辑和删除过敏记录",
-        "支持多条过敏记录",
-        "列表支持滚动查看"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": "实现过敏史管理页面(allergies_page.dart)，支持添加、编辑、删除过敏记录，用颜色区分严重程度"
+      "passes": false,
+      "notes": ""
     }
   ]
 }

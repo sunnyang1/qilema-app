@@ -93,4 +93,16 @@ class AuthService {
     final token = await getAccessToken();
     return token != null && token.isNotEmpty;
   }
+
+  /// 保存完整的认证数据
+  static Future<void> saveAuthData({
+    required String accessToken,
+    required String refreshToken,
+    required String userId,
+  }) async {
+    await saveAccessToken(accessToken);
+    await saveRefreshToken(refreshToken);
+    await saveUserId(userId);
+    Logger.i('认证数据已保存');
+  }
 }
