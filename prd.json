@@ -81,8 +81,8 @@
         "手动测试设备列表功能正常"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully migrated, isScanning now checks scannedDevices.isNotEmpty"
     },
     {
       "id": "US-006",
@@ -98,8 +98,8 @@
         "手动测试健康档案功能正常"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully migrated, all CRUD operations preserved"
     },
     {
       "id": "US-007",

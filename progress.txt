@@ -439,3 +439,38 @@ IMPORTANT LEARNINGS:
 - mixin 模式允许在不继承的情况下添加通用功能
 - 需要在 State 类中重新实现 props getter 以包含自定义字段
 - BaseNotifierMixin 提供了 refresh() 和 clearError() 方法，减少重复代码
+
+[2026-02-11 10:30:00] - [US-005] 迁移 devices_provider 到新基类
+
+IMPLEMENTATION SUMMARY:
+- 将 DevicesState 重构为继承 BaseState
+- 移除 DevicesStatus 枚举，使用统一的 LoadingState
+- DevicesNotifier 使用 BaseNotifierMixin
+- 将 _loadDevices() 改为 load() 方法
+- 将 isScanning 改为检查 scannedDevices.isNotEmpty
+- 保持所有公共方法不变（bindDevice, unbindDevice, scanDevices, clearScannedDevices）
+
+CHANGES:
+- Modified: frontend/lib/features/devices/providers/devices_provider.dart
+
+IMPORTANT LEARNINGS:
+- 可以在 State 类中添加额外的 getter 方法（如 isScanning）
+- 对于特殊的扫描状态，可以通过检查字段内容而非单独的状态枚举
+- 保持向后兼容性，不破坏现有 API
+
+[2026-02-11 11:00:00] - [US-006] 迁移 health_provider 到新基类
+
+IMPLEMENTATION SUMMARY:
+- 将 HealthState 重构为继承 BaseState
+- 移除 HealthStatus 枚举，使用统一的 LoadingState
+- HealthNotifier 使用 BaseNotifierMixin
+- 将 loadHealthRecord() 改为 load() 方法
+- 保持所有 CRUD 操作方法不变（病史、用药、过敏史的增删改）
+
+CHANGES:
+- Modified: frontend/lib/features/health/providers/health_provider.dart
+
+IMPORTANT LEARNINGS:
+- 复杂的 Provider（如 HealthProvider）可以轻松重构到新架构
+- 保持了原有的业务逻辑和数据处理逻辑
+- 重构过程不影响现有功能的正确性
