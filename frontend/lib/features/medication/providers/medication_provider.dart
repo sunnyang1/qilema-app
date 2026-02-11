@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qilema_app/features/medication/services/medication_api.dart';
 import 'package:qilema_app/core/utils/logger.dart';
@@ -88,8 +87,9 @@ class MedicationState {
 }
 
 /// 用药提醒状态管理
-class MedicationNotifier extends StateNotifier<MedicationState> {
-  MedicationNotifier() : super(const MedicationState());
+class MedicationNotifier extends Notifier<MedicationState> {
+  @override
+  MedicationState build() => const MedicationState();
 
   /// 加载用药提醒列表
   Future<void> loadReminders() async {
@@ -287,6 +287,4 @@ class MedicationNotifier extends StateNotifier<MedicationState> {
 }
 
 /// 用药提醒Provider
-final medicationProvider = StateNotifierProvider<MedicationNotifier, MedicationState>((ref) {
-  return MedicationNotifier();
-});
+final medicationProvider = NotifierProvider<MedicationNotifier, MedicationState>(MedicationNotifier.new);

@@ -47,11 +47,14 @@ class HealthState {
 }
 
 /// 健康档案状态管理器
-class HealthNotifier extends StateNotifier<HealthState> {
-  final HealthApi _api = HealthApi();
+class HealthNotifier extends Notifier<HealthState> {
+  late final HealthApi _api;
 
-  HealthNotifier() : super(const HealthState()) {
+  @override
+  HealthState build() {
+    _api = HealthApi();
     loadHealthRecord();
+    return const HealthState();
   }
 
   /// 加载健康档案
@@ -268,6 +271,4 @@ class HealthNotifier extends StateNotifier<HealthState> {
 }
 
 /// 健康档案状态Provider
-final healthProvider = StateNotifierProvider<HealthNotifier, HealthState>((ref) {
-  return HealthNotifier();
-});
+final healthProvider = NotifierProvider<HealthNotifier, HealthState>(HealthNotifier.new);

@@ -37,11 +37,11 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
     final state = ModalRoute.of(context)?.settings.arguments as Contact?;
     if (state != null && _editingContact == null) {
       _editingContact = state;
-      _nameController.text = state!.name;
-      _phoneController.text = state!.phone;
-      _relationship = _relationships.indexOf(state!.relationship);
-      _priority = state!.priority;
-      _notificationChannels = List.from(state!.notificationChannels);
+      _nameController.text = state.name;
+      _phoneController.text = state.phone;
+      _relationship = _relationships.indexOf(state.relationship);
+      _priority = state.priority;
+      _notificationChannels = List.from(state.notificationChannels);
     }
   }
 
@@ -116,10 +116,10 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value!.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return '请输入姓名';
                   }
-                  if (value!.trim().length < 2) {
+                  if (value.trim().length < 2) {
                     return '姓名至少2个字符';
                   }
                   return null;
@@ -137,11 +137,11 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value!.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return '请输入手机号';
                   }
                   final phoneRegex = RegExp(r'^1[3-9]\d{9}$');
-                  if (!phoneRegex.hasMatch(value!.trim())) {
+                  if (!phoneRegex.hasMatch(value.trim())) {
                     return '请输入有效的手机号';
                   }
                   return null;

@@ -14,13 +14,12 @@ class AddMedicationPage extends ConsumerStatefulWidget {
 
 class _AddMedicationPageState extends ConsumerState<AddMedicationPage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // 表单数据
   String? _selectedMedicationId;
   String? _medicationName;
   String? _dosage;
   String? _unit;
-  final List<String> _reminderTimes = ['08:00'];
   MedicationFrequency _frequency = MedicationFrequency.daily;
   final Set<int> _selectedWeekdays = <int>{};
 
@@ -374,7 +373,11 @@ class _AddMedicationPageState extends ConsumerState<AddMedicationPage> {
           reminderTimes: timeStrings,
           frequency: _frequency,
           weekdays: _frequency == MedicationFrequency.weekly
-              ? _selectedWeekdays.toList()..sort()
+              ? (() {
+                  final list = _selectedWeekdays.toList();
+                  list.sort();
+                  return list;
+                })()
               : null,
         );
 

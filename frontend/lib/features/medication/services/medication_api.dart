@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:qilema_app/core/network/api_client.dart';
 import 'package:qilema_app/core/utils/logger.dart';
 
@@ -187,7 +186,7 @@ class MedicationApi {
   /// 获取用药提醒列表
   static Future<List<MedicationReminder>> getReminders() async {
     try {
-      final response = await ApiClient.instance.get('$_baseUrl/reminders');
+      final response = await ApiClient().get('$_baseUrl/reminders');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -203,7 +202,7 @@ class MedicationApi {
   /// 获取可选择的药品列表（来自健康档案）
   static Future<List<SelectableMedication>> getSelectableMedications() async {
     try {
-      final response = await ApiClient.instance.get('$_baseUrl/medications');
+      final response = await ApiClient().get('$_baseUrl/medications');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -227,7 +226,7 @@ class MedicationApi {
     List<int>? weekdays,
   }) async {
     try {
-      final response = await ApiClient.instance.post(
+      final response = await ApiClient().post(
         '$_baseUrl/reminders',
         data: {
           'medication_id': medicationId,
@@ -270,7 +269,7 @@ class MedicationApi {
     bool? isActive,
   }) async {
     try {
-      final response = await ApiClient.instance.put(
+      final response = await ApiClient().put(
         '$_baseUrl/reminders/$reminderId',
         data: {
           if (reminderTimes != null) 'reminder_times': reminderTimes,
@@ -293,7 +292,7 @@ class MedicationApi {
   /// 删除用药提醒
   static Future<bool> deleteReminder(String reminderId) async {
     try {
-      final response = await ApiClient.instance.delete(
+      final response = await ApiClient().delete(
         '$_baseUrl/reminders/$reminderId',
       );
       return response.statusCode == 204 || response.statusCode == 200;
@@ -310,7 +309,7 @@ class MedicationApi {
     String? notes,
   }) async {
     try {
-      final response = await ApiClient.instance.post(
+      final response = await ApiClient().post(
         '$_baseUrl/reminders/$reminderId/take',
         data: {
           'scheduled_time': scheduledTime,

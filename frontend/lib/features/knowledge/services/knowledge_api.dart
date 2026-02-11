@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:qilema_app/core/network/api_client.dart';
 import 'package:qilema_app/core/utils/logger.dart';
 
@@ -112,6 +111,8 @@ class ArticleContent {
   final DateTime publishTime;
   final List<ArticleStep> steps;
   final List<String> tags;
+  final int estimatedReadTime;
+  final String? summary;
 
   ArticleContent({
     required this.id,
@@ -124,6 +125,8 @@ class ArticleContent {
     required this.publishTime,
     this.steps = const [],
     this.tags = const [],
+    this.estimatedReadTime = 5,
+    this.summary,
   });
 
   factory ArticleContent.fromJson(Map<String, dynamic> json) {
@@ -144,6 +147,8 @@ class ArticleContent {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      estimatedReadTime: json['estimated_read_time'] as int? ?? 5,
+      summary: json['summary'] as String?,
     );
   }
 }
@@ -179,7 +184,7 @@ class KnowledgeApi {
   /// 获取知识分类列表
   static Future<List<KnowledgeCategory>> getCategories() async {
     try {
-      final response = await ApiClient.instance.get('$_baseUrl/categories');
+      final response = await ApiClient().get('$_baseUrl/categories');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -207,7 +212,7 @@ class KnowledgeApi {
       if (categoryId != null) queryParams['category_id'] = categoryId;
       if (keyword != null) queryParams['keyword'] = keyword;
 
-      final response = await ApiClient.instance.get(
+      final response = await ApiClient().get(
         '$_baseUrl/articles',
         queryParameters: queryParams,
       );
@@ -226,7 +231,7 @@ class KnowledgeApi {
   /// 获取文章详情
   static Future<ArticleContent?> getArticleDetail(String articleId) async {
     try {
-      final response = await ApiClient.instance.get('$_baseUrl/articles/$articleId');
+      final response = await ApiClient().get('$_baseUrl/articles/$articleId');
 
       if (response.statusCode == 200) {
         return ArticleContent.fromJson(response.data['data']);
@@ -246,7 +251,7 @@ class KnowledgeApi {
   /// 获取推荐文章
   static Future<List<KnowledgeArticle>> getRecommendedArticles() async {
     try {
-      final response = await ApiClient.instance.get('$_baseUrl/articles/recommended');
+      final response = await ApiClient().get('$_baseUrl/articles/recommended');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:qilema_app/core/network/api_client.dart';
 import 'package:qilema_app/core/utils/logger.dart';
 
@@ -126,7 +125,7 @@ class EmergencyApi {
     double radius = 5000, // 默认5公里
   }) async {
     try {
-      final response = await ApiClient.instance.get(
+      final response = await ApiClient().get(
         '$_baseUrl/aeds',
         queryParameters: {
           'lat': latitude,
@@ -153,7 +152,7 @@ class EmergencyApi {
     double radius = 10000, // 默认10公里
   }) async {
     try {
-      final response = await ApiClient.instance.get(
+      final response = await ApiClient().get(
         '$_baseUrl/hospitals',
         queryParameters: {
           'lat': latitude,
@@ -176,7 +175,7 @@ class EmergencyApi {
   /// 获取AED详情
   static Future<AedDevice?> getAedDetail(String aedId) async {
     try {
-      final response = await ApiClient.instance.get('$_baseUrl/aeds/$aedId');
+      final response = await ApiClient().get('$_baseUrl/aeds/$aedId');
 
       if (response.statusCode == 200) {
         return AedDevice.fromJson(response.data['data']);
@@ -191,7 +190,7 @@ class EmergencyApi {
   /// 获取医院详情
   static Future<Hospital?> getHospitalDetail(String hospitalId) async {
     try {
-      final response = await ApiClient.instance.get('$_baseUrl/hospitals/$hospitalId');
+      final response = await ApiClient().get('$_baseUrl/hospitals/$hospitalId');
 
       if (response.statusCode == 200) {
         return Hospital.fromJson(response.data['data']);

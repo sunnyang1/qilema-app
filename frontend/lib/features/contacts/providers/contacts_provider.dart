@@ -35,11 +35,14 @@ class ContactsState {
 }
 
 /// 联系人状态管理器
-class ContactsNotifier extends StateNotifier<ContactsState> {
-  final ContactsApi _api = ContactsApi();
+class ContactsNotifier extends Notifier<ContactsState> {
+  late final ContactsApi _api;
 
-  ContactsNotifier() : super(const ContactsState()) {
+  @override
+  ContactsState build() {
+    _api = ContactsApi();
     _loadContacts();
+    return const ContactsState();
   }
 
   /// 加载联系人列表
@@ -114,6 +117,4 @@ class ContactsNotifier extends StateNotifier<ContactsState> {
 }
 
 /// 联系人状态Provider
-final contactsProvider = StateNotifierProvider<ContactsNotifier, ContactsState>((ref) {
-  return ContactsNotifier();
-});
+final contactsProvider = NotifierProvider<ContactsNotifier, ContactsState>(ContactsNotifier.new);

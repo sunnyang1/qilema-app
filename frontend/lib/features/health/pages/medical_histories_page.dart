@@ -22,7 +22,7 @@ class MedicalHistoriesPage extends ConsumerWidget {
           ? const Center(child: CircularProgressIndicator())
           : healthState.medicalHistories.isEmpty
               ? _buildEmptyState(context)
-              : _buildHistoryList(healthState.medicalHistories),
+              : _buildHistoryList(context, healthState.medicalHistories, ref),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditDialog(context, ref),
         backgroundColor: AppColors.primary,
@@ -52,7 +52,7 @@ class MedicalHistoriesPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildHistoryList(List<MedicalHistory> histories) {
+  Widget _buildHistoryList(BuildContext context, List<MedicalHistory> histories, WidgetRef ref) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: histories.length,

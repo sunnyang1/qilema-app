@@ -28,11 +28,11 @@ class ContactsPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: _buildContactsList(state, ref),
+      body: _buildContactsList(context, state, ref),
     );
   }
 
-  Widget _buildContactsList(ContactsState state, WidgetRef ref) {
+  Widget _buildContactsList(BuildContext context, ContactsState state, WidgetRef ref) {
     if (state.isLoading) {
       return const Center(
         child: CircularProgressIndicator(),

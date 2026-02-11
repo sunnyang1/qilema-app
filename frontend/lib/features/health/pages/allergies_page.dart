@@ -22,7 +22,7 @@ class AllergiesPage extends ConsumerWidget {
           ? const Center(child: CircularProgressIndicator())
           : healthState.allergies.isEmpty
               ? _buildEmptyState(context)
-              : _buildAllergyList(healthState.allergies),
+              : _buildAllergyList(context, healthState.allergies, ref),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditDialog(context, ref),
         backgroundColor: AppColors.error,
@@ -52,7 +52,7 @@ class AllergiesPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildAllergyList(List<Allergy> allergies) {
+  Widget _buildAllergyList(BuildContext context, List<Allergy> allergies, WidgetRef ref) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: allergies.length,

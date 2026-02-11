@@ -40,11 +40,14 @@ class DevicesState {
 }
 
 /// 设备状态管理器
-class DevicesNotifier extends StateNotifier<DevicesState> {
-  final DevicesApi _api = DevicesApi();
+class DevicesNotifier extends Notifier<DevicesState> {
+  late final DevicesApi _api;
 
-  DevicesNotifier() : super(const DevicesState()) {
+  @override
+  DevicesState build() {
+    _api = DevicesApi();
     _loadDevices();
+    return const DevicesState();
   }
 
   /// 加载设备列表
@@ -125,6 +128,4 @@ class DevicesNotifier extends StateNotifier<DevicesState> {
 }
 
 /// 设备状态Provider
-final devicesProvider = StateNotifierProvider<DevicesNotifier, DevicesState>((ref) {
-  return DevicesNotifier();
-});
+final devicesProvider = NotifierProvider<DevicesNotifier, DevicesState>(DevicesNotifier.new);

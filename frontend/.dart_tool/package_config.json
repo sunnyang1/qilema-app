@@ -2,6 +2,12 @@
   "configVersion": 2,
   "packages": [
     {
+      "name": "_fe_analyzer_shared",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/_fe_analyzer_shared-91.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
       "name": "amap_flutter_base",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/amap_flutter_base-3.0.0",
       "packageUri": "lib/",
@@ -12,6 +18,12 @@
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/amap_flutter_map-3.0.0",
       "packageUri": "lib/",
       "languageVersion": "2.12"
+    },
+    {
+      "name": "analyzer",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/analyzer-8.4.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
     },
     {
       "name": "args",
@@ -44,6 +56,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "cli_config",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/cli_config-0.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "clock",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/clock-1.1.2",
       "packageUri": "lib/",
@@ -58,6 +76,18 @@
     {
       "name": "collection",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/collection-1.19.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "convert",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/convert-3.1.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "coverage",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/coverage-1.15.0",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -225,9 +255,9 @@
     },
     {
       "name": "flutter_riverpod",
-      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/flutter_riverpod-2.6.1",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/flutter_riverpod-3.2.1",
       "packageUri": "lib/",
-      "languageVersion": "2.17"
+      "languageVersion": "3.7"
     },
     {
       "name": "flutter_screenutil",
@@ -246,6 +276,12 @@
       "rootUri": "file:///Users/michelleye/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.8"
+    },
+    {
+      "name": "frontend_server_client",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/frontend_server_client-4.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "geoclue",
@@ -326,6 +362,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "http_multi_server",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/http_multi_server-3.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
       "name": "http_parser",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/http_parser-4.1.2",
       "packageUri": "lib/",
@@ -336,6 +378,18 @@
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/intl-0.20.2",
       "packageUri": "lib/",
       "languageVersion": "3.3"
+    },
+    {
+      "name": "io",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/io-1.0.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "js",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/js-0.7.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
     },
     {
       "name": "leak_tracker",
@@ -398,10 +452,22 @@
       "languageVersion": "3.9"
     },
     {
+      "name": "node_preamble",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/node_preamble-2.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "objective_c",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/objective_c-9.3.0",
       "packageUri": "lib/",
       "languageVersion": "3.10"
+    },
+    {
+      "name": "package_config",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/package_config-2.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
     },
     {
       "name": "package_info_plus",
@@ -512,6 +578,12 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "pool",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/pool-1.5.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "pub_semver",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/pub_semver-2.2.0",
       "packageUri": "lib/",
@@ -519,9 +591,9 @@
     },
     {
       "name": "riverpod",
-      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/riverpod-2.6.1",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/riverpod-3.2.1",
       "packageUri": "lib/",
-      "languageVersion": "2.17"
+      "languageVersion": "3.7"
     },
     {
       "name": "rxdart",
@@ -531,13 +603,13 @@
     },
     {
       "name": "share_plus",
-      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/share_plus-10.1.4",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/share_plus-12.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
     {
       "name": "share_plus_platform_interface",
-      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/share_plus_platform_interface-5.0.2",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/share_plus_platform_interface-6.1.0",
       "packageUri": "lib/",
       "languageVersion": "2.18"
     },
@@ -584,10 +656,46 @@
       "languageVersion": "3.3"
     },
     {
+      "name": "shelf",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/shelf-1.4.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "shelf_packages_handler",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/shelf_packages_handler-3.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "shelf_static",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/shelf_static-1.1.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "shelf_web_socket",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/shelf_web_socket-3.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "sky_engine",
       "rootUri": "file:///Users/michelleye/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
+    },
+    {
+      "name": "source_map_stack_trace",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/source_map_stack_trace-2.1.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "source_maps",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/source_maps-0.10.13",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
     },
     {
       "name": "source_span",
@@ -632,8 +740,20 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "test",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/test-1.26.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "test_api",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/test_api-0.7.7",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "test_core",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/test_core-0.6.12",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
@@ -716,10 +836,34 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "watcher",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/watcher-1.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "web",
       "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/web-1.1.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "web_socket",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/web_socket-1.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "web_socket_channel",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/web_socket_channel-3.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "webkit_inspection_protocol",
+      "rootUri": "file:///Users/michelleye/.pub-cache/hosted/pub.dev/webkit_inspection_protocol-1.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "win32",

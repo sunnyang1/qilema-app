@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qilema_app/features/knowledge/providers/knowledge_provider.dart';
 import 'package:qilema_app/features/knowledge/services/knowledge_api.dart';
-import 'package:intl/intl.dart';
 
 /// 文章列表页面
 class ArticlesPage extends ConsumerStatefulWidget {

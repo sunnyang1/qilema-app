@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qilema_app/features/knowledge/services/knowledge_api.dart';
 import 'package:qilema_app/core/utils/logger.dart';
@@ -71,8 +70,9 @@ class KnowledgeState {
 }
 
 /// 知识库状态管理
-class KnowledgeNotifier extends StateNotifier<KnowledgeState> {
-  KnowledgeNotifier() : super(const KnowledgeState());
+class KnowledgeNotifier extends Notifier<KnowledgeState> {
+  @override
+  KnowledgeState build() => const KnowledgeState();
 
   /// 加载分类列表
   Future<void> loadCategories() async {
@@ -213,6 +213,4 @@ class KnowledgeNotifier extends StateNotifier<KnowledgeState> {
 }
 
 /// 知识库Provider
-final knowledgeProvider = StateNotifierProvider<KnowledgeNotifier, KnowledgeState>((ref) {
-  return KnowledgeNotifier();
-});
+final knowledgeProvider = NotifierProvider<KnowledgeNotifier, KnowledgeState>(KnowledgeNotifier.new);

@@ -22,7 +22,7 @@ class MedicationsPage extends ConsumerWidget {
           ? const Center(child: CircularProgressIndicator())
           : healthState.medications.isEmpty
               ? _buildEmptyState(context)
-              : _buildMedicationList(healthState.medications),
+              : _buildMedicationList(context, healthState.medications, ref),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditDialog(context, ref),
         backgroundColor: AppColors.primary,
@@ -52,7 +52,7 @@ class MedicationsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildMedicationList(List<Medication> medications) {
+  Widget _buildMedicationList(BuildContext context, List<Medication> medications, WidgetRef ref) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: medications.length,

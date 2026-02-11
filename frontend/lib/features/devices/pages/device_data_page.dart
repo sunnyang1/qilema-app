@@ -16,7 +16,6 @@ class DeviceDataPage extends ConsumerStatefulWidget {
 class _DeviceDataPageState extends ConsumerState<DeviceDataPage> {
   List<DeviceDataPoint> _dataPoints = [];
   bool _isLoading = true;
-  String? _errorMessage;
 
   @override
   void initState() {
@@ -27,7 +26,6 @@ class _DeviceDataPageState extends ConsumerState<DeviceDataPage> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {

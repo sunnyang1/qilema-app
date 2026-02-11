@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qilema_app/features/emergency/services/emergency_api.dart';
 import 'package:qilema_app/core/utils/logger.dart';
@@ -56,8 +55,9 @@ class EmergencyState {
 }
 
 /// 急救资源状态管理
-class EmergencyNotifier extends StateNotifier<EmergencyState> {
-  EmergencyNotifier() : super(const EmergencyState());
+class EmergencyNotifier extends Notifier<EmergencyState> {
+  @override
+  EmergencyState build() => const EmergencyState();
 
   /// 设置当前位置
   void setLocation(double lat, double lng) {
@@ -152,6 +152,4 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
 }
 
 /// 急救资源Provider
-final emergencyProvider = StateNotifierProvider<EmergencyNotifier, EmergencyState>((ref) {
-  return EmergencyNotifier();
-});
+final emergencyProvider = NotifierProvider<EmergencyNotifier, EmergencyState>(EmergencyNotifier.new);

@@ -74,11 +74,14 @@ class SigninState {
 }
 
 /// 签到状态管理器
-class SigninNotifier extends StateNotifier<SigninState> {
-  final SigninApi _api = SigninApi();
+class SigninNotifier extends Notifier<SigninState> {
+  late final SigninApi _api;
 
-  SigninNotifier() : super(const SigninState()) {
+  @override
+  SigninState build() {
+    _api = SigninApi();
     _loadStatus();
+    return const SigninState();
   }
 
   /// 加载签到状态
@@ -168,6 +171,4 @@ class SigninNotifier extends StateNotifier<SigninState> {
 }
 
 /// 签到状态Provider
-final signinProvider = StateNotifierProvider<SigninNotifier, SigninState>((ref) {
-  return SigninNotifier();
-});
+final signinProvider = NotifierProvider<SigninNotifier, SigninState>(SigninNotifier.new);

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:qilema_app/features/knowledge/providers/knowledge_provider.dart';
 import 'package:qilema_app/features/knowledge/services/knowledge_api.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// 文章详情页面
@@ -301,10 +301,12 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
 
   void _shareArticle(ArticleContent? article) {
     if (article == null) return;
-    
-    Share.share(
-      '【${article.title}】\n\n${article.summary}\n\n来自"起了吗"急救知识库',
-      subject: article.title,
+
+    SharePlus.instance.share(
+      ShareParams(
+        text: '【${article.title}】\n\n${article.summary ?? ""}\n\n来自"起了吗"急救知识库',
+        subject: article.title,
+      ),
     );
   }
 }
