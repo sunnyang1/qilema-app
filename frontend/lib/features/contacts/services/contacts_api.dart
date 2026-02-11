@@ -1,46 +1,6 @@
+import 'package:qilema_app/core/models/contacts_models.dart';
 import 'package:qilema_app/core/network/api_client.dart';
 import 'package:qilema_app/core/utils/logger.dart';
-
-/// 紧急联系人数据模型
-class Contact {
-  final String contactId;
-  final String name;
-  final String phone;
-  final String relationship;
-  final int priority;
-  final List<String> notificationChannels;
-
-  Contact({
-    required this.contactId,
-    required this.name,
-    required this.phone,
-    required this.relationship,
-    required this.priority,
-    this.notificationChannels = const ['app'],
-  });
-
-  factory Contact.fromJson(Map<String, dynamic> json) {
-    return Contact(
-      contactId: json['contact_id'] ?? '',
-      name: json['name'] ?? '',
-      phone: json['phone'] ?? '',
-      relationship: json['relationship'] ?? '家人',
-      priority: json['priority'] ?? 1,
-      notificationChannels:
-          (json['notification_channels'] as List?)?.cast<String>() ?? ['app'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'phone': phone,
-      'relationship': relationship,
-      'priority': priority,
-      'notification_channels': notificationChannels,
-    };
-  }
-}
 
 /// 紧急联系人API服务
 class ContactsApi {
