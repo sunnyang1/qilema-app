@@ -47,10 +47,14 @@ class SosState {
 }
 
 /// SOS状态管理器
-class SosNotifier extends StateNotifier<SosState> {
-  final SosApi _api = SosApi();
+class SosNotifier extends Notifier<SosState> {
+  late final SosApi _api;
 
-  SosNotifier() : super(const SosState());
+  @override
+  SosState build() {
+    _api = SosApi();
+    return const SosState();
+  }
 
   /// 获取当前GPS位置
   Future<bool> _getCurrentLocation() async {
@@ -143,6 +147,4 @@ class SosNotifier extends StateNotifier<SosState> {
 }
 
 /// SOS状态Provider
-final sosProvider = StateNotifierProvider<SosNotifier, SosState>((ref) {
-  return SosNotifier();
-});
+final sosProvider = NotifierProvider<SosNotifier, SosState>(SosNotifier.new);

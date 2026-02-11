@@ -13,6 +13,15 @@ import 'package:qilema_app/features/health/pages/health_page.dart';
 import 'package:qilema_app/features/health/pages/medical_histories_page.dart';
 import 'package:qilema_app/features/health/pages/medications_page.dart';
 import 'package:qilema_app/features/health/pages/allergies_page.dart';
+import 'package:qilema_app/features/devices/pages/devices_page.dart';
+import 'package:qilema_app/features/devices/pages/device_data_page.dart';
+import 'package:qilema_app/features/emergency/pages/aed_map_page.dart';
+import 'package:qilema_app/features/emergency/pages/hospitals_page.dart';
+import 'package:qilema_app/features/knowledge/pages/knowledge_categories_page.dart';
+import 'package:qilema_app/features/knowledge/pages/articles_page.dart';
+import 'package:qilema_app/features/knowledge/pages/article_detail_page.dart';
+import 'package:qilema_app/features/medication/pages/medication_reminders_page.dart';
+import 'package:qilema_app/features/medication/pages/add_medication_page.dart';
 
 /// 路由配置
 class AppRouter {
@@ -96,6 +105,60 @@ class AppRouter {
         path: '/allergies',
         builder: (context, state) => const AllergiesPage(),
         name: 'allergies',
+      ),
+      GoRoute(
+        path: '/devices',
+        builder: (context, state) => const DevicesPage(),
+        name: 'devices',
+      ),
+      GoRoute(
+        path: '/devices/:deviceId/data',
+        builder: (context, state) {
+          final deviceId = state.pathParameters['deviceId']!;
+          return DeviceDataPage(deviceId: deviceId);
+        },
+        name: 'device-data',
+      ),
+      GoRoute(
+        path: '/aed-map',
+        builder: (context, state) => const AedMapPage(),
+        name: 'aed-map',
+      ),
+      GoRoute(
+        path: '/hospitals',
+        builder: (context, state) => const HospitalsPage(),
+        name: 'hospitals',
+      ),
+      GoRoute(
+        path: '/knowledge',
+        builder: (context, state) => const KnowledgeCategoriesPage(),
+        name: 'knowledge',
+      ),
+      GoRoute(
+        path: '/knowledge/category/:categoryId',
+        builder: (context, state) {
+          final categoryId = state.pathParameters['categoryId'];
+          return ArticlesPage(categoryId: categoryId);
+        },
+        name: 'knowledge-articles',
+      ),
+      GoRoute(
+        path: '/knowledge/articles/:articleId',
+        builder: (context, state) {
+          final articleId = state.pathParameters['articleId']!;
+          return ArticleDetailPage(articleId: articleId);
+        },
+        name: 'article-detail',
+      ),
+      GoRoute(
+        path: '/medication',
+        builder: (context, state) => const MedicationRemindersPage(),
+        name: 'medication',
+      ),
+      GoRoute(
+        path: '/medication/add',
+        builder: (context, state) => const AddMedicationPage(),
+        name: 'medication-add',
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

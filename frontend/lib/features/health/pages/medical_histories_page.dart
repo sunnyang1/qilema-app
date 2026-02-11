@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/core/models/health_models.dart';
 import 'package:qilema_app/core/theme/app_theme.dart';
 import 'package:qilema_app/features/health/providers/health_provider.dart';
-import 'package:qilema_app/features/health/services/health_api.dart';
 
 /// 病史管理页面
 class MedicalHistoriesPage extends ConsumerWidget {
@@ -22,7 +22,7 @@ class MedicalHistoriesPage extends ConsumerWidget {
           ? const Center(child: CircularProgressIndicator())
           : healthState.medicalHistories.isEmpty
               ? _buildEmptyState(context)
-              : _buildHistoryList(healthState.medicalHistories),
+              : _buildHistoryList(context, healthState.medicalHistories, ref),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEditDialog(context, ref),
         backgroundColor: AppColors.primary,
@@ -52,7 +52,7 @@ class MedicalHistoriesPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildHistoryList(List<MedicalHistory> histories) {
+  Widget _buildHistoryList(BuildContext context, List<MedicalHistory> histories, WidgetRef ref) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: histories.length,
@@ -200,7 +200,7 @@ class MedicalHistoriesPage extends ConsumerWidget {
                       labelText: '严重程度',
                       border: OutlineInputBorder(),
                     ),
-                    value: selectedSeverity,
+                    initialValue: selectedSeverity,
                     items: const ['轻微', '中等', '严重']
                         .map((severity) => DropdownMenuItem<String>(
                               value: severity,

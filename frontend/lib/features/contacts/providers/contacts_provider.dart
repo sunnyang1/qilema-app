@@ -1,23 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/core/models/base_state.dart';
+import 'package:qilema_app/core/models/contacts_models.dart';
+import 'package:qilema_app/core/providers/base_notifier.dart';
+import 'package:qilema_app/core/constants/loading_state.dart';
 import 'package:qilema_app/features/contacts/services/contacts_api.dart';
 
-/// 联系人状态
-enum ContactsStatus { initial, loading, loaded, error }
-
 /// 联系人状态类
-class ContactsState {
-  final ContactsStatus status;
+base class ContactsState extends BaseState {
   final List<Contact> contacts;
-  final String? errorMessage;
 
   const ContactsState({
-    this.status = ContactsStatus.initial,
+    super.status = LoadingState.initial,
     this.contacts = const [],
-    this.errorMessage,
+    super.errorMessage,
   });
 
+  @override
   ContactsState copyWith({
-    ContactsStatus? status,
+    LoadingState? status,
     List<Contact>? contacts,
     String? errorMessage,
   }) {
@@ -28,42 +28,41 @@ class ContactsState {
     );
   }
 
-  bool get isLoading => status == ContactsStatus.loading;
-  bool get isLoaded => status == ContactsStatus.loaded;
-  bool get hasError => status == ContactsStatus.error;
   bool get isEmpty => contacts.isEmpty;
+
+  @override
+  List<Object?> get props => [status, contacts, errorMessage];
 }
 
 /// 联系人状态管理器
-class ContactsNotifier extends StateNotifier<ContactsState> {
-  final ContactsApi _api = ContactsApi();
+base class ContactsNotifier extends Notifier<ContactsState> with BaseNotifierMixin<ContactsState> {
+  late final ContactsApi _api;
 
-  ContactsNotifier() : super(const ContactsState()) {
-    _loadContacts();
+  @override
+  ContactsState build() {
+    _api = ContactsApi();
+    load();
+    return const ContactsState();
   }
 
   /// 加载联系人列表
-  Future<void> _loadContacts() async {
-    state = state.copyWith(status: ContactsStatus.loading);
+  @override
+  Future<void> load() async {
+    state = state.copyWith(status: LoadingState.loading);
     try {
       final contacts = await _api.getContacts();
       // 按优先级排序
       contacts.sort((a, b) => a.priority.compareTo(b.priority));
       state = ContactsState(
-        status: ContactsStatus.loaded,
+        status: LoadingState.loaded,
         contacts: contacts,
       );
     } catch (e) {
       state = state.copyWith(
-        status: ContactsStatus.error,
+        status: LoadingState.error,
         errorMessage: e.toString(),
       );
     }
-  }
-
-  /// 刷新联系人列表
-  Future<void> refresh() async {
-    await _loadContacts();
   }
 
   /// 添加联系人
@@ -114,6 +113,4 @@ class ContactsNotifier extends StateNotifier<ContactsState> {
 }
 
 /// 联系人状态Provider
-final contactsProvider = StateNotifierProvider<ContactsNotifier, ContactsState>((ref) {
-  return ContactsNotifier();
-});
+final contactsProvider = NotifierProvider<ContactsNotifier, ContactsState>(ContactsNotifier.new);

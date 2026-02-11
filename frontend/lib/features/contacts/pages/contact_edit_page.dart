@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/core/models/contacts_models.dart';
 import 'package:qilema_app/features/contacts/providers/contacts_provider.dart';
-import 'package:qilema_app/features/contacts/services/contacts_api.dart';
 
 /// 添加/编辑联系人页面
 class ContactEditPage extends ConsumerStatefulWidget {
@@ -37,11 +37,11 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
     final state = ModalRoute.of(context)?.settings.arguments as Contact?;
     if (state != null && _editingContact == null) {
       _editingContact = state;
-      _nameController.text = state!.name;
-      _phoneController.text = state!.phone;
-      _relationship = _relationships.indexOf(state!.relationship);
-      _priority = state!.priority;
-      _notificationChannels = List.from(state!.notificationChannels);
+      _nameController.text = state.name;
+      _phoneController.text = state.phone;
+      _relationship = _relationships.indexOf(state.relationship);
+      _priority = state.priority;
+      _notificationChannels = List.from(state.notificationChannels);
     }
   }
 
@@ -116,10 +116,10 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value!.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return '请输入姓名';
                   }
-                  if (value!.trim().length < 2) {
+                  if (value.trim().length < 2) {
                     return '姓名至少2个字符';
                   }
                   return null;
@@ -137,11 +137,11 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value!.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return '请输入手机号';
                   }
                   final phoneRegex = RegExp(r'^1[3-9]\d{9}$');
-                  if (!phoneRegex.hasMatch(value!.trim())) {
+                  if (!phoneRegex.hasMatch(value.trim())) {
                     return '请输入有效的手机号';
                   }
                   return null;
@@ -182,20 +182,27 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
+              ToggleButtons(
+                direction: Axis.horizontal,
+                onPressed: (int index) {
+                  setState(() {
+                    _priority = index + 1;
+                  });
+                },
+                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                selectedBorderColor: Theme.of(context).colorScheme.primary,
+                selectedColor: Colors.white,
+                fillColor: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurface,
+                constraints: const BoxConstraints(
+                  minHeight: 40.0,
+                  minWidth: 60.0,
+                ),
+                isSelected: [1, 2, 3, 4, 5].map((priority) => _priority == priority).toList(),
                 children: [1, 2, 3, 4, 5].map((priority) {
-                  return Expanded(
-                    child: RadioListTile<int>(
-                      title: Text('优先级 $priority'),
-                      value: priority,
-                      groupValue: _priority,
-                      onChanged: (value) {
-                        setState(() {
-                          _priority = value!;
-                        });
-                      },
-                      activeColor: Theme.of(context).colorScheme.primary,
-                    ),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text('$priority'),
                   );
                 }).toList(),
               ),

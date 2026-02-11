@@ -1,32 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/core/models/base_state.dart';
+import 'package:qilema_app/core/models/health_models.dart';
+import 'package:qilema_app/core/providers/base_notifier.dart';
+import 'package:qilema_app/core/constants/loading_state.dart';
 import 'package:qilema_app/features/health/services/health_api.dart';
 
-/// 健康档案状态
-enum HealthStatus { initial, loading, loaded, error }
-
 /// 健康档案状态类
-class HealthState {
-  final HealthStatus status;
+base class HealthState extends BaseState {
   final HealthRecord? healthRecord;
   final List<MedicalHistory> medicalHistories;
-  final List<Medication> medications;
+  final List<MedicationInfo> medications;
   final List<Allergy> allergies;
-  final String? errorMessage;
 
   const HealthState({
-    this.status = HealthStatus.initial,
+    super.status = LoadingState.initial,
     this.healthRecord,
     this.medicalHistories = const [],
     this.medications = const [],
     this.allergies = const [],
-    this.errorMessage,
+    super.errorMessage,
   });
 
+  @override
   HealthState copyWith({
-    HealthStatus? status,
+    LoadingState? status,
     HealthRecord? healthRecord,
     List<MedicalHistory>? medicalHistories,
-    List<Medication>? medications,
+    List<MedicationInfo>? medications,
     List<Allergy>? allergies,
     String? errorMessage,
   }) {
@@ -40,23 +40,27 @@ class HealthState {
     );
   }
 
-  bool get isLoading => status == HealthStatus.loading;
-  bool get isLoaded => status == HealthStatus.loaded;
-  bool get hasError => status == HealthStatus.error;
   bool get hasRecord => healthRecord != null;
+
+  @override
+  List<Object?> get props => [status, healthRecord, medicalHistories, medications, allergies, errorMessage];
 }
 
 /// 健康档案状态管理器
-class HealthNotifier extends StateNotifier<HealthState> {
-  final HealthApi _api = HealthApi();
+base class HealthNotifier extends Notifier<HealthState> with BaseNotifierMixin<HealthState> {
+  late final HealthApi _api;
 
-  HealthNotifier() : super(const HealthState()) {
-    loadHealthRecord();
+  @override
+  HealthState build() {
+    _api = HealthApi();
+    load();
+    return const HealthState();
   }
 
   /// 加载健康档案
-  Future<void> loadHealthRecord() async {
-    state = state.copyWith(status: HealthStatus.loading);
+  @override
+  Future<void> load() async {
+    state = state.copyWith(status: LoadingState.loading);
     try {
       final data = await _api.getHealthRecord();
 
@@ -71,7 +75,7 @@ class HealthNotifier extends StateNotifier<HealthState> {
 
       // 解析用药信息
       final medications = (data['medications'] as List?)
-              ?.map((item) => Medication.fromJson(item))
+              ?.map((item) => MedicationInfo.fromJson(item))
               .toList() ??
           [];
 
@@ -82,7 +86,7 @@ class HealthNotifier extends StateNotifier<HealthState> {
           [];
 
       state = HealthState(
-        status: HealthStatus.loaded,
+        status: LoadingState.loaded,
         healthRecord: healthRecord,
         medicalHistories: medicalHistories,
         medications: medications,
@@ -96,35 +100,30 @@ class HealthNotifier extends StateNotifier<HealthState> {
           userId: await _api.getCurrentUserId(),
         ));
         state = HealthState(
-          status: HealthStatus.loaded,
+          status: LoadingState.loaded,
           healthRecord: newRecord,
         );
       } catch (createError) {
         state = state.copyWith(
-          status: HealthStatus.error,
+          status: LoadingState.error,
           errorMessage: createError.toString(),
         );
       }
     }
   }
 
-  /// 刷新健康档案
-  Future<void> refresh() async {
-    await loadHealthRecord();
-  }
-
   /// 更新健康档案基本信息
   Future<void> updateHealthRecord(HealthRecord record) async {
-    state = state.copyWith(status: HealthStatus.loading);
+    state = state.copyWith(status: LoadingState.loading);
     try {
       final updatedRecord = await _api.updateHealthRecord(record);
       state = state.copyWith(
-        status: HealthStatus.loaded,
+        status: LoadingState.loaded,
         healthRecord: updatedRecord,
       );
     } catch (e) {
       state = state.copyWith(
-        status: HealthStatus.error,
+        status: LoadingState.error,
         errorMessage: e.toString(),
       );
       rethrow;
@@ -177,7 +176,7 @@ class HealthNotifier extends StateNotifier<HealthState> {
   }
 
   /// 添加用药信息
-  Future<void> addMedication(Medication medication) async {
+  Future<void> addMedication(MedicationInfo medication) async {
     try {
       final newMedication = await _api.addMedication(medication);
       state = state.copyWith(
@@ -192,7 +191,7 @@ class HealthNotifier extends StateNotifier<HealthState> {
   }
 
   /// 更新用药信息
-  Future<void> updateMedication(int medicationId, Medication medication) async {
+  Future<void> updateMedication(int medicationId, MedicationInfo medication) async {
     try {
       final updatedMedication = await _api.updateMedication(medicationId, medication);
       final updatedMedications = state.medications.map((m) {
@@ -268,6 +267,4 @@ class HealthNotifier extends StateNotifier<HealthState> {
 }
 
 /// 健康档案状态Provider
-final healthProvider = StateNotifierProvider<HealthNotifier, HealthState>((ref) {
-  return HealthNotifier();
-});
+final healthProvider = NotifierProvider<HealthNotifier, HealthState>(HealthNotifier.new);

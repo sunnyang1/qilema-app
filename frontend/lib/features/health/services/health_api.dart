@@ -1,202 +1,9 @@
+library;
+
+import 'package:qilema_app/core/models/health_models.dart';
 import 'package:qilema_app/core/network/api_client.dart';
 import 'package:qilema_app/core/utils/logger.dart';
 import 'package:qilema_app/shared/services/auth_service.dart';
-
-/// 健康档案基本信息
-class HealthRecord {
-  final String id;
-  final String userId;
-  final String? realName;
-  final String? gender;
-  final String? bloodType;
-  final double? height;
-  final double? weight;
-  final int? age;
-  final String? emergencyContactName;
-  final String? emergencyContactPhone;
-  final String? emergencyContactRelation;
-
-  HealthRecord({
-    required this.id,
-    required this.userId,
-    this.realName,
-    this.gender,
-    this.bloodType,
-    this.height,
-    this.weight,
-    this.age,
-    this.emergencyContactName,
-    this.emergencyContactPhone,
-    this.emergencyContactRelation,
-  });
-
-  factory HealthRecord.fromJson(Map<String, dynamic> json) {
-    return HealthRecord(
-      id: json['id']?.toString() ?? '',
-      userId: json['user_id']?.toString() ?? '',
-      realName: json['real_name'],
-      gender: json['gender'],
-      bloodType: json['blood_type'],
-      height: (json['height'] as num?)?.toDouble(),
-      weight: (json['weight'] as num?)?.toDouble(),
-      age: json['age'] as int?,
-      emergencyContactName: json['emergency_contact_name'],
-      emergencyContactPhone: json['emergency_contact_phone'],
-      emergencyContactRelation: json['emergency_contact_relation'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'real_name': realName,
-      'gender': gender,
-      'blood_type': bloodType,
-      'height': height,
-      'weight': weight,
-      'age': age,
-      'emergency_contact_name': emergencyContactName,
-      'emergency_contact_phone': emergencyContactPhone,
-      'emergency_contact_relation': emergencyContactRelation,
-    };
-  }
-}
-
-/// 病史记录
-class MedicalHistory {
-  final int id;
-  final int healthRecordId;
-  final String diseaseName;
-  final String? diagnosisDate;
-  final String? description;
-  final String? severity;
-  final bool isChronic;
-
-  MedicalHistory({
-    required this.id,
-    required this.healthRecordId,
-    required this.diseaseName,
-    this.diagnosisDate,
-    this.description,
-    this.severity,
-    this.isChronic = false,
-  });
-
-  factory MedicalHistory.fromJson(Map<String, dynamic> json) {
-    return MedicalHistory(
-      id: json['id'] ?? 0,
-      healthRecordId: json['health_record_id'] ?? 0,
-      diseaseName: json['disease_name'] ?? '',
-      diagnosisDate: json['diagnosis_date'],
-      description: json['description'],
-      severity: json['severity'],
-      isChronic: json['is_chronic'] == 1 || json['is_chronic'] == true,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'disease_name': diseaseName,
-      'diagnosis_date': diagnosisDate,
-      'description': description,
-      'severity': severity,
-      'is_chronic': isChronic,
-    };
-  }
-}
-
-/// 用药信息
-class Medication {
-  final int id;
-  final int healthRecordId;
-  final String drugName;
-  final String? dosage;
-  final String? frequency;
-  final String? startDate;
-  final String? endDate;
-  final bool isCurrent;
-  final String? notes;
-
-  Medication({
-    required this.id,
-    required this.healthRecordId,
-    required this.drugName,
-    this.dosage,
-    this.frequency,
-    this.startDate,
-    this.endDate,
-    this.isCurrent = false,
-    this.notes,
-  });
-
-  factory Medication.fromJson(Map<String, dynamic> json) {
-    return Medication(
-      id: json['id'] ?? 0,
-      healthRecordId: json['health_record_id'] ?? 0,
-      drugName: json['drug_name'] ?? '',
-      dosage: json['dosage'],
-      frequency: json['frequency'],
-      startDate: json['start_date'],
-      endDate: json['end_date'],
-      isCurrent: json['is_current'] == 1 || json['is_current'] == true,
-      notes: json['notes'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'drug_name': drugName,
-      'dosage': dosage,
-      'frequency': frequency,
-      'start_date': startDate,
-      'end_date': endDate,
-      'is_current': isCurrent,
-      'notes': notes,
-    };
-  }
-}
-
-/// 过敏史
-class Allergy {
-  final int id;
-  final int healthRecordId;
-  final String allergen;
-  final String? allergicReaction;
-  final String? severity;
-  final String? discoveredDate;
-  final String? notes;
-
-  Allergy({
-    required this.id,
-    required this.healthRecordId,
-    required this.allergen,
-    this.allergicReaction,
-    this.severity,
-    this.discoveredDate,
-    this.notes,
-  });
-
-  factory Allergy.fromJson(Map<String, dynamic> json) {
-    return Allergy(
-      id: json['id'] ?? 0,
-      healthRecordId: json['health_record_id'] ?? 0,
-      allergen: json['allergen'] ?? '',
-      allergicReaction: json['allergic_reaction'],
-      severity: json['severity'],
-      discoveredDate: json['discovered_date'],
-      notes: json['notes'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'allergen': allergen,
-      'allergic_reaction': allergicReaction,
-      'severity': severity,
-      'discovered_date': discoveredDate,
-      'notes': notes,
-    };
-  }
-}
 
 /// 健康档案API服务
 class HealthApi {
@@ -346,7 +153,7 @@ class HealthApi {
   }
 
   /// 获取用药信息列表
-  Future<List<Medication>> getMedications({bool currentOnly = false}) async {
+  Future<List<MedicationInfo>> getMedications({bool currentOnly = false}) async {
     try {
       final userId = await getCurrentUserId();
       final response = await _apiClient.get(
@@ -356,7 +163,7 @@ class HealthApi {
 
       if (response.statusCode == 200) {
         final data = response.data['data'] as List;
-        return data.map((item) => Medication.fromJson(item)).toList();
+        return data.map((item) => MedicationInfo.fromJson(item)).toList();
       }
 
       throw Exception('获取用药信息失败');
@@ -367,7 +174,7 @@ class HealthApi {
   }
 
   /// 添加用药信息
-  Future<Medication> addMedication(Medication medication) async {
+  Future<MedicationInfo> addMedication(MedicationInfo medication) async {
     try {
       final userId = await getCurrentUserId();
       final response = await _apiClient.post(
@@ -377,7 +184,7 @@ class HealthApi {
 
       if (response.statusCode == 200) {
         final data = response.data['data'];
-        return Medication.fromJson(data);
+        return MedicationInfo.fromJson(data);
       }
 
       throw Exception('添加用药信息失败');
@@ -388,7 +195,7 @@ class HealthApi {
   }
 
   /// 更新用药信息
-  Future<Medication> updateMedication(int medicationId, Medication medication) async {
+  Future<MedicationInfo> updateMedication(int medicationId, MedicationInfo medication) async {
     try {
       final response = await _apiClient.put(
         '/health-records/medications/$medicationId',
@@ -397,7 +204,7 @@ class HealthApi {
 
       if (response.statusCode == 200) {
         final data = response.data['data'];
-        return Medication.fromJson(data);
+        return MedicationInfo.fromJson(data);
       }
 
       throw Exception('更新用药信息失败');

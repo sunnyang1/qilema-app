@@ -36,11 +36,14 @@ class AuthState {
 }
 
 /// 认证状态管理器
-class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthApi _authApi = AuthApi();
+class AuthNotifier extends Notifier<AuthState> {
+  late final AuthApi _authApi;
 
-  AuthNotifier() : super(const AuthState()) {
+  @override
+  AuthState build() {
+    _authApi = AuthApi();
     _init();
+    return const AuthState();
   }
 
   /// 初始化检查登录状态
@@ -105,6 +108,4 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 /// 认证状态Provider
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
-});
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
