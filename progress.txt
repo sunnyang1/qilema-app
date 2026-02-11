@@ -376,3 +376,26 @@ IMPORTANT LEARNINGS:
 - Barrel 文件（barrel.dart）用于统一导出目录中的所有公共类和函数
 - 单元测试应该覆盖枚举的所有值和扩展方法的所有逻辑路径
 - TDD 开发模式有助于确保代码质量和可维护性
+
+[2026-02-11 09:15:00] - [US-002] 创建 BaseState 抽象类
+
+IMPLEMENTATION SUMMARY:
+- 创建了 BaseState 抽象类，封装状态管理的通用逻辑
+- 使用 base class 声明确保子类必须标记为 base、final 或 sealed
+- 实现了便捷的 getter 方法，代理到 LoadingState 的相应方法
+- 使用 Equatable 库实现简单的相等性比较
+- 定义了抽象的 copyWith 方法供子类实现
+- 创建了完整的单元测试，测试覆盖所有功能
+
+CHANGES:
+- Created: frontend/lib/core/models/base_state.dart
+- Created: frontend/lib/core/models/barrel.dart
+- Created: frontend/test/unit/core/base_state_test.dart
+- Modified: frontend/pubspec.yaml (添加 equatable 依赖)
+
+IMPORTANT LEARNINGS:
+- 使用 base class 声明可以强制子类也是 base、final 或 sealed 类，增强类型安全
+- Equatable 库大大简化了相等性比较的实现
+- 抽象的 copyWith 方法允许子类添加自定义字段
+- Dart 3.2+ 支持使用 super 前缀简化参数传递
+- 测试中使用 base class 需要测试类也标记为 base
