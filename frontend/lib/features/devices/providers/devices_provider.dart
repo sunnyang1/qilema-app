@@ -1,25 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/core/models/base_state.dart';
+import 'package:qilema_app/core/providers/base_notifier.dart';
+import 'package:qilema_app/core/constants/loading_state.dart';
 import 'package:qilema_app/features/devices/services/devices_api.dart';
 
-/// 设备状态
-enum DevicesStatus { initial, loading, loaded, error, scanning }
-
 /// 设备状态类
-class DevicesState {
-  final DevicesStatus status;
+base class DevicesState extends BaseState {
   final List<Device> devices;
   final List<Device> scannedDevices;
-  final String? errorMessage;
 
   const DevicesState({
-    this.status = DevicesStatus.initial,
+    super.status = LoadingState.initial,
     this.devices = const [],
     this.scannedDevices = const [],
-    this.errorMessage,
+    super.errorMessage,
   });
 
+  @override
   DevicesState copyWith({
-    DevicesStatus? status,
+    LoadingState? status,
     List<Device>? devices,
     List<Device>? scannedDevices,
     String? errorMessage,
@@ -32,58 +31,54 @@ class DevicesState {
     );
   }
 
-  bool get isLoading => status == DevicesStatus.loading;
-  bool get isScanning => status == DevicesStatus.scanning;
-  bool get isLoaded => status == DevicesStatus.loaded;
-  bool get hasError => status == DevicesStatus.error;
+  bool get isScanning => scannedDevices.isNotEmpty;
   bool get isEmpty => devices.isEmpty;
+
+  @override
+  List<Object?> get props => [status, devices, scannedDevices, errorMessage];
 }
 
 /// 设备状态管理器
-class DevicesNotifier extends Notifier<DevicesState> {
+base class DevicesNotifier extends Notifier<DevicesState> with BaseNotifierMixin<DevicesState> {
   late final DevicesApi _api;
 
   @override
   DevicesState build() {
     _api = DevicesApi();
-    _loadDevices();
+    load();
     return const DevicesState();
   }
 
   /// 加载设备列表
-  Future<void> _loadDevices() async {
-    state = state.copyWith(status: DevicesStatus.loading);
+  @override
+  Future<void> load() async {
+    state = state.copyWith(status: LoadingState.loading);
     try {
       final devices = await _api.getDevices();
       state = DevicesState(
-        status: DevicesStatus.loaded,
+        status: LoadingState.loaded,
         devices: devices,
       );
     } catch (e) {
       state = state.copyWith(
-        status: DevicesStatus.error,
+        status: LoadingState.error,
         errorMessage: e.toString(),
       );
     }
   }
 
-  /// 刷新设备列表
-  Future<void> refresh() async {
-    await _loadDevices();
-  }
-
   /// 扫描蓝牙设备
   Future<void> scanDevices() async {
-    state = state.copyWith(status: DevicesStatus.scanning);
+    state = state.copyWith(status: LoadingState.loading);
     try {
       final scannedDevices = await _api.scanBluetoothDevices();
       state = state.copyWith(
-        status: DevicesStatus.loaded,
+        status: LoadingState.loaded,
         scannedDevices: scannedDevices,
       );
     } catch (e) {
       state = state.copyWith(
-        status: DevicesStatus.error,
+        status: LoadingState.error,
         errorMessage: e.toString(),
       );
     }

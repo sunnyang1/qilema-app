@@ -420,3 +420,22 @@ IMPORTANT LEARNINGS:
 - 使用 mixin 模式可以在不破坏类型约束的情况下提供通用功能
 - mixin 中的类型转换（as S）是必要的，因为 copyWith 返回 BaseState
 - 测试中需要导入 base_notifier.dart 才能使用 mixin
+
+[2026-02-11 10:00:00] - [US-004] 迁移 contacts_provider 到新基类
+
+IMPLEMENTATION SUMMARY:
+- 将 ContactsState 重构为继承 BaseState
+- 移除 ContactsStatus 枚举，使用统一的 LoadingState
+- ContactsNotifier 使用 BaseNotifierMixin
+- 将 _loadContacts() 改为 load() 方法
+- 移除自定义的 refresh() 方法，使用 mixin 提供的方法
+- 保持所有公共方法不变（addContact, updateContact, deleteContact）
+
+CHANGES:
+- Modified: frontend/lib/features/contacts/providers/contacts_provider.dart
+
+IMPORTANT LEARNINGS:
+- 继承自 BaseState 的类必须标记为 base、final 或 sealed
+- mixin 模式允许在不继承的情况下添加通用功能
+- 需要在 State 类中重新实现 props getter 以包含自定义字段
+- BaseNotifierMixin 提供了 refresh() 和 clearError() 方法，减少重复代码
