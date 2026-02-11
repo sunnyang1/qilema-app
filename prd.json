@@ -149,8 +149,8 @@
         "更新 lib/core/models/ 下的 barrel 文件"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully extracted Contact model with Equatable"
     },
     {
       "id": "US-010",
@@ -166,8 +166,8 @@
         "更新 lib/core/models/ 下的 barrel 文件"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully extracted Device and DeviceDataPoint models"
     },
     {
       "id": "US-011",
@@ -183,8 +183,8 @@
         "更新 lib/core/models/ 下的 barrel 文件"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully extracted HealthRecord, MedicalHistory, MedicationInfo, Allergy models"
     },
     {
       "id": "US-012",
@@ -200,8 +200,8 @@
         "更新 lib/core/models/ 下的 barrel 文件"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully extracted MedicationReminder, MedicationLog, SelectableMedication models"
     },
     {
       "id": "US-013",
@@ -217,8 +217,8 @@
         "更新 lib/core/models/ 下的 barrel 文件"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully extracted AedDevice and Hospital models"
     },
     {
       "id": "US-014",

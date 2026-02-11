@@ -522,3 +522,38 @@ IMPORTANT LEARNINGS:
 - 所有DioException类型（connectionTimeout、receiveTimeout、badResponse等）都需要处理
 - 错误消息提取应该支持多种字段名（message、error、detail、msg）
 - 测试应该覆盖所有边界条件和异常类型
+
+[2026-02-11 13:00:00] - [US-009~013] 分离数据模型
+
+IMPLEMENTATION SUMMARY:
+- 分离了所有功能模块的数据模型到 lib/core/models/ 目录
+- US-009: Contact 模型（contacts_models.dart）- 18个测试
+- US-010: Device 和 DeviceDataPoint 模型（devices_models.dart）- 11个测试
+- US-011: HealthRecord, MedicalHistory, MedicationInfo, Allergy 模型（health_models.dart）- 8个测试
+- US-012: MedicationReminder, MedicationLog, SelectableMedication 模型（medication_models.dart）- 4个测试
+- US-013: AedDevice 和 Hospital 模型（emergency_models.dart）- 4个测试
+- 所有模型使用 Equatable 实现 equals() 和 hashCode()
+- 所有模型实现了 copyWith(), fromJson(), toJson() 方法
+- 更新了所有 API 文件以导入新模型
+- 修复了所有页面和 provider 的导入语句
+- 将 Medication 重命名为 MedicationInfo 以避免命名冲突
+- 所有 93 个测试通过
+
+CHANGES:
+- Created: frontend/lib/core/models/contacts_models.dart
+- Created: frontend/lib/core/models/devices_models.dart
+- Created: frontend/lib/core/models/health_models.dart
+- Created: frontend/lib/core/models/medication_models.dart
+- Created: frontend/lib/core/models/emergency_models.dart
+- Modified: frontend/lib/core/models/barrel.dart (导出所有新模型)
+- Modified: All API files to import from core/models
+- Modified: All pages and providers to import models
+- Created: Unit tests for all models
+
+IMPORTANT LEARNINGS:
+- 使用 Equatable 可以显著简化相等性比较的实现
+- copyWith 模式是 Dart 中实现不可变对象的推荐方式
+- 数据模型应该从 API 服务中分离，便于复用和测试
+- 批量替换时要小心，避免替换方法名等非类型引用
+- 模型字段命名保持一致性很重要（如 dosage vs defaultDosage）
+- 所有导入语句需要同步更新，否则会导致编译错误
