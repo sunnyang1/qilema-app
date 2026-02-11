@@ -15,8 +15,8 @@
         "更新 lib/core/constants/ 下的 barrel 文件导出新枚举"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully implemented with full test coverage"
     },
     {
       "id": "US-002",

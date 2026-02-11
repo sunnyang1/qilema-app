@@ -10,6 +10,7 @@
         "amap_flutter_map",
         "cupertino_icons",
         "dio",
+        "equatable",
         "fl_chart",
         "flutter",
         "flutter_blue_plus",
@@ -53,6 +54,14 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "equatable",
+      "version": "2.0.8",
+      "dependencies": [
+        "collection",
+        "meta"
       ]
     },
     {
@@ -482,14 +491,6 @@
       "version": "8.1.0",
       "dependencies": [
         "flutter"
-      ]
-    },
-    {
-      "name": "equatable",
-      "version": "2.0.8",
-      "dependencies": [
-        "collection",
-        "meta"
       ]
     },
     {

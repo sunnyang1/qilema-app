@@ -351,3 +351,28 @@ Phase 2 扩展功能已全部完成（12/12 用户故事）：
 - US-010: 创建用药提醒列表页面 ✓
 - US-011: 实现添加用药提醒功能 ✓
 - US-012: 实现用药提醒通知 ✓
+
+---
+
+## Frontend Refactoring Phase
+
+[2026-02-11 09:00:00] - [US-001] 创建统一的状态枚举 LoadingState
+
+IMPLEMENTATION SUMMARY:
+- 创建了 LoadingState 枚举，包含四个状态：initial, loading, loaded, error
+- 为枚举添加了便捷的 getter 方法：isLoading, isLoaded, hasError, isInitial
+- 创建了完整的单元测试，测试覆盖所有枚举值和扩展方法
+- 创建了 barrel 文件用于统一导出常量
+
+CHANGES:
+- Created: frontend/lib/core/constants/loading_state.dart
+- Created: frontend/lib/core/constants/barrel.dart
+- Created: frontend/test/unit/core/loading_state_test.dart
+- Created: tasks/prd-frontend-refactoring.md
+- Modified: prd.json (更新为新的重构 PRD)
+
+IMPORTANT LEARNINGS:
+- 使用 Dart 的扩展方法（extension）为枚举添加便捷的 getter 方法
+- Barrel 文件（barrel.dart）用于统一导出目录中的所有公共类和函数
+- 单元测试应该覆盖枚举的所有值和扩展方法的所有逻辑路径
+- TDD 开发模式有助于确保代码质量和可维护性
