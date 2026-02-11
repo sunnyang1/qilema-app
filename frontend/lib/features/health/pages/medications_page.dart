@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/core/models/health_models.dart';
 import 'package:qilema_app/core/theme/app_theme.dart';
 import 'package:qilema_app/features/health/providers/health_provider.dart';
 import 'package:qilema_app/features/health/services/health_api.dart';
@@ -52,7 +53,7 @@ class MedicationsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildMedicationList(BuildContext context, List<Medication> medications, WidgetRef ref) {
+  Widget _buildMedicationList(BuildContext context, List<MedicationInfo> medications, WidgetRef ref) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: medications.length,
@@ -121,7 +122,7 @@ class MedicationsPage extends ConsumerWidget {
   void _showAddEditDialog(
     BuildContext context,
     WidgetRef? ref, [
-    Medication? medication,
+    MedicationInfo? medication,
   ]) async {
     final formKey = GlobalKey<FormState>();
     final drugNameController = TextEditingController(text: medication?.drugName ?? '');
@@ -245,7 +246,7 @@ class MedicationsPage extends ConsumerWidget {
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
 
-                final newMedication = Medication(
+                final newMedication = MedicationInfo(
                   id: medication?.id ?? 0,
                   healthRecordId: medication?.healthRecordId ?? 0,
                   drugName: drugNameController.text.trim(),
@@ -296,7 +297,7 @@ class MedicationsPage extends ConsumerWidget {
     );
   }
 
-  void _showDeleteConfirmDialog(BuildContext context, WidgetRef ref, Medication medication) {
+  void _showDeleteConfirmDialog(BuildContext context, WidgetRef ref, MedicationInfo medication) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(

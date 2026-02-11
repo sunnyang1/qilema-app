@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qilema_app/core/models/base_state.dart';
+import 'package:qilema_app/core/models/health_models.dart';
 import 'package:qilema_app/core/providers/base_notifier.dart';
 import 'package:qilema_app/core/constants/loading_state.dart';
 import 'package:qilema_app/features/health/services/health_api.dart';
@@ -8,7 +9,7 @@ import 'package:qilema_app/features/health/services/health_api.dart';
 base class HealthState extends BaseState {
   final HealthRecord? healthRecord;
   final List<MedicalHistory> medicalHistories;
-  final List<Medication> medications;
+  final List<MedicationInfo> medications;
   final List<Allergy> allergies;
 
   const HealthState({
@@ -25,7 +26,7 @@ base class HealthState extends BaseState {
     LoadingState? status,
     HealthRecord? healthRecord,
     List<MedicalHistory>? medicalHistories,
-    List<Medication>? medications,
+    List<MedicationInfo>? medications,
     List<Allergy>? allergies,
     String? errorMessage,
   }) {
@@ -74,7 +75,7 @@ base class HealthNotifier extends Notifier<HealthState> with BaseNotifierMixin<H
 
       // 解析用药信息
       final medications = (data['medications'] as List?)
-              ?.map((item) => Medication.fromJson(item))
+              ?.map((item) => MedicationInfo.fromJson(item))
               .toList() ??
           [];
 
@@ -175,7 +176,7 @@ base class HealthNotifier extends Notifier<HealthState> with BaseNotifierMixin<H
   }
 
   /// 添加用药信息
-  Future<void> addMedication(Medication medication) async {
+  Future<void> addMedication(MedicationInfo medication) async {
     try {
       final newMedication = await _api.addMedication(medication);
       state = state.copyWith(
@@ -190,7 +191,7 @@ base class HealthNotifier extends Notifier<HealthState> with BaseNotifierMixin<H
   }
 
   /// 更新用药信息
-  Future<void> updateMedication(int medicationId, Medication medication) async {
+  Future<void> updateMedication(int medicationId, MedicationInfo medication) async {
     try {
       final updatedMedication = await _api.updateMedication(medicationId, medication);
       final updatedMedications = state.medications.map((m) {
