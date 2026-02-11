@@ -399,3 +399,24 @@ IMPORTANT LEARNINGS:
 - 抽象的 copyWith 方法允许子类添加自定义字段
 - Dart 3.2+ 支持使用 super 前缀简化参数传递
 - 测试中使用 base class 需要测试类也标记为 base
+
+[2026-02-11 09:30:00] - [US-003] 创建 BaseNotifier 抽象类
+
+IMPLEMENTATION SUMMARY:
+- 创建了 BaseNotifierMixin 提供通用的状态管理功能
+- 使用 mixin 模式而非 abstract class，以便与 Riverpod 3.2.1 兼容
+- 实现了抽象的 load() 方法供子类实现
+- 实现了 refresh() 方法调用 load()
+- 实现了 clearError() 方法清除错误消息
+- 创建了基本的单元测试
+
+CHANGES:
+- Created: frontend/lib/core/providers/base_notifier.dart
+- Created: frontend/lib/core/providers/barrel.dart
+- Created: frontend/test/unit/core/base_notifier_test.dart
+
+IMPORTANT LEARNINGS:
+- Riverpod 3.2.1 要求 Notifier 子类必须是 base、final 或 sealed 类
+- 使用 mixin 模式可以在不破坏类型约束的情况下提供通用功能
+- mixin 中的类型转换（as S）是必要的，因为 copyWith 返回 BaseState
+- 测试中需要导入 base_notifier.dart 才能使用 mixin

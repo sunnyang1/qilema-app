@@ -47,8 +47,8 @@
         "编写单元测试验证 BaseNotifier 功能"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented as mixin for better compatibility with Riverpod 3.2.1"
     },
     {
       "id": "US-004",
