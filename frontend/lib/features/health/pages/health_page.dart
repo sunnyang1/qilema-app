@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:qilema_app/core/models/health_models.dart';
 import 'package:qilema_app/core/theme/app_theme.dart';
 import 'package:qilema_app/features/health/providers/health_provider.dart';
-import 'package:qilema_app/features/health/services/health_api.dart';
 
 /// 健康档案基本信息页面
 class HealthPage extends ConsumerStatefulWidget {
@@ -362,7 +361,7 @@ class _HealthPageState extends ConsumerState<HealthPage> {
         filled: true,
         fillColor: Colors.grey[50],
       ),
-      value: value,
+      initialValue: value,
       items: items
           .map((item) => DropdownMenuItem<String>(
                 value: item,

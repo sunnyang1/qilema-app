@@ -119,7 +119,7 @@ class _AddMedicationPageState extends ConsumerState<AddMedicationPage> {
               labelText: '选择药品',
               border: OutlineInputBorder(),
             ),
-            value: _selectedMedicationId,
+            initialValue: _selectedMedicationId,
             items: state.availableMedications.map((med) {
               return DropdownMenuItem(
                 value: med.id,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qilema_app/core/models/contacts_models.dart';
 import 'package:qilema_app/features/contacts/providers/contacts_provider.dart';
-import 'package:qilema_app/features/contacts/services/contacts_api.dart';
 
 /// 添加/编辑联系人页面
 class ContactEditPage extends ConsumerStatefulWidget {
@@ -182,20 +182,27 @@ class _ContactEditPageState extends ConsumerState<ContactEditPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
+              ToggleButtons(
+                direction: Axis.horizontal,
+                onPressed: (int index) {
+                  setState(() {
+                    _priority = index + 1;
+                  });
+                },
+                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                selectedBorderColor: Theme.of(context).colorScheme.primary,
+                selectedColor: Colors.white,
+                fillColor: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurface,
+                constraints: const BoxConstraints(
+                  minHeight: 40.0,
+                  minWidth: 60.0,
+                ),
+                isSelected: [1, 2, 3, 4, 5].map((priority) => _priority == priority).toList(),
                 children: [1, 2, 3, 4, 5].map((priority) {
-                  return Expanded(
-                    child: RadioListTile<int>(
-                      title: Text('优先级 $priority'),
-                      value: priority,
-                      groupValue: _priority,
-                      onChanged: (value) {
-                        setState(() {
-                          _priority = value!;
-                        });
-                      },
-                      activeColor: Theme.of(context).colorScheme.primary,
-                    ),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text('$priority'),
                   );
                 }).toList(),
               ),

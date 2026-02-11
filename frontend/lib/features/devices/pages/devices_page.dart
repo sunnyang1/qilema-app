@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qilema_app/core/models/devices_models.dart';
 import 'package:qilema_app/core/theme/app_theme.dart';
 import 'package:qilema_app/features/devices/providers/devices_provider.dart';
-import 'package:qilema_app/features/devices/services/devices_api.dart';
 
 /// 设备列表页面
 class DevicesPage extends ConsumerWidget {
@@ -214,14 +214,18 @@ class DevicesPage extends ConsumerWidget {
                                         .bindDevice(device);
                                     if (dialogContext.mounted) {
                                       Navigator.pop(dialogContext);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('设备绑定成功')),
-                                      );
+if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('设备绑定成功')),
+                                    );
+                                  }
                                     }
                                   } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('绑定失败: $e')),
-                                    );
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('绑定失败: $e')),
+                                      );
+                                    }
                                   }
                                 },
                                 child: const Text('绑定'),
@@ -276,9 +280,11 @@ class DevicesPage extends ConsumerWidget {
                   );
                 }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('解绑失败: $e')),
-                );
+if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('解绑失败: $e')),
+                                    );
+                                  }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),

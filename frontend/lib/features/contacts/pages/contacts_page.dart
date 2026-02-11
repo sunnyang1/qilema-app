@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:qilema_app/core/models/contacts_models.dart';
 import 'package:qilema_app/features/contacts/providers/contacts_provider.dart';
-import 'package:qilema_app/features/contacts/services/contacts_api.dart';
 
 /// 紧急联系人列表页面
 class ContactsPage extends ConsumerWidget {

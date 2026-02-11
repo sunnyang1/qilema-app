@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qilema_app/core/models/base_state.dart';
+import 'package:qilema_app/core/models/devices_models.dart';
 import 'package:qilema_app/core/providers/base_notifier.dart';
 import 'package:qilema_app/core/constants/loading_state.dart';
 import 'package:qilema_app/features/devices/services/devices_api.dart';
