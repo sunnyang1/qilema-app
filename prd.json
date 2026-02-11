@@ -115,8 +115,8 @@
         "编写单元测试验证异常类功能"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully implemented with NetworkExceptionType enum and super parameters"
     },
     {
       "id": "US-008",
@@ -132,8 +132,8 @@
         "编写单元测试验证 BaseApi 功能"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Successfully implemented with ExceptionConverter for better testability"
     },
     {
       "id": "US-009",

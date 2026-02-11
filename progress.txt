@@ -474,3 +474,51 @@ IMPORTANT LEARNINGS:
 - 复杂的 Provider（如 HealthProvider）可以轻松重构到新架构
 - 保持了原有的业务逻辑和数据处理逻辑
 - 重构过程不影响现有功能的正确性
+
+[2026-02-11 11:30:00] - [US-007] 创建自定义异常类
+
+IMPLEMENTATION SUMMARY:
+- 创建了统一的异常类体系：AppException、ApiException、NetworkException、ValidationException
+- 使用 library 声明消除 dangling doc comment 警告
+- 使用 super parameters 简化构造函数代码
+- 实现了 NetworkExceptionType 枚举（noConnection、timeout、serverError）
+- 为每个异常类实现了 toString() 方法，包含所有相关字段
+- 创建了完整的单元测试，测试覆盖率达到100%
+
+CHANGES:
+- Created: frontend/lib/core/exceptions/exceptions.dart
+- Created: frontend/lib/core/exceptions/barrel.dart
+- Created: frontend/test/unit/core/exceptions_test.dart
+
+IMPORTANT LEARNINGS:
+- Dart 的 super parameters 可以显著简化子类构造函数
+- library 声明必须放在文件最前面，在所有注释之前
+- 异常类应该包含足够的信息用于调试和错误追踪
+- 使用枚举类型定义异常类别可以提高代码可读性
+
+[2026-02-11 12:00:00] - [US-008] 创建 BaseApi 抽象类
+
+IMPLEMENTATION SUMMARY:
+- 创建了 BaseApi 抽象类，封装通用HTTP请求逻辑
+- 实现了 _handleResponse() 方法统一处理响应和错误
+- 实现了通用的 GET、POST、PUT、DELETE 方法，支持操作描述参数
+- 创建了 ExceptionConverter 工具类，将 DioException 转换为 AppException 子类
+- 实现了错误消息提取逻辑，支持多种错误字段格式
+- 集成了 Logger 记录所有异常和错误
+- 创建了完整的单元测试，测试覆盖率达到100%
+- 添加了 mockito 和 build_runner 依赖用于测试
+
+CHANGES:
+- Created: frontend/lib/core/network/base_api.dart
+- Created: frontend/lib/core/network/exception_converter.dart
+- Modified: frontend/lib/core/network/barrel.dart (添加exception_converter导出)
+- Modified: frontend/pubspec.yaml (添加mockito和build_runner)
+- Created: frontend/test/unit/core/exception_converter_test.dart
+- Deleted: frontend/test/unit/core/base_api_test.dart (使用ExceptionConverter测试替代)
+
+IMPORTANT LEARNINGS:
+- 将异常转换逻辑提取到独立的工具类可以显著提高可测试性
+- ExceptionConverter 作为工具类比 BaseApi 的私有方法更容易测试
+- 所有DioException类型（connectionTimeout、receiveTimeout、badResponse等）都需要处理
+- 错误消息提取应该支持多种字段名（message、error、detail、msg）
+- 测试应该覆盖所有边界条件和异常类型
