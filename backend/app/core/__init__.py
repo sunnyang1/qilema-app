@@ -1,6 +1,8 @@
 """
 核心模块
 """
+from dependency_injector import containers, providers
+
 from app.core.config import settings
 from app.core.database import engine, Base, get_db, SessionLocal
 from app.core.security import (
@@ -12,6 +14,8 @@ from app.core.security import (
 )
 
 __all__ = [
+    'containers',
+    'providers',
     'settings',
     'engine',
     'Base',

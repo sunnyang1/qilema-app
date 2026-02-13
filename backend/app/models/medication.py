@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime, time, date
-from typing import Optional, List as TypingList
+from typing import Optional, List
 from enum import Enum as PyEnum
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Time, ForeignKey, Enum, Float, Boolean

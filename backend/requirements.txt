@@ -29,6 +29,9 @@ httpx==0.25.2
 # 其他
 python-dotenv==1.0.0
 
+# 依赖注入
+dependency-injector==4.48.3
+
 # Markdown渲染
 Markdown==3.5.1
 
