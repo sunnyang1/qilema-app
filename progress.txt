@@ -732,3 +732,30 @@ IMPORTANT LEARNINGS:
 5. 完整常量定义: UI、API、存储、验证等常量
 6. 代码组织优化: barrel 文件模式 + extensions 扩展方法
 7. 全面测试覆盖: 模型、状态、异常、配置等 176+ 测试
+
+[2026-02-14 03:45:00] - [US-ARCH-001] 安装dependency-injector库（架构优化重构开始）
+
+IMPLEMENTATION SUMMARY:
+- 成功安装dependency-injector==4.48.3（从4.41.0升级以支持Python 3.12）
+- 在app/core/__init__.py中导入containers和providers模块
+- 修复medication.py中的List导入问题（使用正确的typing导入）
+- 验证导入和模块加载成功
+
+CHANGES:
+- Modified: backend/requirements.txt（添加dependency-injector==4.48.3）
+- Modified: backend/app/core/__init__.py（添加containers和providers导入）
+- Modified: backend/app/models/medication.py（修复List导入）
+- Created: tasks/prd-architecture-optimization.md（架构优化PRD）
+- Created: prd.json（24个用户故事）
+
+IMPORTANT LEARNINGS:
+- dependency-injector 4.41.0与Python 3.12不兼容，需要升级到4.48.3
+- pip install dependency-injector（不带版本号）会自动安装最新兼容版本
+- core模块的配置验证需要SECRET_KEY环境变量（至少64字节）
+- 使用项目根目录的scripts/generate_secret_key.py生成密钥
+- 模块导入验证需要在正确的环境变量下进行
+
+NEXT TASKS:
+- US-ARCH-002: 创建Container类
+- US-ARCH-003: 配置数据库和Redis到容器
+- US-ARCH-004: 创建配置文件
