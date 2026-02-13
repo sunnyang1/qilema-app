@@ -759,3 +759,28 @@ NEXT TASKS:
 - US-ARCH-002: 创建Container类
 - US-ARCH-003: 配置数据库和Redis到容器
 - US-ARCH-004: 创建配置文件
+
+[2026-02-14 03:55:00] - [US-ARCH-002] 创建Container类
+
+IMPLEMENTATION SUMMARY:
+- 创建backend/app/core/container.py文件，定义DeclarativeContainer类
+- 添加config provider用于配置管理
+- 实现get_global_container()单例访问函数
+- 实现init_container()支持YAML配置文件加载
+- 实现reset_container()用于测试清理
+- 创建11个单元测试，全部通过
+
+CHANGES:
+- Created: backend/app/core/container.py（容器类和辅助函数）
+- Created: backend/tests/test_container.py（完整单元测试）
+
+IMPORTANT LEARNINGS:
+- dependency-injector的DeclarativeContainer实例化后返回DynamicContainer类型
+- isinstance(container, Container)会失败，应使用hasattr(container, 'config')验证
+- 全局容器使用模块级变量存储单例
+- reset_container()对于单元测试隔离很重要
+- config provider支持从YAML文件加载配置
+
+NEXT TASKS:
+- US-ARCH-003: 配置数据库和Redis到容器
+- US-ARCH-004: 创建配置文件
