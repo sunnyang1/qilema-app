@@ -9,7 +9,7 @@ import uuid
 import logging
 import re
 from typing import Callable, Optional
-from fastapi import Request, Response
+from fastapi import Request, Response, FastAPI
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -21,6 +21,36 @@ logger = logging.getLogger(__name__)
 
 # 慢请求阈值（毫秒）
 SLOW_REQUEST_THRESHOLD = 500
+
+
+class EncodingMiddleware(BaseHTTPMiddleware):
+    """编码中间件
+
+    强制所有响应使用 UTF-8 编码，解决中文乱码问题
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """处理请求并确保响应使用 UTF-8 编码"""
+        response = await call_next(request)
+
+        # 检查并修改响应头
+        headers = dict(response.headers)
+
+        # 检查是否已有 Content-Type
+        content_type = headers.get("content-type", "")
+
+        if content_type:
+            # 确保包含 charset=utf-8
+            if "charset" not in content_type.lower():
+                headers["content-type"] = f"{content_type}; charset=utf-8"
+        else:
+            # 添加默认的 JSON 响应头
+            headers["content-type"] = "application/json; charset=utf-8"
+
+        # 更新响应头
+        response.headers.update(headers)
+
+        return response
 
 
 class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
@@ -68,6 +98,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
 
         return JSONResponse(
             status_code=exc.status_code,
+            media_type="application/json; charset=utf-8",
             content={
                 "code": exc.code,
                 "message": exc.message,
@@ -97,6 +128,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
 
         return JSONResponse(
             status_code=500,
+            media_type="application/json; charset=utf-8",
             content={
                 "code": 500,
                 "message": "服务器内部错误",
@@ -214,3 +246,19 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
 
 # 保留旧的RequestLoggingMiddleware作为别名，保持向后兼容
 RequestLoggingMiddleware = EnhancedLoggingMiddleware
+
+
+def setup_middleware(app: FastAPI) -> None:
+    """设置所有中间件
+
+    Args:
+        app: FastAPI应用实例
+    """
+    # 编码中间件 - 确保所有响应使用 UTF-8 编码（最先添加）
+    app.add_middleware(EncodingMiddleware)
+
+    # 异常处理中间件
+    app.add_middleware(ExceptionHandlerMiddleware)
+
+    # 请求日志中间件
+    app.add_middleware(EnhancedLoggingMiddleware)

@@ -71,6 +71,7 @@ def error_response(
     
     return JSONResponse(
         status_code=status_code,
+        media_type="application/json; charset=utf-8",
         content=response
     )
 
