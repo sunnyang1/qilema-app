@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
+from app.core.schemas import BaseSchema
+
 
 class CheckInCreate(BaseModel):
     """创建签到"""
@@ -51,7 +53,7 @@ class CheckInCreate(BaseModel):
         return v
 
 
-class CheckInResponse(BaseModel):
+class CheckInResponse(BaseSchema):
     """签到响应"""
     id: int
     user_id: str
@@ -63,6 +65,20 @@ class CheckInResponse(BaseModel):
     notes: Optional[str]
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm(cls, checkin) -> "CheckInResponse":
+        """从CheckIn ORM对象转换为CheckInResponse"""
+        return cls(
+            id=checkin.id,
+            user_id=checkin.user_id,
+            checkin_time=checkin.checkin_time,
+            checkin_date=checkin.checkin_date,
+            latitude=checkin.latitude,
+            longitude=checkin.longitude,
+            checkin_method=checkin.checkin_method,
+            notes=checkin.notes
+        )
 
 
 class CheckInDateQuery(BaseModel):

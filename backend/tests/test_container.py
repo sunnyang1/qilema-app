@@ -3,6 +3,7 @@
 """
 
 import pytest
+from unittest.mock import Mock, patch
 from app.core.container import Container, get_global_container, init_container, reset_container
 
 
@@ -104,6 +105,105 @@ redis:
         container_instance = Container()
         # 检查容器的基本属性
         assert hasattr(container_instance, 'config')
-        # 未来添加的provider也应该能访问
-        # assert hasattr(container_instance, 'database')
-        # assert hasattr(container_instance, 'redis')
+        # 现在应该有database和redis provider
+        assert hasattr(container_instance, 'database')
+        assert hasattr(container_instance, 'redis')
+
+
+class TestDatabaseProvider:
+    """Database Provider测试"""
+
+    def setup_method(self):
+        """每个测试前重置容器"""
+        reset_container()
+
+    def teardown_method(self):
+        """每个测试后清理容器"""
+        reset_container()
+
+    def test_database_provider_exists(self):
+        """测试database provider存在"""
+        container_instance = Container()
+        assert hasattr(container_instance, 'database')
+        # database 应该是Singleton类型的provider
+        from dependency_injector.providers import Singleton
+        assert isinstance(container_instance.database, Singleton)
+
+    def test_database_singleton(self):
+        """测试database provider返回单例"""
+        container_instance = Container()
+        
+        # 配置数据库参数
+        container_instance.config.database.url.from_value("sqlite:///./test.db")
+        container_instance.config.database.echo.from_value(False)
+        container_instance.config.database.pool_size.from_value(5)
+        container_instance.config.database.max_overflow.from_value(10)
+        container_instance.config.database.pool_recycle.from_value(3600)
+
+        # 获取两次database实例
+        db1 = container_instance.database()
+        db2 = container_instance.database()
+
+        # 应该是同一个实例（Singleton）
+        assert db1 is db2
+
+    def test_database_with_different_config(self):
+        """测试不同配置返回不同实例"""
+        container1 = Container()
+        container2 = Container()
+
+        # Mock get_engine函数
+        with patch('app.core.database.get_engine') as mock_get_engine:
+            mock_engine1 = Mock()
+            mock_engine2 = Mock()
+            mock_get_engine.side_effect = [mock_engine1, mock_engine2]
+
+            # 配置两个容器
+            container1.config.database.url.from_value("sqlite:///./test1.db")
+            container2.config.database.url.from_value("sqlite:///./test2.db")
+
+            # 获取实例
+            db1 = container1.database()
+            db2 = container2.database()
+
+            # 不同容器应该返回不同实例
+            assert db1 is not db2
+
+
+class TestRedisProvider:
+    """Redis Provider测试"""
+
+    def setup_method(self):
+        """每个测试前重置容器"""
+        reset_container()
+
+    def teardown_method(self):
+        """每个测试后清理容器"""
+        reset_container()
+
+    def test_redis_provider_exists(self):
+        """测试redis provider存在"""
+        container_instance = Container()
+        assert hasattr(container_instance, 'redis')
+        # redis 应该是Factory类型的provider
+        from dependency_injector.providers import Factory
+        assert isinstance(container_instance.redis, Factory)
+
+    def test_redis_singleton(self):
+        """测试redis provider返回单例"""
+        container_instance = Container()
+        # 获取两次redis实例
+        redis1 = container_instance.redis()
+        redis2 = container_instance.redis()
+
+        # 应该是同一个实例（RedisManager本身就是单例）
+        assert redis1 is redis2
+
+    def test_redis_manager_type(self):
+        """测试返回的是RedisManager实例"""
+        container_instance = Container()
+        redis_manager = container_instance.redis()
+
+        # 应该是RedisManager类型
+        from app.core.redis import RedisManager
+        assert isinstance(redis_manager, RedisManager)

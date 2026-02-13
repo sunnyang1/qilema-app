@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
+from app.core.schemas import BaseSchema
+
 
 class EmergencyContactCreate(BaseModel):
     """创建紧急联系人"""
@@ -27,7 +29,7 @@ class EmergencyContactUpdate(BaseModel):
     notes: Optional[str] = Field(None, max_length=200)
 
 
-class EmergencyContactResponse(BaseModel):
+class EmergencyContactResponse(BaseSchema):
     """紧急联系人响应"""
     id: int
     user_id: str
@@ -41,3 +43,19 @@ class EmergencyContactResponse(BaseModel):
     updated_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm(cls, contact) -> "EmergencyContactResponse":
+        """从EmergencyContact ORM对象转换为EmergencyContactResponse"""
+        return cls(
+            id=contact.id,
+            user_id=contact.user_id,
+            contact_name=contact.contact_name,
+            phone=contact.phone,
+            relationship=contact.relationship,
+            is_primary=contact.is_primary,
+            priority=contact.priority,
+            notes=contact.notes,
+            created_at=contact.created_at,
+            updated_at=contact.updated_at
+        )

@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+from app.core.schemas import BaseSchema
+
 
 class SOSRequestCreate(BaseModel):
     """创建SOS求救请求"""
@@ -28,7 +30,7 @@ class SOSRequestUpdate(BaseModel):
     responder_notes: Optional[str] = Field(None, max_length=500, description="救援人员备注")
 
 
-class SOSRequestResponse(BaseModel):
+class SOSRequestResponse(BaseSchema):
     """SOS求救请求响应"""
     sos_id: str
     user_id: str
@@ -50,6 +52,30 @@ class SOSRequestResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm(cls, sos_request) -> "SOSRequestResponse":
+        """从SosRequest ORM对象转换为SOSRequestResponse"""
+        return cls(
+            sos_id=sos_request.sos_id,
+            user_id=sos_request.user_id,
+            device_id=sos_request.device_id,
+            trigger_type=sos_request.trigger_type,
+            status=sos_request.status,
+            latitude=sos_request.latitude,
+            longitude=sos_request.longitude,
+            location_description=sos_request.location_description,
+            health_data=sos_request.health_data,
+            severity=sos_request.severity,
+            auto_dispatch=sos_request.auto_dispatch,
+            emergency_center_notified=sos_request.emergency_center_notified,
+            contacts_notified=sos_request.contacts_notified,
+            responder_notes=sos_request.responder_notes,
+            triggered_at=sos_request.triggered_at,
+            responded_at=sos_request.responded_at,
+            resolved_at=sos_request.resolved_at,
+            created_at=sos_request.created_at
+        )
 
 
 class SOSLocationUpdate(BaseModel):

@@ -340,7 +340,7 @@ class NotificationService(BaseService[Notification]):
         self,
         db: Session,
         user_id: str,
-        notification_type: NotificationType,
+        notification_type: NotificationTypeEnum,
         title: str,
         content: str,
         priority: NotificationPriority = NotificationPriority.HIGH,

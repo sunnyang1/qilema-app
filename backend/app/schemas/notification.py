@@ -9,6 +9,8 @@ from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum
 
+from app.core.schemas import BaseSchema
+
 
 # ========== 枚举定义 ==========
 

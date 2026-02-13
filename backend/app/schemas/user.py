@@ -3,6 +3,9 @@
 """
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+from datetime import datetime
+
+from app.core.schemas import BaseSchema
 
 
 class UserRegister(BaseModel):
@@ -20,7 +23,7 @@ class UserLogin(BaseModel):
     password: str = Field(..., min_length=6, max_length=20, description="密码")
 
 
-class UserResponse(BaseModel):
+class UserResponse(BaseSchema):
     """用户响应"""
     user_id: str
     phone: str
@@ -28,10 +31,24 @@ class UserResponse(BaseModel):
     avatar: Optional[str]
     email: Optional[str]
     bio: Optional[str]
-    created_at: str
-    updated_at: Optional[str]
+    created_at: datetime
+    updated_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm(cls, user) -> "UserResponse":
+        """从User ORM对象转换为UserResponse"""
+        return cls(
+            user_id=str(user.id),
+            phone=user.phone,
+            nickname=user.nickname,
+            avatar=user.avatar,
+            email=user.email,
+            bio=user.bio,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        )
 
 
 class UserUpdate(BaseModel):

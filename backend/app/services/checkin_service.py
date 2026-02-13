@@ -19,11 +19,12 @@ from app.schemas.checkin import (
 from app.core.cache import get_cached, cache_result, invalidate_cache
 from app.core.cache_config import CacheConfig
 from app.services.base_service import BaseService
+from app.core.interfaces import ICheckInService
 
 
-class CheckInService(BaseService[CheckIn]):
-    """签到服务类 - 继承BaseService
-    
+class CheckInService(BaseService[CheckIn], ICheckInService):
+    """签到服务类 - 继承BaseService和实现ICheckInService接口
+
     提供签到记录的创建、查询、统计等功能
     统一使用类方法，便于利用 BaseService 的缓存机制
     """
@@ -194,6 +195,27 @@ class CheckInService(BaseService[CheckIn]):
             is_checked_in=bool(checkin),
             checkin_time=checkin.checkin_time if checkin else None
         )
+
+    @classmethod
+    def check_today_checked_in(cls, db: Session, user_id: str) -> bool:
+        """
+        检查今天是否已签到
+
+        Args:
+            db: 数据库会话
+            user_id: 用户ID
+
+        Returns:
+            bool: 是否已签到
+        """
+        today = date.today().strftime('%Y-%m-%d')
+        checkin = db.query(CheckIn).filter(
+            and_(
+                CheckIn.user_id == user_id,
+                CheckIn.checkin_date == today
+            )
+        ).first()
+        return bool(checkin)
 
     @classmethod
     def get_emergency_contacts_for_notification(cls, db: Session, user_id: str) -> List[EmergencyContact]:

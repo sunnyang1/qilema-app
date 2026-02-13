@@ -7,7 +7,8 @@
 import time
 import uuid
 import logging
-from typing import Callable
+import re
+from typing import Callable, Optional
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -17,6 +18,9 @@ from app.core.exceptions import BaseAppException
 
 # 设置日志
 logger = logging.getLogger(__name__)
+
+# 慢请求阈值（毫秒）
+SLOW_REQUEST_THRESHOLD = 500
 
 
 class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
@@ -39,25 +43,14 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         except BaseAppException as exc:
-            # 处理自定义应用异常
             return await self._handle_app_exception(request, exc)
         except Exception as exc:
-            # 处理未捕获的异常
             return await self._handle_unexpected_exception(request, exc)
 
     async def _handle_app_exception(self, request: Request, exc: BaseAppException) -> JSONResponse:
-        """处理应用异常
-
-        Args:
-            request: 请求对象
-            exc: 应用异常
-
-        Returns:
-            JSONResponse: 格式化的错误响应
-        """
+        """处理应用异常"""
         request_id = getattr(request.state, "request_id", "unknown")
 
-        # 记录错误日志
         logger.error(
             f"[{request_id}] 应用异常: {exc.code} - {exc.message}",
             extra={
@@ -71,30 +64,23 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
             exc_info=exc
         )
 
-        # 返回格式化的错误响应
+        sanitized_detail = self._sanitize_sensitive_info(exc.detail)
+
         return JSONResponse(
             status_code=exc.status_code,
             content={
                 "code": exc.code,
                 "message": exc.message,
-                "detail": exc.detail,
+                "detail": sanitized_detail,
+                "request_id": request_id,
                 "timestamp": int(time.time())
             }
         )
 
     async def _handle_unexpected_exception(self, request: Request, exc: Exception) -> JSONResponse:
-        """处理未预期的异常
-
-        Args:
-            request: 请求对象
-            exc: 异常对象
-
-        Returns:
-            JSONResponse: 格式化的服务器错误响应
-        """
+        """处理未预期的异常"""
         request_id = getattr(request.state, "request_id", "unknown")
 
-        # 记录错误日志
         logger.error(
             f"[{request_id}] 未预期的异常: {type(exc).__name__} - {str(exc)}",
             extra={
@@ -107,36 +93,46 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
             exc_info=exc
         )
 
-        # 返回格式化的错误响应
+        sanitized_message = self._sanitize_sensitive_info(str(exc))
+
         return JSONResponse(
             status_code=500,
             content={
                 "code": 500,
                 "message": "服务器内部错误",
-                "detail": str(exc) if logger.isEnabledFor(logging.DEBUG) else None,
+                "detail": sanitized_message if logger.isEnabledFor(logging.DEBUG) else None,
+                "request_id": request_id,
                 "timestamp": int(time.time())
             }
         )
 
+    def _sanitize_sensitive_info(self, info: Optional[any]) -> Optional[str]:
+        """脱敏敏感信息（密码、token等）"""
+        if not info:
+            return None
 
-class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """请求日志中间件
+        info_str = str(info)
 
-    记录所有HTTP请求的详细信息，包括请求ID、响应时间等
+        # 脱敏密码字段
+        info_str = re.sub(r'(["\']?password["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)', r'\1****', info_str, flags=re.IGNORECASE)
+        # 脱敏token字段
+        info_str = re.sub(r'(["\']?token["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)', r'\1****', info_str, flags=re.IGNORECASE)
+        # 脱敏secret字段
+        info_str = re.sub(r'(["\']?secret["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)', r'\1****', info_str, flags=re.IGNORECASE)
+
+        return info_str
+
+
+class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
+    """增强的日志中间件
+
+    支持请求ID生成、性能监控、慢请求标记
     """
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """处理请求并记录日志
-
-        Args:
-            request: 请求对象
-            call_next: 下一个中间件/路由处理函数
-
-        Returns:
-            Response: 响应对象
-        """
-        # 生成请求ID
-        request_id = str(uuid.uuid4())
+        """处理请求并记录详细日志"""
+        # 生成8位十六进制请求ID
+        request_id = uuid.uuid4().hex[:8]
         request.state.request_id = request_id
 
         # 记录请求开始时间
@@ -159,23 +155,38 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             # 调用下一个中间件/路由
             response = await call_next(request)
 
-            # 计算响应时间
-            process_time = (time.time() - start_time) * 1000  # 转换为毫秒
+            # 计算响应时间（毫秒）
+            duration_ms = (time.time() - start_time) * 1000
 
             # 添加响应头
             response.headers["X-Request-ID"] = request_id
-            response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+
+            # 识别慢请求并标记
+            is_slow = duration_ms > SLOW_REQUEST_THRESHOLD
+            if is_slow:
+                logger.warning(
+                    f"[{request_id}] 慢请求检测: {request.method} {request.url.path} "
+                    f"耗时 {duration_ms:.2f}ms（阈值: {SLOW_REQUEST_THRESHOLD}ms）",
+                    extra={
+                        "request_id": request_id,
+                        "method": request.method,
+                        "path": request.url.path,
+                        "duration_ms": duration_ms,
+                        "slow_request": True
+                    }
+                )
 
             # 记录响应日志
             logger.info(
                 f"[{request_id}] {request.method} {request.url.path} - 完成 "
-                f"({response.status_code}, {process_time:.2f}ms)",
+                f"({response.status_code}, {duration_ms:.2f}ms)",
                 extra={
                     "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "status_code": response.status_code,
-                    "process_time_ms": process_time
+                    "duration_ms": duration_ms,
+                    "slow_request": is_slow
                 }
             )
 
@@ -183,63 +194,23 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         except Exception as exc:
             # 计算响应时间
-            process_time = (time.time() - start_time) * 1000
+            duration_ms = (time.time() - start_time) * 1000
 
             # 记录错误日志
             logger.error(
                 f"[{request_id}] {request.method} {request.url.path} - 失败 "
-                f"({process_time:.2f}ms): {str(exc)}",
+                f"({duration_ms:.2f}ms): {str(exc)}",
                 extra={
                     "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
-                    "process_time_ms": process_time,
+                    "duration_ms": duration_ms,
                     "exception": str(exc)
                 },
                 exc_info=exc
             )
-
-            # 重新抛出异常，由ExceptionHandlerMiddleware处理
             raise
 
 
-class RequestIDMiddleware(BaseHTTPMiddleware):
-    """请求ID中间件
-
-    为每个请求生成唯一的请求ID，用于追踪和日志关联
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """处理请求并添加请求ID
-
-        Args:
-            request: 请求对象
-            call_next: 下一个中间件/路由处理函数
-
-        Returns:
-            Response: 响应对象
-        """
-        # 生成或使用现有的请求ID
-        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-        request.state.request_id = request_id
-
-        # 调用下一个中间件/路由
-        response = await call_next(request)
-
-        # 添加请求ID到响应头
-        response.headers["X-Request-ID"] = request_id
-
-        return response
-
-
-def setup_middleware(app: ASGIApp):
-    """设置所有中间件
-
-    Args:
-        app: FastAPI应用实例
-    """
-    # 按顺序添加中间件
-    # 注意：中间件的执行顺序与添加顺序相反
-    app.add_middleware(ExceptionHandlerMiddleware)
-    app.add_middleware(RequestLoggingMiddleware)
-    app.add_middleware(RequestIDMiddleware)
+# 保留旧的RequestLoggingMiddleware作为别名，保持向后兼容
+RequestLoggingMiddleware = EnhancedLoggingMiddleware

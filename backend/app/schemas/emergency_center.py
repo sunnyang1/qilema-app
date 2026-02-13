@@ -9,6 +9,8 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
+from app.core.schemas import BaseSchema
+
 
 # ========== 枚举定义 ==========
 

@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, field_validator, field_serializer
 from typing import Optional, List, Union
 from datetime import datetime
 
+from app.core.schemas import BaseSchema
+
 
 class AlertSettingCreate(BaseModel):
     """创建预警配置"""

@@ -6,6 +6,8 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 
+from app.core.schemas import BaseSchema
+
 
 class DeviceType(str, Enum):
     """设备类型枚举"""
