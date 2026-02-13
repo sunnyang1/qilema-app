@@ -8,6 +8,7 @@ from app.core.config import settings, setup_logging
 from app.core.database import init_db
 from app.core.middleware import setup_middleware
 from app.core.error_handlers import register_exception_handlers
+from app.core.prometheus_metrics import metrics, app_info
 from app.api import api_router
 
 # 创建FastAPI应用
@@ -36,6 +37,9 @@ register_exception_handlers(app)
 # 注册API路由
 app.include_router(api_router)
 
+# 注册Prometheus metrics端点
+app.add_route("/metrics", metrics)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -44,6 +48,13 @@ async def startup_event():
     setup_logging(settings)
     logger = logging.getLogger(__name__)
     logger.info(f"启动{settings.APP_NAME} v{settings.APP_VERSION}")
+
+    # 设置应用信息
+    app_info.info({
+        'name': settings.APP_NAME,
+        'version': settings.APP_VERSION,
+        'environment': settings.ENVIRONMENT
+    })
 
     # 验证配置
     config_errors = settings.validate_configuration()

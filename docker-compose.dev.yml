@@ -57,3 +57,47 @@ services:
       timeout: 5s
       retries: 2
       start_period: 10s
+    
+    # 开发环境资源限制（相对宽松）
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # PostgreSQL数据库覆盖配置（开发环境）
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: qilema_dev_password
+      POSTGRES_DB: qilema_dev
+    
+    # 开发环境资源限制（相对宽松）
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Redis缓存覆盖配置（开发环境）
+  redis:
+    # 开发环境资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # Nginx代理服务器覆盖配置（开发环境）
+  nginx:
+    # 开发环境不使用资源限制
+    deploy: {}
+
