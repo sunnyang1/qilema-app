@@ -8,7 +8,7 @@ from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import List, Union, Optional
 from pathlib import Path
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 
 
 class Settings(BaseSettings):
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "为独居人群提供紧急医疗救助服务"
 
     # ========== 调试模式 ==========
-    DEBUG: bool = False  # 默认False，根据ENVIRONMENT自动设置
+    DEBUG: Optional[bool] = None  # None表示未设置，根据ENVIRONMENT自动设置
 
     # ========== 日志配置 ==========
     LOG_LEVEL: str = "INFO"  # 日志级别: DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -58,9 +58,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./qilema.db"
 
     # ========== JWT配置 ==========
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    SECRET_KEY: str = "your-secret-key-change-in-production"  # 开发环境默认值，生产环境必须修改
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # ========== 数据加密配置 ==========
+    ENCRYPTION_KEY: str = ""
 
     # ========== Redis配置 ==========
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -109,6 +112,15 @@ class Settings(BaseSettings):
     NOTIFICATION_DEGRADATION_ENABLED: bool = True
     NOTIFICATION_CHANNEL_PRIORITY: List[str] = ["phone", "sms", "push", "email"]
 
+    # 通知服务重试配置（全局）
+    NOTIFICATION_MAX_RETRIES: int = 3
+    NOTIFICATION_RETRY_DELAYS: List[int] = [1, 2, 4]  # 指数退避延迟（秒）
+
+    # 熔断器配置
+    NOTIFICATION_CIRCUIT_BREAKER_THRESHOLD: int = 5  # 连续失败次数阈值
+    NOTIFICATION_CIRCUIT_BREAKER_TIMEOUT: int = 60  # 熔断恢复时间（秒）
+    NOTIFICATION_CIRCUIT_BREAKER_PERSIST_ENABLED: bool = False  # 是否启用熔断器状态持久化
+
     @field_validator("ENVIRONMENT")
     @classmethod
     def validate_environment(cls, v: str) -> str:
@@ -130,39 +142,33 @@ class Settings(BaseSettings):
 
     @field_validator("DEBUG", mode="before")
     @classmethod
-    def set_debug_by_environment(cls, v, info) -> bool:
-        """根据环境自动设置DEBUG模式
-
-        Args:
-            v: DEBUG值（字符串或布尔值）
-            info: Pydantic验证信息对象
-
-        Returns:
-            bool: DEBUG值（根据环境自动设置）
-        """
-        # 记录是否显式设置了DEBUG
-        explicitly_set = v is not None
-
+    def validate_debug_type(cls, v) -> Optional[bool]:
+        """验证DEBUG的类型和值"""
         # 转换输入为布尔值
         if isinstance(v, str):
-            v = v.lower() in ("true", "1", "yes", "on")
-        elif v is None:
-            v = False
+            return v.lower() in ("true", "1", "yes", "on")
+        elif v is None or isinstance(v, bool):
+            return v
+        else:
+            return None
 
-        # 如果未显式设置DEBUG，根据环境自动设置
-        if not explicitly_set:
-            environment = info.data.get("ENVIRONMENT")
-            if environment in ["development", "testing"]:
-                v = True
-            elif environment == "production":
-                v = False
+    def __init__(self, **kwargs):
+        """初始化配置"""
+        super().__init__(**kwargs)
 
-        # 如果显式设置了DEBUG为True，验证是否允许
-        environment = info.data.get("ENVIRONMENT")
-        if environment == "production" and v:
+        # 根据环境自动设置DEBUG模式
+        if "DEBUG" not in kwargs or kwargs.get("DEBUG") is None:
+            if self.ENVIRONMENT in ["development", "testing"]:
+                self.DEBUG = True
+            elif self.ENVIRONMENT == "production":
+                self.DEBUG = False
+
+    @model_validator(mode="after")
+    def validate_production_debug(self):
+        """验证生产环境不能开启DEBUG"""
+        if self.ENVIRONMENT == "production" and self.DEBUG:
             raise ValueError("生产环境不能开启DEBUG模式")
-
-        return v
+        return self
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -248,10 +254,13 @@ class Settings(BaseSettings):
     @field_validator("SECRET_KEY")
     @classmethod
     def validate_secret_key(cls, v: str, info) -> str:
-        """验证SECRET_KEY是否安全
+        """
+        验证 SECRET_KEY 的安全性和强度
+
+        开发环境允许使用默认值（带警告），生产环境必须使用强密钥
 
         Args:
-            v: SECRET_KEY值
+            v: SECRET_KEY的值
             info: Pydantic验证信息对象
 
         Returns:
@@ -260,13 +269,37 @@ class Settings(BaseSettings):
         Raises:
             ValueError: 当SECRET_KEY不安全时抛出
         """
-        # 检查是否是默认值
-        default_key = "your-secret-key-change-in-production"
-        if v == default_key:
+        # 检查是否为空
+        if not v or v.strip() == "":
             raise ValueError(
-                "SECRET_KEY不能使用默认值。"
-                f"请使用以下命令生成强随机密钥: python scripts/generate_secret_key.py"
+                "SECRET_KEY不能为空。"
+                f"请通过环境变量设置或修改 .env 文件。"
+                f"请使用以下命令生成强随机密钥: python backend/scripts/generate_secret_key.py"
             )
+
+        # 获取环境类型
+        environment = info.data.get("ENVIRONMENT", "development")
+
+        # 开发环境允许使用默认值，但发出警告
+        dev_default = "your-secret-key-change-in-production"
+
+        # 生产环境禁止使用默认值
+        if v == dev_default and environment == "production":
+            raise ValueError(
+                "生产环境SECRET_KEY不能使用默认值。"
+                "请使用以下命令生成强随机密钥: python scripts/generate_secret_key.py"
+            )
+
+        # 开发环境允许使用默认值，但发出警告
+        if v == dev_default and environment == "development":
+            import warnings
+            warnings.warn(
+                "⚠️  警告：正在使用开发环境默认 SECRET_KEY。"
+                "生产环境部署前必须修改为强随机密钥！"
+                "运行命令生成密钥: python scripts/generate_secret_key.py",
+                UserWarning
+            )
+            return v  # 直接返回，跳过所有后续检查
 
         # 检查最小长度（64字节）
         min_length = 64
@@ -279,7 +312,7 @@ class Settings(BaseSettings):
             )
 
         # 生产环境额外检查
-        if info.data.get("ENVIRONMENT") == "production":
+        if environment == "production":
             # 确保密钥强度足够
             import re
             has_upper = bool(re.search(r'[A-Z]', v))
@@ -304,13 +337,6 @@ class Settings(BaseSettings):
             List[str]: 错误列表，如果为空则表示配置有效
         """
         errors = []
-
-        # 验证SECRET_KEY
-        if self.SECRET_KEY == "your-secret-key-change-in-production":
-            errors.append(
-                "SECRET_KEY不能使用默认值。"
-                f"请使用以下命令生成强随机密钥: python scripts/generate_secret_key.py"
-            )
 
         # 验证DEBUG模式
         if self.ENVIRONMENT == "production" and self.DEBUG:
@@ -352,20 +378,8 @@ class Settings(BaseSettings):
                     "请明确指定允许的HTTP头部。"
                 )
 
-            # 验证SECRET_KEY强度
-            import re
-            has_upper = bool(re.search(r'[A-Z]', self.SECRET_KEY))
-            has_lower = bool(re.search(r'[a-z]', self.SECRET_KEY))
-            has_digit = bool(re.search(r'\d', self.SECRET_KEY))
-            has_special = bool(re.search(r'[^A-Za-z0-9]', self.SECRET_KEY))
-
-            char_types = sum([has_upper, has_lower, has_digit, has_special])
-            if char_types < 3:
-                errors.append(
-                    f"生产环境SECRET_KEY强度不足（仅满足{char_types}种字符类型），"
-                    "建议包含大小写字母、数字和特殊字符。"
-                    "请使用以下命令生成强随机密钥: python scripts/generate_secret_key.py"
-                )
+            # 注意：SECRET_KEY 的强度验证已在 validate_secret_key 验证器中完成，
+            # 此处无需重复检查以避免重复错误消息
 
         return errors
 

@@ -13,9 +13,9 @@ class TestSecretKeySecurity:
     def test_secret_key_validation_rejects_default(self):
         """验证SECRET_KEY验证会拒绝默认值"""
         try:
-            # 使用默认值创建Settings应该失败
+            # 在生产环境下使用默认值应该失败
             Settings(
-                ENVIRONMENT="development",
+                ENVIRONMENT="production",
                 SECRET_KEY="your-secret-key-change-in-production"
             )
             assert False, "应该抛出ValueError"
