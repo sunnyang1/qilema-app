@@ -877,12 +877,24 @@ class AnomalyService:
         
         # 自动触发SOS
         if anomaly.anomaly_type in [AnomalyTypeEnum.HEART_RATE_STOP, AnomalyTypeEnum.FALL_DETECTED]:
+            from app.schemas.sos_request import SOSRequestCreate
+
+            # 创建 SOS 请求数据
+            sos_data = SOSRequestCreate(
+                user_id=anomaly.user_id,  # 使用认证用户的 ID
+                sos_type="auto",
+                trigger_type="health",
+                emergency_reason=f"系统自动触发: {anomaly.description}",
+                severity="critical"
+            )
+
+            # 使用修复后的 API（user_id 参数从认证获取，不可篡改）
             sos_request = self.sos_service.create_sos_request(
                 db,
-                anomaly.user_id,
-                f"系统自动触发: {anomaly.description}",
-                auto_triggered=True
+                anomaly.user_id,  # 用户 ID 从认证获取
+                sos_data  # SOS 数据
             )
+
             anomaly.sos_triggered = sos_request.id
             anomaly.action_taken = f"自动触发SOS #{sos_request.id}"
             db.commit()

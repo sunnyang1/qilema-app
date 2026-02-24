@@ -19,7 +19,7 @@ from app.services.knowledge_service import (
     KnowledgeTagService
 )
 
-router = APIRouter(prefix="/knowledge", tags=["急救知识库"])
+router = APIRouter(tags=["急救知识库"])
 
 
 # ========== 首页数据 ==========

@@ -18,7 +18,7 @@ from app.core.response_builder import ApiResponseBuilder
 from app.models.user import User
 from app.services.health_report_service import HealthReportService, ReportPeriod
 
-router = APIRouter(prefix="/api/health-reports", tags=["健康报告"])
+router = APIRouter(tags=["健康报告"])
 
 
 # ========== 请求/响应模型 ==========

@@ -2,8 +2,11 @@
 FastAPI应用主入口
 """
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.core.config import settings, setup_logging
 from app.core.database import init_db
 from app.core.middleware import setup_middleware
@@ -11,13 +14,23 @@ from app.core.error_handlers import register_exception_handlers
 from app.core.prometheus_metrics import metrics, app_info
 from app.api import api_router
 
+# 创建速率限制器
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+
 # 创建FastAPI应用
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description=settings.APP_DESCRIPTION,
     debug=settings.DEBUG,
+    # 重新启用 OpenAPI 文档
 )
+
+# 设置速率限制器
+app.state.limiter = limiter
+
+# 注册速率限制异常处理器
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 配置CORS
 app.add_middleware(
@@ -95,6 +108,30 @@ async def health_check():
         "status": "healthy" if all_healthy else "unhealthy",
         "database": "connected" if db_healthy else "disconnected",
         "redis": "connected" if redis_healthy else "disconnected"
+    }
+
+
+@app.get("/api/v1/health")
+async def health_check_v1():
+    """健康检查 v1 API"""
+    from app.core.database import check_database_health
+    from app.core.redis import check_redis_health
+
+    # 检查数据库健康状态
+    db_healthy = check_database_health()
+    redis_healthy = check_redis_health()
+
+    # 整体健康状态
+    all_healthy = db_healthy and redis_healthy
+
+    return {
+        "code": 200,
+        "message": "OK",
+        "data": {
+            "status": "healthy" if all_healthy else "unhealthy",
+            "database": "connected" if db_healthy else "disconnected",
+            "redis": "connected" if redis_healthy else "disconnected"
+        }
     }
 
 

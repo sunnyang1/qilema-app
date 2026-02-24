@@ -59,13 +59,13 @@
 
 ### 技术栈
 
-#### 前端
-- **框架**：Flutter 3.16+
-- **语言**：Dart 3.2+
-- **UI组件**：Material Design / Cupertino
-- **状态管理**：Riverpod / Provider
-- **导航**：GoRouter / AutoRoute
-- **网络请求**：Dio
+#### 移动端
+- **框架**：Expo 54 + React Native 0.81.5
+- **语言**：TypeScript 5.8+
+- **路由**：Expo Router 6.0
+- **状态管理**：React Context
+- **UI组件**：React Native 组件 + Expo 模块
+- **网络请求**：Fetch API
 
 #### 后端
 - **框架**：Python 3.11+ + FastAPI 0.104+
@@ -148,11 +148,11 @@
 
 ### 环境要求
 
-- **Flutter SDK**：3.16.0+
-- **Dart SDK**：3.2.0+
-- **Python**：3.11+
-- **PostgreSQL**：15+
-- **Redis**：7+
+- **Node.js**：18.0+
+- **pnpm**：8.0+
+- **Python**：3.12+
+- **PostgreSQL**：15+ (可选)
+- **Redis**：7+ (可选)
 - **Docker**：20.10+ (可选)
 
 ### 安装步骤
@@ -164,11 +164,11 @@ git clone https://github.com/your-org/qilema-app.git
 cd qilema-app
 ```
 
-#### 2. 安装前端依赖
+#### 2. 安装移动端依赖
 
 ```bash
-cd frontend
-flutter pub get
+cd mobile
+pnpm install
 ```
 
 #### 3. 安装后端依赖
@@ -253,25 +253,31 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-#### 8. 启动前端应用
+#### 8. 启动移动端应用
 
 ```bash
-cd frontend
+cd mobile
 
-# iOS
-flutter run -d ios
+# 使用 Expo CLI 启动
+npx expo start
 
-# Android
-flutter run -d android
-
-# 或使用Chrome浏览器调试
-flutter run -d chrome
+# 或使用 EAS Build 构建生产版本
+eas build --platform ios
+eas build --platform android
 ```
 
-#### 9. 使用Docker启动（推荐）
+#### 9. 使用 Coze 启动（推荐）
 
 ```bash
-# 启动所有服务（后端、数据库、Redis）
+cd mobile
+bash .cozeproj/scripts/dev_build.sh
+bash .cozeproj/scripts/dev_run.sh
+```
+
+#### 10. 使用Docker启动（可选）
+
+```bash
+# 启动后端服务、数据库、Redis
 docker-compose up -d
 
 # 查看日志
@@ -293,22 +299,23 @@ docker-compose up -d --build
 
 ```
 qilema-app/
-├── frontend/                  # Flutter前端应用
-│   ├── lib/
-│   │   ├── main.dart         # 应用入口
-│   │   ├── core/             # 核心模块
-│   │   ├── features/         # 功能模块
-│   │   │   ├── auth/         # 认证模块
-│   │   │   ├── signin/       # 签到模块
-│   │   │   ├── sos/          # SOS模块
-│   │   │   ├── contacts/     # 联系人模块
-│   │   │   ├── health/       # 健康档案模块
-│   │   │   └── devices/      # 设备模块
-│   │   ├── shared/           # 共享组件
-│   │   └── l10n/             # 国际化
-│   ├── pubspec.yaml          # 依赖配置
-│   └── assets/               # 静态资源
-│
+├── mobile/                   # 移动端应用（Expo + React Native）
+│   ├── client/               # 移动端应用
+│   │   ├── app/              # Expo Router 路由
+│   │   ├── screens/          # 页面组件
+│   │   ├── components/       # 通用组件
+│   │   ├── services/         # 业务服务
+│   │   ├── utils/            # 工具函数
+│   │   ├── contexts/         # React Context
+│   │   ├── constants/        # 常量配置
+│   │   ├── hooks/            # React Hooks
+│   │   ├── assets/           # 静态资源
+│   │   ├── package.json      # npm 依赖
+│   │   ├── app.json          # Expo 配置
+│   │   └── tsconfig.json     # TypeScript 配置
+│   ├── server/               # 可选：Express 服务器
+│   ├── .coze                 # Coze 配置
+│   └── package.json          # 顶层依赖
 ├── backend/                   # Python后端服务
 │   ├── app/
 │   │   ├── main.py           # FastAPI应用入口
@@ -322,23 +329,24 @@ qilema-app/
 │   │   │   │   └── health.py # 健康档案API
 │   │   ├── core/             # 核心配置
 │   │   │   ├── config.py     # 应用配置
-│   │   │   ├── cache_config.py # 缓存配置中心（新增）
+│   │   │   ├── cache_config.py # 缓存配置中心
 │   │   │   └── security.py   # 安全相关
 │   │   ├── models/           # 数据模型
 │   │   ├── schemas/          # Pydantic模型
 │   │   ├── services/         # 业务逻辑
-│   │   │   ├── base_service.py      # 服务基类BaseService[T]（新增）
+│   │   │   ├── base_service.py      # 服务基类BaseService[T]
 │   │   │   ├── auth_service.py
-│   │   │   ├── alert_service.py     # 继承BaseService[Alert]
-│   │   │   ├── checkin_service.py   # 继承BaseService[CheckIn]
-│   │   │   ├── emergency_contact_service.py # 继承BaseService[EmergencyContact]
-│   │   │   ├── health_record_service.py     # 继承BaseService[HealthRecord]
+│   │   │   ├── alert_service.py
+│   │   │   ├── checkin_service.py
+│   │   │   ├── emergency_contact_service.py
+│   │   │   ├── health_record_service.py
 │   │   │   ├── notification_service.py
-│   │   │   └── encryption_service.py  # 加密服务（安全增强）
+│   │   │   └── encryption_service.py
 │   │   ├── tasks/            # Celery任务
 │   │   └── utils/            # 工具函数
-│   ├── tests/                # 测试（427个测试通过）
+│   ├── tests/                # 测试
 │   ├── requirements.txt       # Python依赖
+│   ├── .env.example          # 环境变量模板
 │   └── Dockerfile            # Docker镜像
 │
 ├── docs/                     # 文档
@@ -439,30 +447,38 @@ PREFIX_HEALTH_RECORD = "health"
 
 ## 开发指南
 
-### 前端开发
+### 移动端开发
 
 #### 添加新功能模块
 
-```bash
-cd frontend/lib/features
-flutter create --template=feature your_feature
-```
+1. 在 `client/screens/` 下创建新页面目录
+2. 在 `client/app/` 下配置路由（使用 Expo Router）
+3. 在 `client/services/` 下实现业务服务
+4. 在 `client/components/` 下创建可复用组件
 
 #### 运行测试
 
 ```bash
-cd frontend
-flutter test
+cd mobile
+pnpm test
 ```
 
 #### 构建发布版本
 
 ```bash
+cd mobile/client
+
+# 预构建（生成原生代码）
+npx expo prebuild --clean
+
 # iOS
-flutter build ios --release
+npx expo run:ios
 
 # Android
-flutter build apk --release
+npx expo run:android
+
+# Web
+npx expo start --web
 ```
 
 ### 后端开发
@@ -482,15 +498,7 @@ pytest
 
 # 带覆盖率报告
 pytest --cov=app --cov-report=html
-
-# 运行完整测试套件
-./run_full_tests.sh
-
-# 从项目根目录运行测试
-cd backend && pytest
 ```
-
-**当前测试状态**: 427个测试通过，服务基类采用率85%+
 
 #### 代码格式化
 
@@ -550,9 +558,9 @@ docker-compose down
 
 ### 代码规范
 
-- **Dart代码**：遵循Effective Dart指南
-- **Python代码**：遵循PEP 8规范，使用black格式化
-- **提交信息**：使用Conventional Commits格式
+- **TypeScript 代码**：遵循 TypeScript 官方规范，使用 ESLint + Prettier 格式化
+- **Python 代码**：遵循 PEP 8 规范，使用 black 格式化
+- **提交信息**：使用 Conventional Commits 格式
 
 ---
 
@@ -575,15 +583,16 @@ docker-compose down
 感谢所有为本项目做出贡献的开发者和用户！
 
 特别感谢：
-- Flutter团队提供优秀的跨平台框架
-- FastAPI团队提供高性能的Web框架
-- "死了么"App提供的产品灵感
+- Expo 团队提供优秀的跨平台开发框架
+- React Native 社区提供的丰富组件生态
+- FastAPI 团队提供高性能的 Web 框架
+- "死了么" App 提供的产品灵感
 
 ---
 
 ## 路线图
 
-### Phase 1：MVP版本（已完成 ✓）
+### Phase 1：MVP版本（进行中）
 - [x] 用户注册/登录
 - [x] 每日签到打卡
 - [x] 超时未签到预警
@@ -593,7 +602,7 @@ docker-compose down
 - [x] 健康档案管理
 - [ ] APP推送通知
 
-### Phase 2：增强版（已完成 ✓）
+### Phase 2：增强版（进行中）
 - [x] 智能设备绑定和数据同步
 - [x] 生理数据监测和异常预警
 - [x] 周边急救资源地图
@@ -601,8 +610,10 @@ docker-compose down
 - [x] 通知渠道扩展（邮件、电话）
 - [x] 签到提醒功能
 - [x] 用户设置和个性化配置
-- [x] 项目结构整理（backend/frontend/docs分离）
-- [x] Docker部署支持
+- [x] 项目结构整理（backend/mobile/docs分离）
+- [x] Docker 部署支持
+- [x] 前端技术栈迁移（Flutter → Expo + React Native）
+- [x] 应用"温暖守护"设计风格（晨光橙 + 生命绿）
 
 ### Phase 3：完整版（规划中）
 - [ ] 与120急救中心对接

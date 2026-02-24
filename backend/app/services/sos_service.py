@@ -21,14 +21,23 @@ class SOSService:
         pass
 
     @staticmethod
-    def create_sos_request(db: Session, sos_data: SOSRequestCreate) -> SOSRequest:
-        """创建SOS求救请求"""
+    def create_sos_request(db: Session, user_id: str, sos_data: SOSRequestCreate) -> SOSRequest:
+        """创建SOS求救请求
+
+        Args:
+            db: 数据库会话
+            user_id: 用户ID（从认证获取，不可篡改）
+            sos_data: SOS请求数据
+
+        Returns:
+            创建的SOS请求
+        """
         from app.models.sos_request import SOSTypeEnum
 
         sos_type = sos_data.sos_type or sos_data.trigger_type or SOSTypeEnum.MANUAL.value
 
         sos = SOSRequest(
-            user_id=sos_data.user_id,
+            user_id=user_id,  # 使用认证用户的ID，防止IDOR攻击
             sos_type=sos_type,
             latitude=sos_data.latitude,
             longitude=sos_data.longitude,

@@ -277,3 +277,152 @@ class TestErrorResponse:
         assert response.error == "ServerError"
         assert response.message == "服务器内部错误"
         assert response.details is None
+
+
+class TestUserResponseSerialization:
+    """UserResponse 序列化测试"""
+
+    def test_user_response_from_real_user_model(self):
+        """测试从真实 User ORM 对象序列化"""
+        from app.models.user import User
+        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+
+        # 创建一个模拟的 User 对象
+        user = User()
+        user.user_id = "test-user-001"
+        user.phone = "13800138000"
+        user.nickname = "测试用户"
+        user.gender = GenderEnum.MALE
+        user.birth_date = datetime(1990, 1, 1, 0, 0, 0)
+        user.blood_type = BloodTypeEnum.A
+        user.height = 175
+        user.weight = 70
+        user.created_at = datetime(2024, 1, 1, 12, 0, 0)
+        user.updated_at = datetime(2024, 1, 2, 12, 0, 0)
+        user.last_sign_in = datetime(2024, 1, 3, 8, 0, 0)
+
+        # 使用 Pydantic 的 model_validate 方法序列化
+        user_response = UserResponse.model_validate(user)
+
+        # 验证所有字段都正确序列化
+        assert user_response.user_id == "test-user-001"
+        assert user_response.phone == "13800138000"
+        assert user_response.nickname == "测试用户"
+        assert user_response.gender == GenderEnum.MALE
+        assert user_response.birth_date == datetime(1990, 1, 1, 0, 0, 0)
+        assert user_response.blood_type == BloodTypeEnum.A
+        assert user_response.height == 175
+        assert user_response.weight == 70
+        assert user_response.created_at == datetime(2024, 1, 1, 12, 0, 0)
+        assert user_response.updated_at == datetime(2024, 1, 2, 12, 0, 0)
+        assert user_response.last_sign_in == datetime(2024, 1, 3, 8, 0, 0)
+
+    def test_user_response_excludes_password_hash(self):
+        """测试 UserResponse 不包含敏感字段 password_hash"""
+        from app.models.user import User
+        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+
+        user = User()
+        user.user_id = "test-user-002"
+        user.phone = "13800138001"
+        user.password_hash = "hashed_password_123"  # 敏感字段
+        user.nickname = "用户2"
+        user.gender = GenderEnum.FEMALE
+        user.blood_type = BloodTypeEnum.UNKNOWN  # 设置默认值
+        user.created_at = datetime.now()
+
+        user_response = UserResponse.model_validate(user)
+
+        # 确保敏感字段不在响应中
+        assert not hasattr(user_response, 'password_hash')
+        # 确保其他字段正常
+        assert user_response.user_id == "test-user-002"
+        assert user_response.phone == "13800138001"
+
+    def test_user_response_handles_optional_fields(self):
+        """测试 UserResponse 正确处理可选字段"""
+        from app.models.user import User
+        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+
+        user = User()
+        user.user_id = "test-user-003"
+        user.phone = "13800138002"
+        user.nickname = None  # 可选字段为空
+        user.gender = GenderEnum.UNKNOWN
+        user.birth_date = None  # 可选字段为空
+        user.blood_type = BloodTypeEnum.UNKNOWN
+        user.height = None  # 可选字段为空
+        user.weight = None  # 可选字段为空
+        user.created_at = datetime.now()
+        user.updated_at = None  # 可选字段为空
+        user.last_sign_in = None  # 可选字段为空
+
+        user_response = UserResponse.model_validate(user)
+
+        assert user_response.user_id == "test-user-003"
+        assert user_response.nickname is None
+        assert user_response.birth_date is None
+        assert user_response.height is None
+        assert user_response.weight is None
+        assert user_response.updated_at is None
+        assert user_response.last_sign_in is None
+
+    def test_user_response_enum_serialization(self):
+        """测试枚举类型的序列化"""
+        from app.models.user import User
+        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+
+        # 测试所有性别枚举值
+        for gender in [GenderEnum.UNKNOWN, GenderEnum.MALE, GenderEnum.FEMALE]:
+            user = User()
+            user.user_id = f"user-{gender.value}"
+            user.phone = "13800138003"
+            user.gender = gender
+            user.blood_type = BloodTypeEnum.UNKNOWN  # 设置默认值
+            user.created_at = datetime.now()
+
+            user_response = UserResponse.model_validate(user)
+            assert user_response.gender == gender
+            assert isinstance(user_response.gender, GenderEnum)
+
+        # 测试所有血型枚举值
+        for blood_type in [BloodTypeEnum.A, BloodTypeEnum.B, BloodTypeEnum.O, BloodTypeEnum.AB, BloodTypeEnum.UNKNOWN]:
+            user = User()
+            user.user_id = f"user-{blood_type.value}"
+            user.phone = "13800138004"
+            user.gender = GenderEnum.UNKNOWN  # 设置默认值
+            user.blood_type = blood_type
+            user.created_at = datetime.now()
+
+            user_response = UserResponse.model_validate(user)
+            assert user_response.blood_type == blood_type
+            assert isinstance(user_response.blood_type, BloodTypeEnum)
+
+    def test_user_response_serialization_to_json(self):
+        """测试序列化为 JSON"""
+        from app.models.user import User
+        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+        import json
+
+        user = User()
+        user.user_id = "test-user-004"
+        user.phone = "13800138005"
+        user.nickname = "JSON测试用户"
+        user.gender = GenderEnum.FEMALE
+        user.birth_date = datetime(1995, 5, 15, 0, 0, 0)
+        user.blood_type = BloodTypeEnum.O
+        user.created_at = datetime(2024, 1, 1, 12, 0, 0)
+
+        user_response = UserResponse.model_validate(user)
+
+        # 转换为 JSON
+        json_str = user_response.model_dump_json()
+        json_data = json.loads(json_str)
+
+        # 验证 JSON 数据
+        assert json_data["user_id"] == "test-user-004"
+        assert json_data["phone"] == "13800138005"
+        assert json_data["nickname"] == "JSON测试用户"
+        assert json_data["gender"] == "2"  # GenderEnum.FEMALE 的值
+        assert json_data["blood_type"] == "O"
+        assert "password_hash" not in json_data  # 确保敏感字段不在 JSON 中

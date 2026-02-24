@@ -37,51 +37,52 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
     def create_checkin(cls, db: Session, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
         """
         创建签到记录
-        
+
         Args:
             db: 数据库会话
             user_id: 用户ID
             checkin_data: 签到数据
-            
+
         Returns:
             创建的签到记录
-            
+
         Raises:
             ValueError: 当天已签到
         """
         # 获取当前日期
         today = date.today().strftime('%Y-%m-%d')
-        
-        # 检查今天是否已经签到
-        existing_checkin = db.query(CheckIn).filter(
-            and_(
-                CheckIn.user_id == user_id,
-                CheckIn.checkin_date == today
+
+        try:
+            # 创建签到记录（依赖数据库唯一约束防止并发）
+            db_checkin = CheckIn(
+                user_id=user_id,
+                checkin_time=datetime.utcnow(),
+                checkin_date=today,
+                latitude=checkin_data.latitude,
+                longitude=checkin_data.longitude,
+                checkin_method=checkin_data.checkin_method,
+                notes=checkin_data.notes
             )
-        ).first()
-        
-        if existing_checkin:
-            raise ValueError("今天已经签到过了")
-        
-        # 创建签到记录
-        db_checkin = CheckIn(
-            user_id=user_id,
-            checkin_time=datetime.utcnow(),
-            checkin_date=today,
-            latitude=checkin_data.latitude,
-            longitude=checkin_data.longitude,
-            checkin_method=checkin_data.checkin_method,
-            notes=checkin_data.notes
-        )
-        
-        db.add(db_checkin)
-        db.commit()
-        db.refresh(db_checkin)
-        
-        # 失效相关缓存
-        cls.invalidate_list_cache(f"{user_id}:*")
-        
-        return db_checkin
+
+            db.add(db_checkin)
+            db.commit()
+            db.refresh(db_checkin)
+
+            # 失效相关缓存
+            cls.invalidate_list_cache(f"{user_id}:*")
+
+            return db_checkin
+
+        except Exception as e:
+            db.rollback()
+
+            # 捕获唯一约束违反错误
+            error_msg = str(e).lower()
+            if "unique" in error_msg or "ix_checkins_user_date" in error_msg:
+                raise ValueError("今天已经签到过了")
+
+            # 重新抛出其他错误
+            raise
 
     @classmethod
     def get_user_checkins(

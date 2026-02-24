@@ -23,7 +23,7 @@ from app.schemas.emergency_resource import (
 )
 from app.services.emergency_resource_service import EmergencyResourceService
 
-router = APIRouter(prefix="/api/emergency-resources", tags=["急救资源"])
+router = APIRouter(tags=["急救资源"])
 resource_service = EmergencyResourceService()
 
 

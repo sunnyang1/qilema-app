@@ -25,7 +25,7 @@ from app.schemas.device import (
 )
 from app.services.device_service import DeviceService
 
-router = APIRouter(prefix="/api/devices", tags=["设备管理"])
+router = APIRouter(tags=["设备管理"])
 device_service = DeviceService()
 
 

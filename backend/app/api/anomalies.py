@@ -27,7 +27,7 @@ from app.schemas.anomaly import (
 )
 from app.services.anomaly_service import AnomalyService
 
-router = APIRouter(prefix="/api/anomalies", tags=["异常监测"])
+router = APIRouter(tags=["异常监测"])
 anomaly_service = AnomalyService()
 
 

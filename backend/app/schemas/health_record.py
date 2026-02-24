@@ -68,6 +68,11 @@ class HealthRecordResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
+    # 关联数据（可选） - 使用字符串前向引用避免顺序问题
+    medical_histories: Optional[List["MedicalHistoryResponse"]] = None
+    medications: Optional[List["MedicationResponse"]] = None
+    allergies: Optional[List["AllergyResponse"]] = None
+
     model_config = {"from_attributes": True}
 
 

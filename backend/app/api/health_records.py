@@ -12,9 +12,9 @@ from app.core.response_builder import ApiResponseBuilder
 from app.services.health_record_service import HealthRecordService
 from app.schemas.health_record import (
     HealthRecordCreate, HealthRecordUpdate, HealthRecordResponse, HealthRecordSummary,
-    MedicalHistoryCreate, MedicalHistoryUpdate,
-    MedicationCreate, MedicationUpdate,
-    AllergyCreate, AllergyUpdate
+    MedicalHistoryCreate, MedicalHistoryUpdate, MedicalHistoryResponse,
+    MedicationCreate, MedicationUpdate, MedicationResponse,
+    AllergyCreate, AllergyUpdate, AllergyResponse
 )
 from app.models.health_record import (
     HealthRecord, MedicalHistory, Medication, Allergy
@@ -45,7 +45,10 @@ def create_health_record(
     """
     try:
         health_record = health_service.create_health_record(db, data)
-        return ApiResponseBuilder.success(data=health_record.to_dict(), message="健康档案创建成功")
+        return ApiResponseBuilder.success(
+            data=HealthRecordResponse.model_validate(health_record).model_dump(),
+            message="健康档案创建成功"
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -65,17 +68,29 @@ def get_health_record(
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
-        # 获取关联数据
-        medical_histories = health_record.medical_histories.all()
-        medications = health_record.medications.all()
-        allergies = health_record.allergies.all()
+        # 获取关联数据（lazy="dynamic" 关系需要使用 .all()）
+        medical_histories = [MedicalHistoryResponse.model_validate(mh) for mh in health_record.medical_histories.all()]
+        medications = [MedicationResponse.model_validate(med) for med in health_record.medications.all()]
+        allergies = [AllergyResponse.model_validate(allg) for allg in health_record.allergies.all()]
 
-        return ApiResponseBuilder.success(data={
-            **health_record.to_dict(),
-            "medical_histories": [mh.to_dict() for mh in medical_histories],
-            "medications": [med.to_dict() for med in medications],
-            "allergies": [allg.to_dict() for allg in allergies]
-        }, message="获取健康档案成功")
+        # 使用 Pydantic 模型序列化健康档案，并添加关联数据
+        health_record_data = HealthRecordResponse.model_validate(health_record).model_dump()
+        health_record_data.update({
+            "chronic_diseases": health_record.chronic_diseases_json,
+            "allergies_json": health_record.allergies_json,
+            "current_medications": health_record.current_medications_json,
+            "surgeries": health_record.surgeries_json,
+            "blood_transfusion_history": health_record.blood_transfusion_history,
+            "organ_transplant_history": health_record.organ_transplant_history,
+            "medical_histories": [mh.model_dump() for mh in medical_histories],
+            "medications": [med.model_dump() for med in medications],
+            "allergies": [allg.model_dump() for allg in allergies],
+        })
+
+        return ApiResponseBuilder.success(
+            data=health_record_data,
+            message="获取健康档案成功"
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -91,7 +106,10 @@ def update_health_record(
     """更新健康档案基础信息"""
     try:
         health_record = health_service.update_health_record(db, user_id, data)
-        return ApiResponseBuilder.success(data=health_record.to_dict(), message="健康档案更新成功")
+        return ApiResponseBuilder.success(
+            data=HealthRecordResponse.model_validate(health_record).model_dump(),
+            message="健康档案更新成功"
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -122,7 +140,11 @@ def add_medical_history(
         data.health_record_id = health_record.id
         medical_history = health_service.add_medical_history(db, health_record.id, data)
 
-        return ApiResponseBuilder.success(data=medical_history.to_dict(), message="病史记录添加成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=MedicalHistoryResponse.model_validate(medical_history).model_dump(),
+            message="病史记录添加成功"
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -142,7 +164,11 @@ def get_medical_histories(
 
         medical_histories = health_service.get_medical_histories(db, health_record.id)
 
-        return ApiResponseBuilder.success(data=[mh.to_dict() for mh in medical_histories], message="获取病史记录成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=[MedicalHistoryResponse.model_validate(mh).model_dump() for mh in medical_histories],
+            message="获取病史记录成功"
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -158,7 +184,11 @@ def update_medical_history(
     """更新病史记录"""
     try:
         medical_history = health_service.update_medical_history(db, history_id, data)
-        return ApiResponseBuilder.success(data=medical_history.to_dict(), message="病史记录更新成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=MedicalHistoryResponse.model_validate(medical_history).model_dump(),
+            message="病史记录更新成功"
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -205,7 +235,11 @@ def add_medication(
         data.health_record_id = health_record.id
         medication = health_service.add_medication(db, health_record.id, data)
 
-        return ApiResponseBuilder.success(data=medication.to_dict(), message="用药信息添加成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=MedicationResponse.model_validate(medication).model_dump(),
+            message="用药信息添加成功"
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -230,7 +264,11 @@ def get_medications(
 
         medications = health_service.get_medications(db, health_record.id, current_only)
 
-        return ApiResponseBuilder.success(data=[med.to_dict() for med in medications], message="获取用药信息成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=[MedicationResponse.model_validate(med).model_dump() for med in medications],
+            message="获取用药信息成功"
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -246,7 +284,22 @@ def update_medication(
     """更新用药信息"""
     try:
         medication = health_service.update_medication(db, medication_id, data)
-        return ApiResponseBuilder.success(data=medication.to_dict(), message="用药信息更新成功")
+        return ApiResponseBuilder.success(
+            data={
+                "id": medication.id,
+                "health_record_id": medication.health_record_id,
+                "drug_name": medication.drug_name,
+                "dosage": medication.dosage,
+                "frequency": medication.frequency,
+                "start_date": medication.start_date.isoformat() if medication.start_date else None,
+                "end_date": medication.end_date.isoformat() if medication.end_date else None,
+                "is_current": medication.is_current,
+                "notes": medication.notes,
+                "created_at": medication.created_at.isoformat() if medication.created_at else None,
+                "updated_at": medication.updated_at.isoformat() if medication.updated_at else None,
+            },
+            message="用药信息更新成功"
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -291,7 +344,11 @@ def add_allergy(
         data.health_record_id = health_record.id
         allergy = health_service.add_allergy(db, health_record.id, data)
 
-        return ApiResponseBuilder.success(data=allergy.to_dict(), message="过敏史添加成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=AllergyResponse.model_validate(allergy).model_dump(),
+            message="过敏史添加成功"
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -311,7 +368,11 @@ def get_allergies(
 
         allergies = health_service.get_allergies(db, health_record.id)
 
-        return ApiResponseBuilder.success(data=[allg.to_dict() for allg in allergies], message="获取过敏史成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=[AllergyResponse.model_validate(allg).model_dump() for allg in allergies],
+            message="获取过敏史成功"
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -327,7 +388,11 @@ def update_allergy(
     """更新过敏史"""
     try:
         allergy = health_service.update_allergy(db, allergy_id, data)
-        return ApiResponseBuilder.success(data=allergy.to_dict(), message="过敏史更新成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=AllergyResponse.model_validate(allergy).model_dump(),
+            message="过敏史更新成功"
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:

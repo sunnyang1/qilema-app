@@ -27,7 +27,7 @@ from app.schemas.checkin import (
 from app.services.checkin_service import CheckInService
 
 
-router = APIRouter(prefix="/checkins", tags=["签到打卡"])
+router = APIRouter(tags=["签到打卡"])
 
 
 @router.post("/")

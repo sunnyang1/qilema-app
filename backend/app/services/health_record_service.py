@@ -1,7 +1,7 @@
 """健康档案服务层"""
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from cryptography.fernet import Fernet
 import os
 
@@ -20,35 +20,49 @@ from app.services.base_service import BaseService
 
 
 class EncryptionService:
-    """加密服务"""
-    
+    """加密服务（延迟初始化，避免启动失败）"""
+
     def __init__(self):
-        # 从环境变量获取加密密钥
-        key = os.getenv('ENCRYPTION_KEY')
-        if not key:
+        # 延迟初始化，首次使用时才验证密钥
+        self._cipher: Optional[Fernet] = None
+        self._key: Optional[str] = None
+        self._initialized: bool = False
+
+    def _ensure_initialized(self):
+        """确保加密服务已初始化"""
+        if self._initialized:
+            return
+
+        from app.core.config import settings
+
+        self._key = settings.ENCRYPTION_KEY
+        if not self._key:
             raise ValueError(
-                "ENCRYPTION_KEY environment variable is not set. "
-                "Run the following command to generate a key:\n"
-                "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n"
-                "Then set it as environment variable: export ENCRYPTION_KEY=<generated_key>"
+                "ENCRYPTION_KEY is not configured. "
+                "Please set it in the .env file or environment variable."
             )
-        # 验证密钥有效性
+
         try:
-            self.cipher = Fernet(key)
+            self._cipher = Fernet(self._key)
+            self._initialized = True
         except Exception as e:
             raise ValueError(f"Invalid ENCRYPTION_KEY: {e}") from e
-    
+
     def encrypt(self, text: str) -> str:
         """加密文本"""
         if not text:
             return text
-        return self.cipher.encrypt(text.encode()).decode()
-    
+
+        self._ensure_initialized()
+        return self._cipher.encrypt(text.encode()).decode()
+
     def decrypt(self, encrypted_text: str) -> str:
         """解密文本"""
         if not encrypted_text:
             return encrypted_text
-        return self.cipher.decrypt(encrypted_text.encode()).decode()
+
+        self._ensure_initialized()
+        return self._cipher.decrypt(encrypted_text.encode()).decode()
 
 
 class HealthRecordService(BaseService[HealthRecord]):
@@ -91,11 +105,16 @@ class HealthRecordService(BaseService[HealthRecord]):
         return self._decrypt_record(health_record, encrypt)
     
     def get_health_record(self, db: Session, user_id: str) -> Optional[HealthRecord]:
-        """获取健康档案"""
+        """
+        获取健康档案
+
+        注意：关联关系（medical_histories, medications, allergies）使用 lazy="dynamic"，
+        因此在 API 层需要使用 .all() 方法获取所有关联数据。
+        """
         health_record = db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
         if not health_record:
             return None
-        
+
         return self._decrypt_record(health_record, health_record.is_encrypted == 1)
     
     def update_health_record(self, db: Session, user_id: str, data: HealthRecordUpdate) -> HealthRecord:

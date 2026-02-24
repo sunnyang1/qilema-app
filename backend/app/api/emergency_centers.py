@@ -24,7 +24,7 @@ from app.schemas.emergency_center import (
 )
 from app.services.emergency_center_service import EmergencyCenterService
 
-router = APIRouter(prefix="/api/emergency-centers", tags=["120急救中心"])
+router = APIRouter(tags=["120急救中心"])
 emergency_center_service = EmergencyCenterService()
 
 

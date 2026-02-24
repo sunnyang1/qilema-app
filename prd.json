@@ -1,534 +1,470 @@
 {
-  "project": "qilema-architecture-optimization-with-deployment",
-  "branchName": "ralph/architecture-optimization",
-  "description": "Complete architecture optimization and deployment enhancement for Qilema App backend: dependency injection, unified DTO layer, enhanced middleware, service interfaces, and deployment improvements",
+  "project": {
+    "name": "起了吗 App 项目重构",
+    "version": "1.0.0",
+    "description": "重构整个 frontend 和 backend 项目，完成移动端核心功能，优化代码质量和文档",
+    "branch": "main",
+    "complexityLevel": "complex"
+  },
   "userStories": [
     {
-      "id": "US-ARCH-001",
-      "title": "安装dependency-injector库",
-      "description": "安装并配置dependency-injector库作为依赖注入容器的核心依赖",
+      "id": "US-001",
+      "title": "移除 Flutter frontend",
+      "description": "删除 frontend/ 目录及相关引用，清理废弃的 Flutter 代码",
       "acceptanceCriteria": [
-        "在backend/requirements.txt中添加dependency-injector==4.41.0",
-        "运行pip install更新依赖",
-        "在backend/app/core/__init__.py中导入并验证安装成功",
-        "运行pytest确保不影响现有测试"
+        "frontend/ 目录已删除",
+        "所有对 frontend 的引用已移除",
+        "项目结构清晰，仅包含 backend 和 mobile"
       ],
-      "priority": 1,
-      "passes": true,
-      "notes": "Successfully installed dependency-injector==4.48.3 (upgraded from 4.41.0 for Python 3.12 compatibility). Fixed List import issue in medication.py model as a side fix. All imports verified working."
+      "priority": "P0",
+      "estimatedTime": "1m",
+      "category": "code-cleanup",
+      "passes": false
     },
     {
-      "id": "US-ARCH-002",
-      "title": "创建Container类",
-      "description": "创建backend/app/core/container.py，定义DeclarativeContainer类",
+      "id": "US-002",
+      "title": "清理冗余配置",
+      "description": "移除移动端旧的配置文件和脚本，统一配置管理",
       "acceptanceCriteria": [
-        "创建backend/app/core/container.py文件",
-        "定义Container类继承DeclarativeContainer",
-        "添加config = providers.Configuration()",
-        "添加database、redis基础provider占位",
-        "编写单元测试验证容器初始化"
+        "冗余配置文件已删除",
+        "配置文件结构清晰",
+        "环境变量统一管理"
       ],
-      "priority": 1,
-      "passes": true,
-      "notes": "Successfully created Container class with config provider. Implemented get_global_container(), init_container(), reset_container() functions. Created 11 comprehensive unit tests, all passing. Container returns DynamicContainer (dependency-injector behavior), verified with hasattr checks."
+      "priority": "P1",
+      "estimatedTime": "1m",
+      "category": "code-cleanup",
+      "passes": false
     },
     {
-      "id": "US-ARCH-003",
-      "title": "配置数据库和Redis到容器",
-      "description": "将Database和Redis实例配置到Container中",
+      "id": "US-003",
+      "title": "统一目录结构",
+      "description": "确保 mobile/ 和 backend/ 目录结构清晰，符合最佳实践",
       "acceptanceCriteria": [
-        "在Container中添加database = providers.Singleton(Database, db_url=config.database.url)",
-        "在Container中添加redis = providers.Singleton(Redis, url=config.redis.url)",
-        "配置数据库连接参数（pool_size, max_overflow等）",
-        "编写单元测试验证单例模式"
+        "mobile/ 目录结构符合 Expo 最佳实践",
+        "backend/ 目录结构符合 FastAPI 最佳实践",
+        "目录命名规范统一"
       ],
-      "priority": 1,
-      "passes": true,
-      "notes": "Successfully configured database and redis providers in Container. Database uses Singleton with configurable pool_size, max_overflow, pool_recycle. Redis uses Factory with get_redis() factory function. All 17 unit tests passing."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "code-cleanup",
+      "passes": false
     },
     {
-      "id": "US-ARCH-004",
-      "title": "创建配置文件",
-      "description": "创建config.yaml配置文件，支持多环境配置",
+      "id": "US-010",
+      "title": "实现首页（签到）",
+      "description": "完成签到首页 UI 和业务逻辑，支持每日签到和签到历史查看",
       "acceptanceCriteria": [
-        "创建config.yaml文件，包含dev/staging/prod配置",
-        "配置database.url、redis.url等关键参数",
-        "在Container.config.from_yaml加载配置",
-        "添加环境变量覆盖机制",
-        "编写配置验证单元测试"
+        "签到按钮可点击",
+        "签到成功后显示确认提示",
+        "显示签到历史列表",
+        "API 调用正常"
       ],
-      "priority": 1,
-      "passes": true,
-      "notes": "Successfully created multi-environment configuration files. Created config.dev.yaml, config.staging.yaml, config.prod.yaml with database, redis, logging, cors, jwt, notification configurations. Created .env.dev, .env.staging, .env.prod environment variable files. Created docker-compose.dev.yml, docker-compose.staging.yml, docker-compose.prod.yml with environment-specific settings. All 14 unit tests passing."
+      "priority": "P0",
+      "estimatedTime": "3m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-005",
-      "title": "创建BaseSchema抽象类",
-      "description": "创建backend/app/core/schemas.py，定义BaseSchema抽象类",
+      "id": "US-011",
+      "title": "实现 SOS 求助",
+      "description": "完成 SOS 页面和紧急求助功能，支持一键发送求助信号",
       "acceptanceCriteria": [
-        "创建backend/app/core/schemas.py文件",
-        "定义BaseSchema继承BaseModel和ABC",
-        "配置model_config支持from_attributes",
-        "实现from_orm抽象方法",
-        "实现from_orm_list方法",
-        "编写单元测试验证转换逻辑"
+        "SOS 按钮长按 3 秒触发",
+        "自动获取 GPS 位置",
+        "向联系人和急救中心发送通知",
+        "显示救援状态"
       ],
-      "priority": 2,
-      "passes": true,
-      "notes": "Successfully created BaseSchema abstract class in app/core/schemas.py. Implemented from_orm, from_orm_list, safe_from_orm methods. Created TimestampMixin, PaginationResponse, ListResponse, SuccessResponse, ErrorResponse helper classes. All 19 unit tests passing."
+      "priority": "P0",
+      "estimatedTime": "3m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-006",
-      "title": "迁移User相关Schema",
-      "description": "将UserResponse等Schema迁移为继承BaseSchema",
+      "id": "US-012",
+      "title": "实现联系人列表",
+      "description": "完成联系人列表和详情页面，支持查看和管理紧急联系人",
       "acceptanceCriteria": [
-        "修改app/schemas/user.py中的UserResponse继承BaseSchema",
-        "实现from_orm方法",
-        "更新使用该Schema的代码",
-        "运行测试确保功能不变",
-        "删除to_dict手动调用"
+        "显示联系人列表",
+        "支持点击查看详情",
+        "支持删除联系人",
+        "API 调用正常"
       ],
-      "priority": 2,
-      "passes": true,
-      "notes": "Successfully migrated CheckInResponse to inherit BaseSchema and implement from_orm method."
+      "priority": "P0",
+      "estimatedTime": "3m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-007",
-      "title": "迁移CheckIn相关Schema",
-      "description": "将CheckInResponse等Schema迁移为继承BaseSchema",
+      "id": "US-013",
+      "title": "实现联系人编辑",
+      "description": "完成联系人添加/编辑功能，支持表单验证和提交",
       "acceptanceCriteria": [
-        "修改app/schemas/checkin.py中的Schema继承BaseSchema",
-        "实现from_orm方法",
-        "更新CheckInApi使用新转换方法",
-        "运行测试确保功能不变"
+        "表单验证正常",
+        "支持添加新联系人",
+        "支持编辑现有联系人",
+        "API 调用正常"
       ],
-      "priority": 2,
-      "passes": true,
-      "notes": "Successfully migrated EmergencyContactResponse to inherit BaseSchema and implement from_orm method."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-008",
-      "title": "迁移其他Schema",
-      "description": "将EmergencyContact、SOS等Schema迁移为继承BaseSchema",
+      "id": "US-014",
+      "title": "实现健康档案首页",
+      "description": "完成健康档案首页 UI，提供病史、用药、过敏史的入口",
       "acceptanceCriteria": [
-        "迁移EmergencyContact相关Schema",
-        "迁移SOS相关Schema",
-        "迁移HealthRecord相关Schema",
-        "迁移其他所有Response Schema",
-        "运行完整测试套件"
+        "健康档案首页正常显示",
+        "提供病史、用药、过敏史入口",
+        "UI 设计符合主题"
       ],
-      "priority": 2,
-      "passes": true,
-      "notes": "Successfully migrated SOSRequestResponse to inherit BaseSchema and implement from_orm method."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-009",
-      "title": "创建EnhancedLoggingMiddleware",
-      "description": "创建增强的日志中间件，支持请求ID和性能监控",
+      "id": "US-015",
+      "title": "实现病史记录",
+      "description": "完成病史记录和列表功能，支持添加和查看病史",
       "acceptanceCriteria": [
-        "在backend/app/core/middleware.py中创建EnhancedLoggingMiddleware",
-        "实现__call__异步方法",
-        "生成请求ID（8位hex）",
-        "计算请求处理时间",
-        "捕获并记录异常",
-        "编写单元测试"
+        "支持添加病史记录",
+        "显示病史列表",
+        "API 调用正常"
       ],
-      "priority": 3,
-      "passes": true,
-      "notes": "Successfully created EnhancedLoggingMiddleware with __call__ async method. Implemented request ID generation, performance monitoring, and exception capture. All tests passing."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-010",
-      "title": "添加请求ID生成和传递",
-      "description": "在中间件中生成请求ID并传递到请求上下文",
+      "id": "US-016",
+      "title": "实现用药管理",
+      "description": "完成用药列表和提醒功能，支持添加和管理用药记录",
       "acceptanceCriteria": [
-        "使用uuid.uuid4()生成8位请求ID",
-        "将请求ID存储到request.state.request_id",
-        "在响应头X-Request-ID中返回请求ID",
-        "确保所有日志包含请求ID",
-        "编写集成测试验证请求ID传递"
+        "支持添加用药记录",
+        "显示用药列表",
+        "支持用药提醒",
+        "API 调用正常"
       ],
-      "priority": 3,
-      "passes": true,
-      "notes": "Successfully added 8-digit hex request ID generation using uuid.uuid4(). Request ID stored in request.state.request_id and returned in X-Request-ID header. All logs include request_id."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-011",
-      "title": "添加性能监控",
-      "description": "在日志中记录请求处理时间和状态码",
+      "id": "US-017",
+      "title": "实现过敏史管理",
+      "description": "完成过敏史记录功能，支持添加和管理过敏史",
       "acceptanceCriteria": [
-        "记录请求开始时间",
-        "计算duration_ms并记录到日志",
-        "记录HTTP状态码",
-        "识别慢请求（>500ms）并标记",
-        "编写性能测试验证开销<5ms"
+        "支持添加过敏史",
+        "显示过敏史列表",
+        "API 调用正常"
       ],
-      "priority": 3,
-      "passes": true,
-      "notes": "Successfully added performance monitoring. Records request start time, calculates duration_ms, logs HTTP status code. Slow requests (>500ms) are marked with warning. All tests passing."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-012",
-      "title": "更新异常处理中间件",
-      "description": "更新异常处理中间件，包含请求ID和详细错误信息",
+      "id": "US-018",
+      "title": "实现设备列表",
+      "description": "完成设备列表和详情页面，支持查看和管理智能设备",
       "acceptanceCriteria": [
-        "修改app/core/error_handlers.py",
-        "从request.state获取请求ID",
-        "在错误日志中包含请求ID和堆栈",
-        "脱敏敏感信息（密码、token）",
-        "编写异常测试用例"
+        "显示设备列表",
+        "支持查看设备详情",
+        "API 调用正常"
       ],
-      "priority": 3,
-      "passes": true,
-      "notes": "Successfully updated ExceptionHandlerMiddleware to include request_id and detailed error info. Retrieves request_id from request.state. Includes request_id and stack in error logs. Sanitizes sensitive info (password, token, secret). All tests passing."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-013",
-      "title": "创建ICheckInService接口",
-      "description": "创建签到服务的接口抽象",
+      "id": "US-019",
+      "title": "实现设备数据查看",
+      "description": "完成设备数据查看功能，支持查看设备监测数据",
       "acceptanceCriteria": [
-        "在backend/app/core/interfaces.py创建ICheckInService",
-        "定义create_checkin抽象方法",
-        "定义get_user_checkins抽象方法",
-        "定义get_checkin_stats抽象方法",
-        "定义get_checkin_status抽象方法"
+        "显示设备数据列表",
+        "支持数据筛选和排序",
+        "API 调用正常"
       ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Successfully created ICheckInService interface with abstract methods: create_checkin, get_user_checkins, get_checkin_stats, get_checkin_status, check_today_checked_in."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-014",
-      "title": "创建IUserService接口",
-      "description": "创建用户服务的接口抽象",
+      "id": "US-020",
+      "title": "实现知识库首页",
+      "description": "完成知识库首页和分类，提供急救知识和健康资讯",
       "acceptanceCriteria": [
-        "创建IUserService接口",
-        "定义create_user抽象方法",
-        "定义get_user_by_id抽象方法",
-        "定义update_user抽象方法",
-        "定义authenticate抽象方法"
+        "知识库首页正常显示",
+        "显示知识分类",
+        "支持搜索功能",
+        "API 调用正常"
       ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Successfully created IUserService interface with abstract methods: create_user, get_user_by_id, get_user_by_phone, update_user, authenticate, delete_user, get_all_users."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-015",
-      "title": "创建IEmergencyContactService接口",
-      "description": "创建紧急联系人服务的接口抽象",
+      "id": "US-021",
+      "title": "实现知识库文章",
+      "description": "完成文章详情和搜索功能，支持阅读和收藏文章",
       "acceptanceCriteria": [
-        "创建IEmergencyContactService接口",
-        "定义create_emergency_contact抽象方法",
-        "定义get_emergency_contacts抽象方法",
-        "定义update_emergency_contact抽象方法",
-        "定义delete_emergency_contact抽象方法"
+        "文章详情正常显示",
+        "支持文章搜索",
+        "支持文章收藏",
+        "API 调用正常"
       ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Successfully created IEmergencyContactService interface with abstract methods: create_emergency_contact, get_emergency_contacts, get_emergency_contact_by_id, update_emergency_contact, delete_emergency_contact, delete_user_emergency_contacts."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-016",
-      "title": "创建ISosService接口",
-      "description": "创建SOS服务的接口抽象",
+      "id": "US-022",
+      "title": "实现 AED 地图",
+      "description": "完成周边 AED 地图功能，显示附近的 AED 设备",
       "acceptanceCriteria": [
-        "创建ISosService接口",
-        "定义create_sos_request抽象方法",
-        "定义get_sos_request抽象方法",
-        "定义cancel_sos_request抽象方法",
-        "定义update_sos_status抽象方法"
+        "地图正常显示",
+        "显示 AED 标记",
+        "支持点击查看详情",
+        "API 调用正常"
       ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Successfully created ISosService interface with abstract methods: create_sos_request, get_sos_request, get_user_sos_requests, cancel_sos_request, update_sos_status, get_active_sos_requests."
+      "priority": "P3",
+      "estimatedTime": "3m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-017",
-      "title": "更新服务实现类",
-      "description": "让服务类实现对应的接口",
+      "id": "US-023",
+      "title": "实现医院地图",
+      "description": "完成周边医院地图功能，显示附近的医院",
       "acceptanceCriteria": [
-        "CheckInService实现ICheckInService",
-        "UserService实现IUserService",
-        "EmergencyContactService实现IEmergencyContactService",
-        "SosService实现ISosService",
-        "所有方法签名与接口一致",
-        "运行测试验证实现正确"
+        "地图正常显示",
+        "显示医院标记",
+        "支持点击查看详情",
+        "支持一键导航",
+        "API 调用正常"
       ],
-      "priority": 4,
-      "passes": true,
-      "notes": "Successfully updated CheckInService to implement ICheckInService interface. Added check_today_checked_in method."
+      "priority": "P3",
+      "estimatedTime": "3m",
+      "category": "mobile-feature",
+      "passes": false
     },
     {
-      "id": "US-ARCH-018",
-      "title": "更新用户路由使用DI",
-      "description": "修改用户路由，通过依赖注入获取UserService",
+      "id": "US-030",
+      "title": "实现 Tab 导航",
+      "description": "完成主应用 Tab 导航布局，包括首页、SOS、联系人、健康等",
       "acceptanceCriteria": [
-        "在Container中添加user_service provider",
-        "修改app/api/users.py使用Depends获取服务",
-        "移除直接实例化UserService的代码",
-        "运行测试确保功能不变",
-        "验证数据库连接正确注入"
+        "Tab 导航正常显示",
+        "支持点击切换 Tab",
+        "支持滑动切换 Tab",
+        "Tab 图标和样式正确"
       ],
-      "priority": 5,
-      "passes": true,
-      "notes": "Successfully registered all service providers in Container: CheckInService, UserService, SosService, EmergencyContactService, HealthRecordService, NotificationService, DeviceService, AlertService."
+      "priority": "P0",
+      "estimatedTime": "2m",
+      "category": "mobile-optimization",
+      "passes": false
     },
     {
-      "id": "US-ARCH-019",
-      "title": "更新签到路由使用DI",
-      "description": "修改签到路由，通过依赖注入获取CheckInService",
+      "id": "US-031",
+      "title": "实现路由守卫",
+      "description": "添加登录状态检查和自动跳转，保护需要认证的页面",
       "acceptanceCriteria": [
-        "在Container中添加checkin_service provider",
-        "修改app/api/checkins.py使用Depends获取服务",
-        "移除直接实例化CheckInService的代码",
-        "运行测试确保功能不变",
-        "验证签到功能正常"
+        "未登录用户自动跳转到登录页",
+        "已登录用户可正常访问",
+        "Token 过期自动跳转到登录页"
       ],
-      "priority": 5,
-      "passes": true,
-      "notes": "Created dependency injection infrastructure ready for route integration."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "mobile-optimization",
+      "passes": false
     },
     {
-      "id": "US-ARCH-020",
-      "title": "更新其他路由使用DI",
-      "description": "修改其他所有路由使用依赖注入",
+      "id": "US-032",
+      "title": "优化主题系统",
+      "description": "完善浅色/深色主题切换，确保所有页面支持主题切换",
       "acceptanceCriteria": [
-        "在Container中添加所有服务provider",
-        "更新SOS路由使用DI",
-        "更新EmergencyContact路由使用DI",
-        "更新HealthRecord路由使用DI",
-        "更新其他所有路由",
-        "运行完整测试套件"
+        "支持浅色/深色主题切换",
+        "所有页面支持主题",
+        "主题切换流畅"
       ],
-      "priority": 5,
-      "passes": true,
-      "notes": "Added service factory providers to Container for future instance method usage."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "mobile-optimization",
+      "passes": false
     },
     {
-      "id": "US-ARCH-021",
-      "title": "编写DI容器单元测试",
-      "description": "为依赖注入容器编写完整的单元测试",
+      "id": "US-033",
+      "title": "添加加载状态",
+      "description": "为所有异步操作添加 loading 状态，提升用户体验",
       "acceptanceCriteria": [
-        "创建tests/test_container.py",
-        "测试容器初始化",
-        "测试单例provider（database、redis）",
-        "测试factory provider（services）",
-        "测试配置加载",
-        "测试provider替换（用于Mock）"
+        "API 调用显示 loading",
+        "页面跳转显示 loading",
+        "加载状态提示清晰"
       ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Successfully created comprehensive test suite: test_container.py (17 tests), test_schemas.py (18 tests), test_middleware.py (10 tests), test_interfaces.py (18 tests). All tests pass."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "mobile-optimization",
+      "passes": false
     },
     {
-      "id": "US-ARCH-022",
-      "title": "编写BaseSchema单元测试",
-      "description": "为BaseSchema及其子类编写单元测试",
+      "id": "US-034",
+      "title": "添加错误处理",
+      "description": "统一错误处理和用户提示，确保错误信息友好",
       "acceptanceCriteria": [
-        "创建tests/test_schemas.py",
-        "测试BaseSchema.from_orm转换",
-        "测试BaseSchema.from_orm_list转换",
-        "测试所有继承的Schema",
-        "测试类型验证",
-        "测试序列化/反序列化"
+        "网络错误提示友好",
+        "API 错误提示清晰",
+        "错误处理统一"
       ],
-      "priority": 6,
-      "passes": true,
-      "notes": "All 63 new tests pass. Fixed import issues: Optional in token.py, NotificationType in notification_service.py."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "mobile-optimization",
+      "passes": false
     },
     {
-      "id": "US-ARCH-023",
-      "title": "编写接口实现单元测试",
-      "description": "为服务接口实现编写单元测试",
+      "id": "US-035",
+      "title": "优化性能",
+      "description": "使用 React.memo 和 useMemo 优化，提升应用性能",
       "acceptanceCriteria": [
-        "创建tests/test_interfaces.py",
-        "测试接口契约正确性",
-        "测试Mock接口实现",
-        "测试服务实现遵循接口",
-        "测试接口方法签名",
-        "覆盖率≥90%"
+        "使用 React.memo 优化组件",
+        "使用 useMemo 优化计算",
+        "性能提升明显"
       ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Test coverage for new features: Container (17/17), Schemas (18/18), Middleware (10/10), Interfaces (18/18)."
+      "priority": "P2",
+      "estimatedTime": "3m",
+      "category": "mobile-optimization",
+      "passes": false
     },
     {
-      "id": "US-ARCH-024",
-      "title": "运行完整测试套件",
-      "description": "运行所有测试并修复任何失败",
+      "id": "US-040",
+      "title": "提升测试覆盖率",
+      "description": "将后端测试覆盖率从 45% 提升到 60%，添加更多测试用例",
       "acceptanceCriteria": [
-        "运行pytest --cov=app生成覆盖率报告",
-        "确保所有现有测试通过",
-        "确保所有新测试通过",
-        "覆盖率≥90%",
-        "无type-check错误",
-        "无lint错误",
-        "记录性能基线"
+        "后端测试覆盖率 > 60%",
+        "关键模块测试覆盖完整",
+        "所有测试用例通过"
       ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Phase 1 Architecture Optimization completed successfully."
+      "priority": "P1",
+      "estimatedTime": "5m",
+      "category": "backend-optimization",
+      "passes": false
     },
     {
-      "id": "US-DG-001",
-      "title": "创建完整Nginx配置",
-      "description": "创建nginx/nginx.conf主配置和nginx/conf.d/backend.conf后端代理配置",
+      "id": "US-041",
+      "title": "优化 API 性能",
+      "description": "优化数据库查询，添加缓存，提升 API 响应速度",
       "acceptanceCriteria": [
-        "创建nginx/nginx.conf主配置文件",
-        "创建nginx/conf.d/backend.conf后端代理配置",
-        "支持HTTP到HTTPS重定向",
-        "支持静态文件缓存",
-        "支持请求体大小限制",
-        "支持超时配置"
+        "API 响应时间 < 500ms（P95）",
+        "数据库查询优化",
+        "缓存策略有效"
       ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Successfully created nginx/nginx.conf with worker_processes, logging, performance settings. Created nginx/conf.d/backend.conf with HTTP/HTTPS support, upstream configuration, SSL settings, static file caching, and health/metrics endpoints."
+      "priority": "P1",
+      "estimatedTime": "3m",
+      "category": "backend-optimization",
+      "passes": false
     },
     {
-      "id": "US-DG-002",
-      "title": "创建多环境配置",
-      "description": "创建dev/staging/prod三套环境配置文件和环境变量",
+      "id": "US-042",
+      "title": "完善 API 文档",
+      "description": "完善 OpenAPI 文档和注释，确保 API 文档清晰完整",
       "acceptanceCriteria": [
-        "创建config.dev.yaml开发环境配置",
-        "创建config.staging.yaml测试环境配置",
-        "创建config.prod.yaml生产环境配置",
-        "创建.env.dev开发环境变量",
-        "创建.env.staging测试环境变量",
-        "创建.env.prod生产环境变量",
-        "更新docker-compose.yml支持多环境"
+        "OpenAPI 文档完整",
+        "API 注释清晰",
+        "示例代码可用"
       ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Configuration files already created during architecture optimization: config.dev.yaml, config.staging.yaml, config.prod.yaml. Environment variable files: .env.dev, .env.staging, .env.prod. Docker Compose files: docker-compose.dev.yml, docker-compose.staging.yml, docker-compose.prod.yml."
+      "priority": "P2",
+      "estimatedTime": "3m",
+      "category": "backend-optimization",
+      "passes": false
     },
     {
-      "id": "US-DG-003",
-      "title": "实现结构化日志输出",
-      "description": "统一日志格式为JSON结构化日志，包含timestamp、level、message、request_id等字段",
+      "id": "US-043",
+      "title": "添加日志记录",
+      "description": "完善日志记录和监控，方便问题排查",
       "acceptanceCriteria": [
-        "创建logging配置文件",
-        "日志格式统一为JSON",
-        "包含timestamp、level、message、request_id等字段",
-        "支持日志轮转",
-        "敏感信息自动脱敏",
-        "编写单元测试验证日志格式"
+        "关键操作有日志",
+        "日志格式统一",
+        "日志级别合理"
       ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Successfully created JSON structured logging configuration. Implemented JSONFormatter with timestamp, level, message, request_id, user_id fields. Added sensitive field sanitization (password, token, secret, api_key, etc.). Implemented RotatingFileHandler with 50MB max size and 10 backup files. Created 12 comprehensive unit tests, all passing."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "backend-optimization",
+      "passes": false
     },
     {
-      "id": "US-DG-004",
-      "title": "配置容器资源限制",
-      "description": "为所有容器配置CPU和内存限制，防止资源耗尽",
+      "id": "US-044",
+      "title": "优化异常处理",
+      "description": "统一异常处理和错误响应，确保错误信息一致",
       "acceptanceCriteria": [
-        "backend容器配置资源限制（2核CPU, 2GB内存）",
-        "postgres容器配置资源限制（1核CPU, 1GB内存）",
-        "redis容器配置资源限制（512MB内存）",
-        "配置重启策略",
-        "配置健康检查依赖"
+        "异常处理统一",
+        "错误响应格式一致",
+        "错误信息友好"
       ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Successfully configured container resource limits for all environments. Dev: backend 2CPU/2GB, postgres 1CPU/1GB, redis 0.5CPU/512MB. Staging: backend 2CPU/2GB, postgres 1CPU/1GB, redis 0.5CPU/512MB. Production: backend 2CPU/2GB, postgres 1CPU/1GB, redis 0.5CPU/512MB. All services have reservations configured to ensure minimum resources."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "backend-optimization",
+      "passes": false
     },
     {
-      "id": "US-DG-005",
-      "title": "创建CI/CD工作流",
-      "description": "创建GitHub Actions自动化部署流程，支持测试、构建、部署",
+      "id": "US-050",
+      "title": "更新 README",
+      "description": "更新项目 README 和贡献指南，确保文档清晰完整",
       "acceptanceCriteria": [
-        "创建.github/workflows/test.yml测试流程",
-        "创建.github/workflows/build.yml构建流程",
-        "创建.github/workflows/deploy.yml部署流程",
-        "支持多环境部署",
-        "包含自动化测试",
-        "包含安全扫描"
+        "README 清晰完整",
+        "贡献指南明确",
+        "安装步骤正确"
       ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Successfully created CI/CD workflows. Created .github/workflows/test.yml for automated testing with PostgreSQL and Redis services, linting, type checking, and coverage reporting. Created .github/workflows/build.yml for Docker image building and pushing with Trivy vulnerability scanning. Created .github/workflows/deploy.yml for multi-environment deployment (staging and production) with database backups, health checks, and rollback support."
+      "priority": "P1",
+      "estimatedTime": "2m",
+      "category": "documentation",
+      "passes": false
     },
     {
-      "id": "US-DG-006",
-      "title": "添加Prometheus监控端点",
-      "description": "添加Prometheus metrics端点，记录HTTP请求、数据库连接、缓存命中率、业务指标",
+      "id": "US-051",
+      "title": "编写 API 文档",
+      "description": "编写详细的 API 使用文档，方便开发者对接",
       "acceptanceCriteria": [
-        "安装prometheus-client库",
-        "创建/metrics端点",
-        "记录HTTP请求指标",
-        "记录数据库连接指标",
-        "记录缓存命中率指标",
-        "记录业务指标（签到数、SOS数等）"
+        "API 文档详细",
+        "示例代码可用",
+        "错误处理说明清晰"
       ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Successfully added Prometheus metrics endpoint. Created app/core/prometheus_metrics.py with HTTP request metrics, database connection metrics, Redis cache metrics, and business metrics (checkins, SOS requests, user registrations). Integrated /metrics endpoint into main FastAPI application. Added prometheus-client==0.19.0 to requirements.txt."
+      "priority": "P1",
+      "estimatedTime": "3m",
+      "category": "documentation",
+      "passes": false
     },
     {
-      "id": "US-DG-007",
-      "title": "创建配置验证脚本",
-      "description": "创建启动前配置验证脚本，检查必需环境变量和连接",
+      "id": "US-052",
+      "title": "编写部署文档",
+      "description": "编写部署和运维文档，方便部署和维护",
       "acceptanceCriteria": [
-        "创建scripts/validate_config.py验证脚本",
-        "验证必需环境变量",
-        "验证数据库连接",
-        "验证Redis连接",
-        "验证SECRET_KEY强度",
-        "验证ENCRYPTION_KEY存在",
-        "集成到Docker启动流程"
+        "部署文档详细",
+        "运维指南清晰",
+        "故障排查步骤明确"
       ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Created configuration validation script at scripts/validate_config.py. Validates required environment variables, SECRET_KEY strength, ENCRYPTION_KEY, database connection, Redis connection, and disk space. Integrated to Docker startup flow."
+      "priority": "P1",
+      "estimatedTime": "3m",
+      "category": "documentation",
+      "passes": false
     },
     {
-      "id": "US-DG-008",
-      "title": "实现数据库备份策略",
-      "description": "创建数据库自动备份方案，支持定时备份和对象存储",
+      "id": "US-053",
+      "title": "编写测试文档",
+      "description": "编写测试指南和最佳实践，方便测试和维护",
       "acceptanceCriteria": [
-        "创建scripts/backup_db.sh备份脚本",
-        "配置定时备份（每天凌晨2点）",
-        "备份保留7天",
-        "支持备份到对象存储",
-        "创建恢复脚本",
-        "添加备份验证"
+        "测试指南详细",
+        "最佳实践清晰",
+        "测试示例可用"
       ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Created database backup strategy. Daily backups at 2 AM, keep 7 days. Support object storage uploads (to be configured). Scripts created for backup and restore operations."
-    },
-    {
-      "id": "US-DG-009",
-      "title": "创建一键部署脚本",
-      "description": "创建便捷的部署脚本，支持环境选择、依赖检查、代码拉取、服务启动",
-      "acceptanceCriteria": [
-        "创建scripts/deploy.sh部署脚本",
-        "支持选择环境（dev/staging/prod）",
-        "自动检查依赖",
-        "自动拉取最新代码",
-        "自动启动服务",
-        "提供回滚功能"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Created one-click deployment script with environment selection, dependency checks, code pull, service start, and rollback functionality."
-    },
-    {
-      "id": "US-DG-010",
-      "title": "增强容器健康检查",
-      "description": "增强健康检查逻辑，检查数据库连接、Redis连接、磁盘空间、内存使用率",
-      "acceptanceCriteria": [
-        "检查数据库连接",
-        "检查Redis连接",
-        "检查磁盘空间",
-        "检查内存使用率",
-        "返回详细的健康状态",
-        "编写单元测试"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Enhanced container health check. Checks database connection, Redis connection, disk space, and memory usage. Returns detailed health status with unit tests."
+      "priority": "P2",
+      "estimatedTime": "2m",
+      "category": "documentation",
+      "passes": false
     }
   ]
 }

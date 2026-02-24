@@ -14,33 +14,35 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.models.sos_request import SOSRequest
 
-router = APIRouter(prefix="/sos", tags=["SOS紧急求助"])
+router = APIRouter(tags=["SOS紧急求助"])
 
 
 @router.post("/", summary="发起SOS求助")
 async def create_sos(
-    location: dict,
-    message: Optional[str] = None,
-    notify_contacts: bool = True,
-    notify_120: bool = False,
+    latitude: float,
+    longitude: float,
+    address: Optional[str] = None,
+    emergency_reason: Optional[str] = None,
+    call_120: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """发起SOS紧急求助"""
     sos_request = SOSRequest(
         user_id=current_user.user_id,
-        location=location,
-        message=message,
-        status="pending",
-        notify_contacts=notify_contacts,
-        notify_120=notify_120
+        latitude=latitude,
+        longitude=longitude,
+        address=address,
+        emergency_reason=emergency_reason,
+        call_120=call_120,
+        status="pending"
     )
     db.add(sos_request)
     db.commit()
     db.refresh(sos_request)
 
     return ApiResponseBuilder.success(
-        data={"sos_id": sos_request.sos_id, "status": sos_request.status},
+        data={"sos_id": sos_request.id, "status": sos_request.status},
         message="SOS求助已发送"
     )
 

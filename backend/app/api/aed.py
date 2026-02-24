@@ -17,7 +17,7 @@ from app.core.response_builder import ApiResponseBuilder
 from app.models.user import User
 from app.services.aed_service import AEDService
 
-router = APIRouter(prefix="/api/aed", tags=["AED设备"])
+router = APIRouter(tags=["AED设备"])
 
 
 # ========== 请求/响应模型 ==========

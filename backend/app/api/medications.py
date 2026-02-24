@@ -13,12 +13,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.response_builder import ApiResponseBuilder
+from app.models.user import User
 from app.services.medication_service import (
     MedicationService, MedicationScheduleService,
     MedicationReminderService, MedicationLogService
 )
 
-router = APIRouter(prefix="/medications", tags=["用药提醒"])
+router = APIRouter(tags=["用药提醒"])
 
 # 服务实例
 medication_service = MedicationService()
@@ -33,7 +34,7 @@ log_service = MedicationLogService()
 async def get_medications(
     only_active: bool = True,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取用户的药品列表"""
     medications = medication_service.get_user_medications(
@@ -49,7 +50,7 @@ async def get_medications(
 async def create_medication(
     medication_data: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """创建药品信息"""
     medication = medication_service.create_medication(
@@ -62,7 +63,7 @@ async def create_medication(
 async def get_medication(
     medication_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取药品详情"""
     medication = medication_service.get_by_id(db, medication_id)
@@ -76,7 +77,7 @@ async def update_medication(
     medication_id: int,
     update_data: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """更新药品信息"""
     medication = medication_service.update_medication(
@@ -91,7 +92,7 @@ async def update_medication(
 async def delete_medication(
     medication_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """删除药品"""
     success = medication_service.delete_medication(
@@ -109,7 +110,7 @@ async def get_schedules(
     medication_id: Optional[int] = None,
     only_active: bool = True,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取用药计划列表"""
     if medication_id:
@@ -130,7 +131,7 @@ async def get_schedules(
 async def create_schedule(
     schedule_data: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """创建用药计划"""
     schedule = schedule_service.create_schedule(
@@ -143,7 +144,7 @@ async def create_schedule(
 async def get_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取用药计划详情"""
     schedule = schedule_service.get_by_id(db, schedule_id)
@@ -157,7 +158,7 @@ async def update_schedule(
     schedule_id: int,
     update_data: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """更新用药计划"""
     schedule = schedule_service.update_schedule(
@@ -172,7 +173,7 @@ async def update_schedule(
 async def pause_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """暂停用药计划"""
     schedule = schedule_service.pause_schedule(
@@ -187,7 +188,7 @@ async def pause_schedule(
 async def resume_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """恢复用药计划"""
     schedule = schedule_service.resume_schedule(
@@ -202,7 +203,7 @@ async def resume_schedule(
 async def delete_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """删除用药计划"""
     success = schedule_service.delete_schedule(
@@ -220,7 +221,7 @@ async def get_reminders(
     reminder_date: Optional[date] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取用药提醒列表"""
     from app.models.medication import ReminderStatus
@@ -244,7 +245,7 @@ async def get_reminders(
 @router.get("/reminders/today")
 async def get_today_reminders(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取今日提醒"""
     reminders = reminder_service.get_today_reminders(db, current_user.user_id)
@@ -262,7 +263,7 @@ async def get_logs(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取服药记录"""
     logs = log_service.get_user_logs(
@@ -278,7 +279,7 @@ async def get_logs(
 async def record_taken(
     data: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """记录已服药"""
     medication_id = data.get("medication_id")
@@ -300,7 +301,7 @@ async def record_taken(
 async def record_skipped(
     data: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """记录跳过服药"""
     medication_id = data.get("medication_id")
@@ -322,7 +323,7 @@ async def get_adherence_stats(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取服药依从性统计"""
     stats = log_service.get_adherence_stats(
@@ -336,7 +337,7 @@ async def get_adherence_stats(
 @router.get("/dashboard")
 async def get_dashboard(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """获取用药仪表盘数据"""
     today = date.today()

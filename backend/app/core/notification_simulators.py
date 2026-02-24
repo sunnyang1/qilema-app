@@ -640,6 +640,51 @@ class NotificationServiceConfig:
         """
         return self.settings.NOTIFICATION_CHANNEL_PRIORITY
 
+    def get_max_retries(self) -> int:
+        """
+        获取最大重试次数
+
+        Returns:
+            int: 最大重试次数
+        """
+        return self.settings.NOTIFICATION_MAX_RETRIES
+
+    def get_retry_delays(self) -> List[int]:
+        """
+        获取重试延迟列表
+
+        Returns:
+            list: 重试延迟列表（秒）
+        """
+        return self.settings.NOTIFICATION_RETRY_DELAYS
+
+    def get_circuit_breaker_threshold(self) -> int:
+        """
+        获取熔断器失败阈值
+
+        Returns:
+            int: 熔断器失败阈值
+        """
+        return self.settings.NOTIFICATION_CIRCUIT_BREAKER_THRESHOLD
+
+    def get_circuit_breaker_timeout(self) -> int:
+        """
+        获取熔断器超时时间
+
+        Returns:
+            int: 熔断器超时时间（秒）
+        """
+        return self.settings.NOTIFICATION_CIRCUIT_BREAKER_TIMEOUT
+
+    def is_circuit_breaker_persist_enabled(self) -> bool:
+        """
+        检查熔断器状态持久化是否启用
+
+        Returns:
+            bool: 是否启用持久化
+        """
+        return self.settings.NOTIFICATION_CIRCUIT_BREAKER_PERSIST_ENABLED
+
 
 def create_push_simulator(config: Optional[NotificationServiceConfig] = None) -> PushNotificationSimulator:
     """

@@ -5,6 +5,9 @@
 继承BaseService获得统一的CRUD和缓存能力
 """
 
+import time
+import threading
+import json
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -21,6 +24,13 @@ from app.schemas.notification import (
     NotificationTemplateCreate, NotificationTemplateUpdate,
     NotificationPriority, NotificationChannelEnum, NotificationStatusEnum, NotificationTypeEnum
 )
+
+# 临时定义 NotificationTemplate 类型（待模型实现后移除）
+class NotificationTemplate:
+    """通知模板（临时定义）"""
+    def __init__(self, title_template: str, content_template: str):
+        self.title_template = title_template
+        self.content_template = content_template
 from app.core.notification_simulators import (
     NotificationServiceConfig,
     create_push_simulator,
@@ -37,10 +47,10 @@ logger = logging.getLogger(__name__)
 
 class NotificationService(BaseService[Notification]):
     """消息通知服务
-    
+
     继承BaseService获得统一的CRUD和缓存能力
     """
-    
+
     # 基类配置
     model_class = Notification
     cache_prefix = CacheConfig.PREFIX_NOTIFICATION
@@ -55,6 +65,14 @@ class NotificationService(BaseService[Notification]):
         """
         # 初始化配置
         self.config = config or NotificationServiceConfig()
+
+        # 从配置中读取重试配置
+        self.MAX_RETRIES = self.config.get_max_retries()
+        self.RETRY_DELAYS = self.config.get_retry_delays()
+
+        # 从配置中读取熔断器配置
+        self.CIRCUIT_BREAKER_THRESHOLD = self.config.get_circuit_breaker_threshold()
+        self.CIRCUIT_BREAKER_TIMEOUT = self.config.get_circuit_breaker_timeout()
 
         # 初始化通知模拟器
         self.push_simulator = create_push_simulator(self.config)
@@ -76,7 +94,108 @@ class NotificationService(BaseService[Notification]):
             "sign_name": "",
             "template_code": ""
         }
-    
+
+        # 熔断器状态
+        self._circuit_breaker_failures = {}  # 每个渠道的连续失败计数
+        self._circuit_breaker_last_failure = {}  # 每个渠道的最后失败时间
+        self._circuit_breaker_lock = threading.Lock()  # 熔断器状态的线程锁
+
+        # 如果启用了持久化，尝试从 Redis 加载熔断器状态
+        if self.config.is_circuit_breaker_persist_enabled():
+            self._load_circuit_breaker_state_from_redis()
+
+    # ========== 熔断器状态持久化 ==========
+
+    def _load_circuit_breaker_state_from_redis(self):
+        """
+        从 Redis 加载熔断器状态
+
+        注意：这是一个可选功能，如果 Redis 不可用则静默失败
+        """
+        try:
+            from app.core.redis import get_redis_manager
+            redis_mgr = get_redis_manager()
+
+            if not redis_mgr.is_healthy():
+                logger.warning("Redis 不可用，无法加载熔断器状态")
+                return
+
+            # 获取所有熔断器状态的 key
+            pattern = "circuit_breaker:*"
+            keys = redis_mgr.redis_client.keys(pattern)
+
+            if not keys:
+                return
+
+            # 加载所有熔断器状态
+            with self._circuit_breaker_lock:
+                for key in keys:
+                    try:
+                        data = redis_mgr.redis_client.get(key)
+                        if data:
+                            state = json.loads(data)
+                            channel = key.decode("utf-8").replace("circuit_breaker:", "")
+                            self._circuit_breaker_failures[channel] = state.get("failures", 0)
+                            last_failure_time = state.get("last_failure_time")
+                            if last_failure_time:
+                                self._circuit_breaker_last_failure[channel] = datetime.fromisoformat(last_failure_time)
+                    except Exception as e:
+                        logger.error(f"加载熔断器状态失败（key: {key}）：{str(e)}")
+                        continue
+
+            logger.info(f"从 Redis 加载了 {len(keys)} 个熔断器状态")
+        except Exception as e:
+            logger.warning(f"加载熔断器状态失败：{str(e)}")
+
+    def _save_circuit_breaker_state_to_redis(self, channel: str):
+        """
+        保存熔断器状态到 Redis
+
+        Args:
+            channel: 通知渠道
+        """
+        try:
+            from app.core.redis import get_redis_manager
+            redis_mgr = get_redis_manager()
+
+            if not redis_mgr.is_healthy():
+                return
+
+            key = f"circuit_breaker:{channel}"
+            state = {
+                "failures": self._circuit_breaker_failures.get(channel, 0),
+                "last_failure_time": None
+            }
+
+            last_failure = self._circuit_breaker_last_failure.get(channel)
+            if last_failure:
+                state["last_failure_time"] = last_failure.isoformat()
+
+            # 保存状态（设置过期时间为超时时间的 2 倍）
+            expiry = self.CIRCUIT_BREAKER_TIMEOUT * 2
+            redis_mgr.redis_client.setex(key, expiry, json.dumps(state))
+        except Exception as e:
+            logger.error(f"保存熔断器状态失败（channel: {channel}）：{str(e)}")
+
+    def _clear_circuit_breaker_state_from_redis(self, channel: str):
+        """
+        清除 Redis 中的熔断器状态
+
+        Args:
+            channel: 通知渠道
+        """
+        try:
+            from app.core.redis import get_redis_manager
+            redis_mgr = get_redis_manager()
+
+            if not redis_mgr.is_healthy():
+                return
+
+            key = f"circuit_breaker:{channel}"
+            redis_mgr.redis_client.delete(key)
+        except Exception as e:
+            logger.error(f"清除熔断器状态失败（channel: {channel}）：{str(e)}")
+
     # ========== 通知发送核心逻辑 ==========
     
     def send_notification(
@@ -191,9 +310,141 @@ class NotificationService(BaseService[Notification]):
             # 不启用降级策略，直接发送
             self._send_notification_directly(notification, channel)
 
+    def _check_circuit_breaker(self, channel: str) -> bool:
+        """
+        检查熔断器状态（线程安全）
+
+        Args:
+            channel: 通知渠道
+
+        Returns:
+            bool: True 表示熔断器关闭（可以发送），False 表示熔断器开启（禁止发送）
+        """
+        channel_str = str(channel)
+
+        with self._circuit_breaker_lock:
+            # 检查是否达到熔断阈值
+            if channel_str not in self._circuit_breaker_failures:
+                return True
+
+            failures = self._circuit_breaker_failures[channel_str]
+            last_failure = self._circuit_breaker_last_failure[channel_str]
+
+            # 如果失败次数超过阈值
+            if failures >= self.CIRCUIT_BREAKER_THRESHOLD:
+                # 检查是否超过熔断恢复时间
+                time_since_failure = (datetime.utcnow() - last_failure).total_seconds()
+                if time_since_failure < self.CIRCUIT_BREAKER_TIMEOUT:
+                    logger.warning(
+                        f"熔断器开启（渠道: {channel_str}），连续失败 {failures} 次，"
+                        f"距离上次失败 {time_since_failure:.0f} 秒，还需等待 {self.CIRCUIT_BREAKER_TIMEOUT - time_since_failure:.0f} 秒"
+                    )
+                    return False
+                else:
+                    # 超过熔断恢复时间，重置熔断器
+                    logger.info(f"熔断器恢复（渠道: {channel_str}）")
+                    self._circuit_breaker_failures[channel_str] = 0
+
+            return True
+
+    def _record_circuit_breaker_failure(self, channel: str):
+        """
+        记录熔断器失败（线程安全，支持持久化）
+
+        Args:
+            channel: 通知渠道
+        """
+        channel_str = str(channel)
+        with self._circuit_breaker_lock:
+            self._circuit_breaker_failures[channel_str] = self._circuit_breaker_failures.get(channel_str, 0) + 1
+            self._circuit_breaker_last_failure[channel_str] = datetime.utcnow()
+            logger.warning(f"熔断器记录失败（渠道: {channel_str}，失败次数: {self._circuit_breaker_failures[channel_str]}）")
+
+            # 如果启用了持久化，保存到 Redis
+            if self.config.is_circuit_breaker_persist_enabled():
+                self._save_circuit_breaker_state_to_redis(channel_str)
+
+    def _record_circuit_breaker_success(self, channel: str):
+        """
+        记录熔断器成功（线程安全，支持持久化）
+
+        Args:
+            channel: 通知渠道
+        """
+        channel_str = str(channel)
+        with self._circuit_breaker_lock:
+            if channel_str in self._circuit_breaker_failures:
+                self._circuit_breaker_failures[channel_str] = 0
+                logger.info(f"熔断器重置（渠道: {channel_str}）")
+
+                # 如果启用了持久化，清除 Redis 中的状态
+                if self.config.is_circuit_breaker_persist_enabled():
+                    self._clear_circuit_breaker_state_from_redis(channel_str)
+
+    def _try_send_with_retry(self, notification: Notification, channel: str) -> Dict[str, Any]:
+        """
+        带重试机制的通知发送（同步方法）
+
+        注意：此方法在同步上下文中使用，time.sleep 是安全的。
+        如果在异步上下文中调用，应使用 asyncio.sleep 替代。
+
+        Args:
+            notification: 通知对象
+            channel: 通知渠道
+
+        Returns:
+            dict: 发送结果 {"success": bool, "error": str}
+        """
+        channel_str = str(channel)
+
+        for attempt in range(self.MAX_RETRIES):
+            # 记录重试日志
+            if attempt > 0:
+                delay = self.RETRY_DELAYS[attempt - 1]
+                logger.info(f"通知重试（渠道: {channel_str}，重试次数: {attempt}/{self.MAX_RETRIES}，延迟: {delay}s）")
+                # 注意：time.sleep 在同步上下文中是安全的
+                # 如果需要在异步上下文中使用，请改用 asyncio.sleep
+                time.sleep(delay)
+
+            try:
+                result = self._try_send_by_channel(notification, channel_str)
+
+                if result["success"]:
+                    # 发送成功，重置熔断器
+                    self._record_circuit_breaker_success(channel_str)
+                    logger.info(f"通知发送成功（渠道: {channel_str}，尝试次数: {attempt + 1}）")
+                    return result
+                else:
+                    # 发送失败，记录日志
+                    logger.warning(
+                        f"通知发送失败（渠道: {channel_str}，尝试次数: {attempt + 1}/{self.MAX_RETRIES}）: {result['error']}"
+                    )
+                    if attempt == self.MAX_RETRIES - 1:
+                        # 最后一次重试失败，记录熔断器失败
+                        self._record_circuit_breaker_failure(channel_str)
+                        return result
+                    # 不是最后一次重试，继续重试
+
+            except Exception as e:
+                # 发送异常，记录日志
+                logger.error(
+                    f"通知发送异常（渠道: {channel_str}，尝试次数: {attempt + 1}/{self.MAX_RETRIES}）: {str(e)}"
+                )
+                if attempt == self.MAX_RETRIES - 1:
+                    # 最后一次重试失败，记录熔断器失败
+                    self._record_circuit_breaker_failure(channel_str)
+                    return {"success": False, "error": str(e)}
+                # 不是最后一次重试，继续重试
+
+        # 所有重试都失败
+        return {
+            "success": False,
+            "error": f"重试 {self.MAX_RETRIES} 次后仍然失败"
+        }
+
     def _send_notification_with_degradation(self, notification: Notification, initial_channel: str):
         """
-        使用降级策略发送通知
+        使用降级策略发送通知（带重试机制）
 
         Args:
             notification: 通知对象
@@ -204,9 +455,9 @@ class NotificationService(BaseService[Notification]):
         # 将channel转换为字符串（枚举值）
         initial_channel_str = str(initial_channel)
 
-        # 首先尝试初始渠道
-        try:
-            result = self._try_send_by_channel(notification, initial_channel_str)
+        # 首先尝试初始渠道（带重试）
+        if self._check_circuit_breaker(initial_channel_str):
+            result = self._try_send_with_retry(notification, initial_channel_str)
             if result["success"]:
                 # 发送成功
                 self._mark_notification_sent(notification)
@@ -214,10 +465,10 @@ class NotificationService(BaseService[Notification]):
                 return
             # 初始渠道失败，记录日志
             logger.warning(f"初始渠道发送失败（渠道: {initial_channel_str}）: {result['error']}")
-        except Exception as e:
-            logger.error(f"初始渠道发送异常（渠道: {initial_channel_str}）: {str(e)}")
+        else:
+            logger.warning(f"初始渠道熔断，跳过（渠道: {initial_channel_str}）")
 
-        # 初始渠道失败，按照优先级尝试其他渠道
+        # 初始渠道失败，按照优先级尝试其他渠道（带重试）
         for channel in channel_priority:
             # 跳过已尝试的初始渠道
             if channel == initial_channel_str:
@@ -226,24 +477,23 @@ class NotificationService(BaseService[Notification]):
             # 记录降级日志
             logger.info(f"通知降级：尝试渠道 {channel}")
 
-            try:
-                # 尝试通过当前渠道发送
-                result = self._try_send_by_channel(notification, channel)
+            # 检查熔断器状态
+            if not self._check_circuit_breaker(channel):
+                logger.warning(f"渠道熔断，跳过（渠道: {channel}）")
+                continue
 
-                if result["success"]:
-                    # 发送成功，更新通知渠道为实际使用的渠道
-                    notification.channel = NotificationChannelEnum(channel)
-                    self._mark_notification_sent(notification)
-                    logger.info(f"通知发送成功（使用渠道: {channel}）: {notification.title}")
-                    return
-                else:
-                    # 发送失败，继续尝试下一个渠道
-                    logger.warning(f"通知发送失败（渠道: {channel}）: {result['error']}")
-                    continue
+            # 尝试通过当前渠道发送（带重试）
+            result = self._try_send_with_retry(notification, channel)
 
-            except Exception as e:
-                # 发送异常，继续尝试下一个渠道
-                logger.error(f"通知发送异常（渠道: {channel}）: {str(e)}")
+            if result["success"]:
+                # 发送成功，更新通知渠道为实际使用的渠道
+                notification.channel = NotificationChannelEnum(channel)
+                self._mark_notification_sent(notification)
+                logger.info(f"通知发送成功（使用渠道: {channel}）: {notification.title}")
+                return
+            else:
+                # 发送失败，继续尝试下一个渠道
+                logger.warning(f"通知发送失败（渠道: {channel}）: {result['error']}")
                 continue
 
         # 所有渠道都失败了
@@ -251,17 +501,26 @@ class NotificationService(BaseService[Notification]):
 
     def _send_notification_directly(self, notification: Notification, channel: str):
         """
-        直接发送通知（不使用降级策略）
+        直接发送通知（不使用降级策略，但使用重试机制）
 
         Args:
             notification: 通知对象
             channel: 通知渠道
         """
-        try:
-            self._try_send_by_channel(notification, channel)
+        channel_str = str(channel)
+
+        # 检查熔断器状态
+        if not self._check_circuit_breaker(channel_str):
+            logger.warning(f"渠道熔断，直接发送失败（渠道: {channel_str}）")
+            self._mark_notification_failed(notification, f"渠道熔断（渠道: {channel_str}）")
+            return
+
+        # 带重试的直接发送
+        result = self._try_send_with_retry(notification, channel_str)
+        if result["success"]:
             self._mark_notification_sent(notification)
-        except Exception as e:
-            self._mark_notification_failed(notification, str(e))
+        else:
+            self._mark_notification_failed(notification, result["error"])
 
     def _try_send_by_channel(self, notification: Notification, channel: str) -> Dict[str, Any]:
         """

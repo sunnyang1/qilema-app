@@ -1,6 +1,6 @@
 from typing import Optional, List
-from sqlalchemy import Column, String, Integer, DateTime, Enum as SQLEnum
-from sqlalchemy.orm import relationship as db_relationship
+from sqlalchemy import Column, String, Integer, DateTime, Enum as SQLEnum, inspect
+from sqlalchemy.orm import relationship as db_relationship, RelationshipProperty
 from sqlalchemy.sql import func
 from ..core.database import Base
 from app.models.base_mixin import BaseModelMixin
@@ -60,14 +60,16 @@ class User(Base, BaseModelMixin):
         """
         将用户模型转换为字典
         
-        自动排除敏感字段password_hash，除非显式包含
+        自动排除敏感字段password_hash和所有关联关系字段，除非显式包含
+        
+        使用SQLAlchemy inspect功能自动检测关联关系，无需手动维护字段列表
         
         Args:
             exclude: 额外要排除的字段列表
             include: 只包含的字段列表（优先级高于exclude）
             
         Returns:
-            dict: 用户数据的字典表示（不含敏感信息）
+            dict: 用户数据的字典表示（不含敏感信息和关联关系）
             
         示例:
             >>> user.to_dict()
@@ -81,6 +83,16 @@ class User(Base, BaseModelMixin):
         """
         # 默认排除敏感字段
         default_exclude = ["password_hash"]
+        
+        # 自动检测所有关联关系字段
+        mapper = inspect(self.__class__)
+        relationship_names = []
+        for prop in mapper.attrs:
+            if isinstance(prop, RelationshipProperty):
+                relationship_names.append(prop.key)
+        
+        # 合并敏感字段和关联关系字段
+        default_exclude.extend(relationship_names)
         
         # 合并用户指定的排除字段
         if exclude:

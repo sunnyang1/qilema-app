@@ -140,3 +140,27 @@ class HeartHealthAnalysis(BaseModel):
     heart_rate_variability: Optional[float] = None
     abnormal_beats: int
     abnormal_periods: List[Dict[str, Any]]
+
+
+class AnomalyResponse(BaseModel):
+    """异常记录响应"""
+    id: int
+    user_id: str
+    device_id: Optional[str]
+    anomaly_type: str
+    severity: str
+    status: str
+    anomaly_value: Optional[float]
+    threshold_value: Optional[float]
+    deviation_ratio: Optional[float]
+    description: Optional[str]
+    trigger_condition: Optional[str]
+    detected_at: datetime
+    resolved_at: Optional[datetime]
+    action_taken: Optional[str]
+    sos_triggered: Optional[int]
+    extra_metadata: Optional[str]
+    created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
