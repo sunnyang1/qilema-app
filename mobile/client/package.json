@@ -1,6 +1,6 @@
 {
-  "name": "expo-app",
-  "description": "my-expo-app",
+  "name": "qilema-app",
+  "description": "起了吗 App - 为独居人群提供紧急医疗救助服务",
   "main": "expo-router/entry",
   "private": true,
   "scripts": {
@@ -9,7 +9,8 @@
     "install-missing": "node ./scripts/install-missing-deps.js",
     "lint": "expo lint",
     "start": "expo start --web --clear",
-    "test": "jest --watchAll"
+    "test": "jest --watchAll",
+    "build:web": "expo export:web"
   },
   "jest": {
     "preset": "jest-expo"
