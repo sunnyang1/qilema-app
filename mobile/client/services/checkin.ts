@@ -29,7 +29,7 @@ export const checkInService = {
    */
   async checkIn(location?: { latitude: number; longitude: number }): Promise<CheckIn> {
     try {
-      const response = await apiClient.post('/api/v1/checkin', {
+      const response = await apiClient.post('/api/v1/checkins', {
         location,
         timestamp: new Date().toISOString(),
       });
@@ -49,7 +49,7 @@ export const checkInService = {
    */
   async getCheckInHistory(page = 1, pageSize = 20): Promise<CheckIn[]> {
     try {
-      const response = await apiClient.get(`/api/v1/checkin/history?page=${page}&pageSize=${pageSize}`);
+      const response = await apiClient.get(`/api/v1/checkins/history?page=${page}&pageSize=${pageSize}`);
       return response.data;
     } catch (error) {
       console.error('获取签到历史失败:', error);
@@ -62,7 +62,7 @@ export const checkInService = {
    */
   async getCheckInStats(): Promise<CheckInStats> {
     try {
-      const response = await apiClient.get('/api/v1/checkin/stats');
+      const response = await apiClient.get('/api/v1/checkins/stats');
 
       // 尝试从缓存读取
       const cachedData = await AsyncStorage.getItem(STORAGE_KEY);
