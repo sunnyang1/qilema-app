@@ -2,7 +2,15 @@
 # 产物部署使用
 set -euo pipefail
 
-ROOT_DIR="$(pwd)"
+# 检查并切换到正确的目录
+if [ -d "mobile" ] && [ -d "mobile/client" ] && [ -d "mobile/server" ]; then
+    # 从根目录运行
+    ROOT_DIR="$(pwd)/mobile"
+    cd mobile
+else
+    # 从 mobile 目录运行
+    ROOT_DIR="$(pwd)"
+fi
 
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-5000}"

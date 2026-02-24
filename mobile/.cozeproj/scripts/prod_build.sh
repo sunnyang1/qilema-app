@@ -1,7 +1,16 @@
 #!/bin/bash
 if [ -z "${BASH_VERSION:-}" ]; then exec /usr/bin/env bash "$0" "$@"; fi
 set -euo pipefail
-ROOT_DIR="$(pwd)"
+
+# 检查并切换到正确的目录
+if [ -d "mobile" ] && [ -d "mobile/client" ] && [ -d "mobile/server" ]; then
+    # 从根目录运行
+    ROOT_DIR="$(pwd)/mobile"
+    cd mobile
+else
+    # 从 mobile 目录运行
+    ROOT_DIR="$(pwd)"
+fi
 
 # ==================== 工具函数 ====================
 info() {
@@ -19,6 +28,8 @@ check_command() {
     error "命令 $1 未找到，请先安装"
   fi
 }
+
+info "构建目录: $ROOT_DIR"
 
 info "==================== 开始构建 ===================="
 info "开始执行构建脚本（build_prod.sh）..."
