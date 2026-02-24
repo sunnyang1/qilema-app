@@ -1,7 +1,11 @@
 {
-  "name": "server",
+  "name": "@qilema/app-server",
+  "version": "1.0.0",
+  "description": "起了吗 App 前端静态文件服务器",
   "private": true,
   "type": "module",
+  "author": "Qilema Team",
+  "license": "MIT",
   "scripts": {
     "build": "node build.js",
     "dev": "bash ../.cozeproj/scripts/server_dev_run.sh",

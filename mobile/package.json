@@ -1,7 +1,29 @@
 {
-  "name": "expo-express-monorepo",
+  "name": "qilema-app",
+  "version": "1.0.0",
+  "description": "起了吗 App - 为独居人群提供紧急医疗救助服务。一个基于 Expo + React Native 的移动应用，提供每日签到、SOS 紧急求助、联系人管理、健康档案等核心功能。",
+  "main": "server/dist/index.js",
   "private": true,
-  "version": "0.0.0",
+  "author": "Qilema Team",
+  "license": "MIT",
+  "keywords": [
+    "expo",
+    "react-native",
+    "emergency",
+    "medical",
+    "health",
+    "safety",
+    "elderly-care",
+    "check-in"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sunnyang1/qilema-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sunnyang1/qilema-app/issues"
+  },
+  "homepage": "https://github.com/sunnyang1/qilema-app#readme",
   "scripts": {
     "dev": "bash .cozeproj/scripts/dev_run.sh",
     "build": "bash .cozeproj/scripts/prod_build.sh",
@@ -12,6 +34,7 @@
   "devDependencies": {},
   "packageManager": "pnpm@9.0.0",
   "engines": {
+    "node": ">=18.0.0",
     "pnpm": ">=9.0.0"
   },
   "pnpm": {
