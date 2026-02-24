@@ -136,7 +136,31 @@ npx jest
 
 ## 部署
 
-详细部署文档请参考：[deployment.md](docs/deployment.md)
+### Coze 平台部署
+
+本项目支持在 Coze 平台部署，详细步骤请参考：[Coze 部署指南](COZE_DEPLOYMENT_GUIDE.md)
+
+**快速部署步骤:**
+
+1. 推送代码到 GitHub
+   ```bash
+   cd /workspace/projects
+   ./push-to-github.sh
+   ```
+
+2. 在 Coze 平台刷新项目页面
+
+3. 触发部署
+
+### 本地部署
+
+详细部署文档请参考：[mobile/DEPLOYMENT.md](mobile/DEPLOYMENT.md)
+
+### 其他文档
+
+- [部署修复总结](DEPLOYMENT_FIX_SUMMARY.md)
+- [Android 构建错误修复](mobile/ANDROID_BUILD_FIX.md)
+- [Coze 部署检查清单](mobile/COZE_DEPLOYMENT_CHECKLIST.md)
 
 ## 文档
 
