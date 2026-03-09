@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     # ========== 紧急求助配置 ==========
     SOS_CONTACT_NOTIFY_CHANNELS: List[str] = ["push", "sms"]
 
+    # ========== 服务器配置 ==========
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+
     # ========== 通知服务配置 ==========
 
     # 推送通知配置

@@ -4,7 +4,7 @@
 import json
 import hashlib
 from functools import wraps
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, Tuple
 import logging
 import time
 
@@ -291,7 +291,7 @@ NULL_VALUE_MARKER = "__CACHE_NULL__"
 NULL_VALUE_TTL = 60  # 空值缓存TTL（秒）
 
 
-def get_cached_with_null_protection(key: str) -> tuple[Optional[Any], bool]:
+def get_cached_with_null_protection(key: str) -> Tuple[Optional[Any], bool]:
     """获取缓存值（带缓存穿透防护）
 
     Args:

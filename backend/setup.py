@@ -1,0 +1,52 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="qilema-app",
+    version="1.0.0",
+    description="为独居人群提供紧急医疗救助服务",
+    author="起了吗开发团队",
+    author_email="dev@qilema.com",
+    packages=find_packages(),
+    install_requires=[
+        "fastapi==0.104.1",
+        "uvicorn[standard]==0.24.0",
+        "sqlalchemy==2.0.23",
+        "psycopg2-binary==2.9.9",
+        "redis==5.0.1",
+        "pydantic==2.5.0",
+        "pydantic-settings==2.1.0",
+        "python-jose[cryptography]==3.3.0",
+        "passlib[bcrypt]==1.7.4",
+        "python-multipart==0.0.6",
+        "httpx==0.25.2",
+        "python-dotenv==1.0.0",
+        "Markdown==3.5.1",
+    ],
+    extras_require={
+        "dev": [
+            "pytest==8.3.5",
+            "pytest-asyncio==0.21.1",
+            "pytest-cov==4.1.0",
+            "black==24.10.0",
+            "isort==5.13.2",
+            "flake8==7.1.1",
+            "mypy==1.13.0",
+            "pre-commit==3.7.1",
+        ],
+        "prod": [
+            "gunicorn==21.2.0",
+            "alembic==1.13.1",
+        ],
+    },
+    python_requires=">=3.8",
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Healthcare Industry",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+    ],
+)

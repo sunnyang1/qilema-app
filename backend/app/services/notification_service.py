@@ -340,7 +340,7 @@ class NotificationService(BaseService[Notification]):
         self,
         db: Session,
         user_id: str,
-        notification_type: NotificationType,
+        notification_type: NotificationTypeEnum,
         title: str,
         content: str,
         priority: NotificationPriority = NotificationPriority.HIGH,
@@ -538,18 +538,19 @@ class NotificationService(BaseService[Notification]):
         logger.info(f"获取通知模板: {template_code}")
         return None
     
-    def render_template(self, template: NotificationTemplate, data: Dict[str, Any]) -> Dict[str, str]:
-        """渲染通知模板"""
-        title = template.title_template
-        content = template.content_template
-        
-        # 简单的模板渲染(实际可以使用更强大的模板引擎如Jinja2)
-        for key, value in data.items():
-            placeholder = f"{{{{{key}}}}}"
-            title = title.replace(placeholder, str(value))
-            content = content.replace(placeholder, str(value))
-        
-        return {"title": title, "content": content}
+    # TODO: 待NotificationTemplate模型实现后启用
+    # def render_template(self, template: NotificationTemplate, data: Dict[str, Any]) -> Dict[str, str]:
+    #     """渲染通知模板"""
+    #     title = template.title_template
+    #     content = template.content_template
+    #     
+    #     # 简单的模板渲染(实际可以使用更强大的模板引擎如Jinja2)
+    #     for key, value in data.items():
+    #         placeholder = f"{{{{{key}}}}}"
+    #         title = title.replace(placeholder, str(value))
+    #         content = content.replace(placeholder, str(value))
+    #     
+    #     return {"title": title, "content": content}
     
     # ========== 通知统计 ==========
     
