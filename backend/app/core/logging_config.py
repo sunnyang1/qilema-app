@@ -170,7 +170,7 @@ class ContextFilter(logging.Filter):
             request_id = request_id_var.get()
             if request_id:
                 record.request_id = request_id
-        except:
+        except Exception:
             pass
 
         # 尝试从上下文中获取用户 ID
@@ -181,7 +181,7 @@ class ContextFilter(logging.Filter):
             user_id = user_id_var.get()
             if user_id:
                 record.user_id = user_id
-        except:
+        except Exception:
             pass
 
         return True

@@ -54,7 +54,7 @@ class DeviceService(BaseService[Device]):
             Device: 设备对象，不存在则返回None
         """
         query = db.query(Device).filter(
-            Device.device_id == device_id, Device.is_active == True
+            Device.device_id == device_id, Device.is_active.is_(True)
         )
         if user_id:
             query = query.filter(Device.user_id == user_id)
@@ -230,7 +230,7 @@ class DeviceService(BaseService[Device]):
         query = db.query(Device).filter(Device.user_id == user_id)
 
         if not include_inactive:
-            query = query.filter(Device.is_active == True)
+            query = query.filter(Device.is_active)
 
         devices = query.order_by(desc(Device.bound_at)).all()
         return devices
@@ -511,8 +511,8 @@ class DeviceService(BaseService[Device]):
         offline_devices = (
             db.query(Device)
             .filter(
-                Device.is_active == True,
-                Device.is_online == True,
+                Device.is_active.is_(True),
+                Device.is_online.is_(True),
                 or_(
                     Device.last_sync_at < threshold_time, Device.last_sync_at.is_(None)
                 ),

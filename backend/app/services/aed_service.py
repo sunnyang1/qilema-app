@@ -63,7 +63,7 @@ class AEDService(BaseService[EmergencyResource]):
             query = query.filter(
                 or_(
                     EmergencyResource.aed_status == AEDStatus.ACTIVE.value,
-                    EmergencyResource.aed_status == None,
+                    EmergencyResource.aed_status.is_(None),
                 )
             )
 
@@ -220,7 +220,7 @@ class AEDService(BaseService[EmergencyResource]):
             status_counts[status.value] = count
 
         # 未设置状态的
-        unknown_count = query.filter(EmergencyResource.aed_status == None).count()
+        unknown_count = query.filter(EmergencyResource.aed_status.is_(None)).count()
         status_counts["unknown"] = unknown_count
 
         # 按城市统计（前10）

@@ -35,7 +35,7 @@ class KnowledgeCategoryService(BaseService[KnowledgeCategory]):
         Returns:
             分类列表
         """
-        query = db.query(KnowledgeCategory).filter(KnowledgeCategory.is_active == True)
+        query = db.query(KnowledgeCategory).filter(KnowledgeCategory.is_active)
 
         if parent_id is None:
             query = query.filter(KnowledgeCategory.parent_id.is_(None))
@@ -124,7 +124,7 @@ class KnowledgeTagService(BaseService[KnowledgeTag]):
         """
         return (
             db.query(KnowledgeTag)
-            .filter(KnowledgeTag.is_active == True)
+            .filter(KnowledgeTag.is_active)
             .order_by(KnowledgeTag.name.asc())
             .all()
         )
@@ -171,7 +171,7 @@ class KnowledgeTagService(BaseService[KnowledgeTag]):
             db.query(KnowledgeTag)
             .filter(
                 and_(
-                    KnowledgeTag.is_active == True,
+                    KnowledgeTag.is_active.is_(True),
                     KnowledgeTag.name.ilike(f"%{keyword}%"),
                 )
             )
@@ -210,7 +210,7 @@ class KnowledgeArticleService(BaseService[KnowledgeArticle]):
         """
         query = db.query(KnowledgeArticle).filter(
             and_(
-                KnowledgeArticle.is_active == True,
+                KnowledgeArticle.is_active.is_(True),
                 KnowledgeArticle.status == "published",
             )
         )
@@ -254,7 +254,7 @@ class KnowledgeArticleService(BaseService[KnowledgeArticle]):
             db.query(KnowledgeArticle)
             .filter(
                 and_(
-                    KnowledgeArticle.is_active == True,
+                    KnowledgeArticle.is_active.is_(True),
                     KnowledgeArticle.status == "published",
                     or_(
                         KnowledgeArticle.title.ilike(search_pattern),
@@ -287,7 +287,7 @@ class KnowledgeArticleService(BaseService[KnowledgeArticle]):
             .filter(
                 and_(
                     KnowledgeArticle.id == article_id,
-                    KnowledgeArticle.is_active == True,
+                    KnowledgeArticle.is_active.is_(True),
                     KnowledgeArticle.status == "published",
                 )
             )
@@ -457,7 +457,7 @@ class KnowledgeArticleService(BaseService[KnowledgeArticle]):
         query = db.query(KnowledgeArticle).filter(
             and_(
                 KnowledgeArticle.id != article_id,
-                KnowledgeArticle.is_active == True,
+                KnowledgeArticle.is_active.is_(True),
                 KnowledgeArticle.status == "published",
             )
         )
@@ -502,9 +502,9 @@ class KnowledgeBaseService:
             db.query(KnowledgeArticle)
             .filter(
                 and_(
-                    KnowledgeArticle.is_active == True,
+                    KnowledgeArticle.is_active.is_(True),
                     KnowledgeArticle.status == "published",
-                    KnowledgeArticle.is_top == True,
+                    KnowledgeArticle.is_top.is_(True),
                 )
             )
             .order_by(desc(KnowledgeArticle.published_at))
@@ -517,10 +517,7 @@ class KnowledgeBaseService:
 
         # 获取热门标签
         popular_tags = (
-            db.query(KnowledgeTag)
-            .filter(KnowledgeTag.is_active == True)
-            .limit(20)
-            .all()
+            db.query(KnowledgeTag).filter(KnowledgeTag.is_active).limit(20).all()
         )
 
         return {

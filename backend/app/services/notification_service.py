@@ -654,7 +654,8 @@ class NotificationService(BaseService[Notification]):
         emergency_contacts = (
             db.query(EmergencyContact)
             .filter(
-                EmergencyContact.user_id == user_id, EmergencyContact.is_active == True
+                EmergencyContact.user_id == user_id,
+                EmergencyContact.is_active.is_(True),
             )
             .all()
         )

@@ -27,6 +27,8 @@ from app.schemas.emergency_resource import (
     ResourceFacilityCreate,
     ResourceQuery,
     ResourceStatistics,
+    ResourceStatus,
+    ResourceType,
     ResourceUpdate,
     ResourceUsageLogCreate,
 )
@@ -495,7 +497,7 @@ class EmergencyResourceService:
             db.query(func.count(EmergencyResource.id))
             .filter(
                 EmergencyResource.resource_type == ResourceType.HOSPITAL.value,
-                EmergencyResource.has_emergency == True,
+                EmergencyResource.has_emergency.is_(True),
             )
             .scalar()
         )
@@ -510,7 +512,7 @@ class EmergencyResourceService:
             db.query(func.count(EmergencyResource.id))
             .filter(
                 EmergencyResource.resource_type == ResourceType.AED.value,
-                EmergencyResource.is_24h == True,
+                EmergencyResource.is_24h.is_(True),
             )
             .scalar()
         )

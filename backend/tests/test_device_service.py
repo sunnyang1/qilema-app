@@ -83,7 +83,7 @@ class TestDeviceService:
         assert device.id is not None
         assert device.device_id == "band_test_001"
         assert device.device_name == "小米手环6"
-        assert device.is_active == True
+        assert device.is_active is True
         assert device.user_id == test_user.user_id
 
     def test_bind_duplicate_device(self, db_session, test_user, device_service):
@@ -109,11 +109,11 @@ class TestDeviceService:
             db_session, test_device.id, test_user.user_id
         )
 
-        assert result == True
+        assert result is True
 
         # 验证设备状态
         db_session.refresh(test_device)
-        assert test_device.is_active == False
+        assert test_device.is_active is False
         assert test_device.unbound_at is not None
 
     def test_unbind_device_not_found(self, db_session, test_user, device_service):
@@ -288,7 +288,7 @@ class TestDeviceService:
             db_session, test_device.id, test_user.user_id, status_data
         )
 
-        assert device.is_online == True
+        assert device.is_online is True
         assert device.battery_level == 85
 
     def test_check_offline_devices(
@@ -362,7 +362,7 @@ class TestDeviceService:
 
         assert threshold.heart_rate_min == 50
         assert threshold.heart_rate_max == 110
-        assert threshold.alert_enabled == False
+        assert threshold.alert_enabled is False
 
     def test_update_threshold_not_found(self, db_session, test_device, device_service):
         """测试更新不存在的阈值配置"""

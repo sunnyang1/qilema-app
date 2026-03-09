@@ -121,13 +121,11 @@ class EmergencyCenterService:
         # 解析位置
         try:
             lat, lon = map(float, location.split(","))
-        except:
+        except (ValueError, TypeError):
             return None
 
         # 查询所有启用的急救中心
-        centers = (
-            db.query(EmergencyCenter).filter(EmergencyCenter.is_active == True).all()
-        )
+        centers = db.query(EmergencyCenter).filter(EmergencyCenter.is_active).all()
 
         # 计算距离并找出最近的
         nearest_center = None
@@ -186,7 +184,7 @@ class EmergencyCenterService:
             # self._call_emergency_center_api(emergency_center, "send_location", {...})
 
             return True
-        except:
+        except Exception:
             return False
 
     def _send_health_summary_to_120(
@@ -457,7 +455,7 @@ class EmergencyCenterService:
         query = db.query(EmergencyCenter)
 
         if active_only:
-            query = query.filter(EmergencyCenter.is_active == True)
+            query = query.filter(EmergencyCenter.is_active)
 
         return query.order_by(EmergencyCenter.created_at.desc()).all()
 
@@ -500,5 +498,5 @@ class EmergencyCenterService:
         try:
             response = requests.post(url, json=data, headers=headers, timeout=10)
             return response.json()
-        except:
+        except Exception:
             return None

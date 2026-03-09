@@ -52,7 +52,7 @@ class TestMedicationService:
         assert medication.dosage == 100
         assert medication.unit == MedicationUnit.MG
         assert medication.user_id == "user123"
-        assert medication.is_active == True
+        assert medication.is_active is True
 
     def test_get_user_medications(self, db: Session):
         """测试获取用户药品列表"""
@@ -104,10 +104,10 @@ class TestMedicationService:
 
         success = service.delete_medication(db, medication.id, "user123")
 
-        assert success == True
+        assert success is True
         # 验证软删除
         deleted_med = service.get_by_id(db, medication.id)
-        assert deleted_med.is_active == False
+        assert deleted_med.is_active is False
 
     def test_update_remaining_quantity(self, db: Session):
         """测试更新剩余药量"""
@@ -157,7 +157,7 @@ class TestMedicationScheduleService:
         assert schedule.medication_item_id == medication.id
         assert schedule.frequency == ScheduleFrequency.DAILY
         assert schedule.times_of_day == "08:00,20:00"
-        assert schedule.reminder_enabled == True
+        assert schedule.reminder_enabled is True
 
     def test_get_times_list(self, db: Session):
         """测试获取用药时间列表"""
@@ -210,11 +210,11 @@ class TestMedicationScheduleService:
 
         # 暂停
         paused = schedule_service.pause_schedule(db, schedule.id, "user123")
-        assert paused.is_paused == True
+        assert paused.is_paused is True
 
         # 恢复
         resumed = schedule_service.resume_schedule(db, schedule.id, "user123")
-        assert resumed.is_paused == False
+        assert resumed.is_paused is False
 
 
 class TestMedicationReminderService:
@@ -282,7 +282,7 @@ class TestMedicationReminderService:
         updated = reminder_service.mark_as_sent(db, reminder.id, "push")
 
         assert updated.status == ReminderStatus.SENT
-        assert updated.notification_sent == True
+        assert updated.notification_sent is True
         assert updated.notification_type == "push"
         assert updated.sent_at is not None
 

@@ -320,8 +320,8 @@ class AlertService(BaseService[Alert]):
         settings = (
             db.query(AlertSetting)
             .filter(
-                AlertSetting.checkin_enabled == True,
-                AlertSetting.enable_notification == True,
+                AlertSetting.checkin_enabled.is_(True),
+                AlertSetting.enable_notification.is_(True),
             )
             .all()
         )

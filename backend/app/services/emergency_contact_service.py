@@ -161,7 +161,8 @@ class EmergencyContactService(BaseService[EmergencyContact]):
         # 取消其他联系人主要状态
         db.query(EmergencyContact).filter(
             and_(
-                EmergencyContact.user_id == user_id, EmergencyContact.is_primary == True
+                EmergencyContact.user_id == user_id,
+                EmergencyContact.is_primary.is_(True),
             )
         ).update({EmergencyContact.is_primary: False})
 
@@ -191,7 +192,7 @@ class EmergencyContactService(BaseService[EmergencyContact]):
             .filter(
                 and_(
                     EmergencyContact.user_id == user_id,
-                    EmergencyContact.is_primary == True,
+                    EmergencyContact.is_primary.is_(True),
                 )
             )
             .first()
@@ -204,7 +205,7 @@ class EmergencyContactService(BaseService[EmergencyContact]):
             .filter(
                 and_(
                     EmergencyContact.user_id == user_id,
-                    EmergencyContact.notification_enabled == True,
+                    EmergencyContact.notification_enabled.is_(True),
                 )
             )
             .order_by(EmergencyContact.is_primary.desc())

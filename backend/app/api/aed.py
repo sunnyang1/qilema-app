@@ -344,7 +344,7 @@ def get_aeds_in_bounds(
         query = query.filter(
             or_(
                 EmergencyResource.aed_status == AEDStatus.ACTIVE.value,
-                EmergencyResource.aed_status == None,
+                EmergencyResource.aed_status.is_(None),
             )
         )
 

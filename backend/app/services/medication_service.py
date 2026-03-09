@@ -38,7 +38,7 @@ class MedicationService(BaseService[MedicationReminderItem]):
             MedicationReminderItem.user_id == user_id
         )
         if only_active:
-            query = query.filter(MedicationReminderItem.is_active == True)
+            query = query.filter(MedicationReminderItem.is_active.is_(True))
         return query.order_by(MedicationReminderItem.created_at.desc()).all()
 
     @classmethod
@@ -138,8 +138,8 @@ class MedicationScheduleService(BaseService[MedicationReminderSchedule]):
         )
         if only_active:
             query = query.filter(
-                MedicationReminderSchedule.is_active == True,
-                MedicationReminderSchedule.is_paused == False,
+                MedicationReminderSchedule.is_active.is_(True),
+                MedicationReminderSchedule.is_paused.is_(False),
             )
         return query.order_by(MedicationReminderSchedule.created_at.desc()).all()
 
@@ -153,7 +153,7 @@ class MedicationScheduleService(BaseService[MedicationReminderSchedule]):
             .filter(
                 MedicationReminderSchedule.medication_item_id == medication_id,
                 MedicationReminderSchedule.user_id == user_id,
-                MedicationReminderSchedule.is_active == True,
+                MedicationReminderSchedule.is_active.is_(True),
             )
             .all()
         )

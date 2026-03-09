@@ -132,7 +132,7 @@ class CacheWarmer:
             # 获取启用了预警的配置
             alert_settings = (
                 db.query(AlertSetting)
-                .filter(AlertSetting.checkin_enabled == True)
+                .filter(AlertSetting.checkin_enabled)
                 .limit(100)
                 .all()
             )
