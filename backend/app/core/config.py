@@ -29,7 +29,10 @@ class Settings(BaseSettings):
 
     # ========== 日志配置 ==========
     LOG_LEVEL: str = "INFO"  # 日志级别: DEBUG, INFO, WARNING, ERROR, CRITICAL
-    LOG_FORMAT: str = "%(asctime)s | %(levelname)s | %(request_id)s | %(user_id)s | %(name)s | %(message)s"
+    LOG_FORMAT: str = (
+        "%(asctime)s | %(levelname)s | %(request_id)s | "
+        "%(user_id)s | %(name)s | %(message)s"
+    )
     LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
     LOG_DIR: str = "logs"  # 日志目录
     LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024  # 10MB
