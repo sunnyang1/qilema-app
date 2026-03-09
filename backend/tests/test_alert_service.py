@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 from app.core.database import Base
-from app.models.alert import Alert, AlertSetting
+from app.models.alert import AlertSetting
 from app.models.checkin import CheckIn
 from app.models.emergency_contact import EmergencyContact
 from app.models.user import User

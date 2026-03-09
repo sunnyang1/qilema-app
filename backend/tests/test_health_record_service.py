@@ -5,13 +5,8 @@ from datetime import datetime
 
 import pytest
 from app.core.database import Base
-from app.models.alert import Alert
 
 # 导入数据库相关的模型
-from app.models.checkin import CheckIn
-from app.models.emergency_contact import EmergencyContact
-from app.models.health_record import Allergy, HealthRecord, MedicalHistory, Medication
-from app.models.sos_request import SOSRequest
 from app.models.user import User
 from app.schemas.health_record import (
     AllergyCreate,
@@ -23,10 +18,10 @@ from app.schemas.health_record import (
     MedicationCreate,
     MedicationUpdate,
 )
-from app.services.health_record_service import EncryptionService, HealthRecordService
+from app.services.health_record_service import HealthRecordService
 from cryptography.fernet import Fernet
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 # 测试数据库
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"

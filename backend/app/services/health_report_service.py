@@ -4,7 +4,6 @@
 提供健康数据趋势分析、异常检测、统计报告等功能
 """
 
-import json
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from enum import Enum as PyEnum
@@ -13,7 +12,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.models.device_data import DeviceData, DeviceThreshold
 from app.models.health_record import HealthRecord
 from app.services.base_service import BaseService
-from sqlalchemy import and_, desc, extract, func, or_
 from sqlalchemy.orm import Session
 
 

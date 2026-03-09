@@ -3,8 +3,6 @@
 使用 ApiResponseBuilder 统一构建响应
 """
 
-from typing import List
-
 from app.core.database import get_db
 from app.core.exceptions import (
     InternalServerException,
@@ -12,14 +10,12 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.response_builder import ApiResponseBuilder
-from app.models.health_record import Allergy, HealthRecord, MedicalHistory, Medication
 from app.schemas.health_record import (
     AllergyCreate,
     AllergyResponse,
     AllergyUpdate,
     HealthRecordCreate,
     HealthRecordResponse,
-    HealthRecordSummary,
     HealthRecordUpdate,
     MedicalHistoryCreate,
     MedicalHistoryResponse,

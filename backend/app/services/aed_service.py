@@ -7,11 +7,11 @@ AED设备服务
 import json
 import math
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from app.models.emergency_resource_model import AEDStatus, EmergencyResource
 from app.services.base_service import BaseService
-from sqlalchemy import and_, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 
@@ -169,7 +169,7 @@ class AEDService(BaseService[EmergencyResource]):
 
         for idx, data in enumerate(aed_data_list):
             try:
-                aed = cls._create_aed_from_dict(db, data)
+                cls._create_aed_from_dict(db, data)
                 success_count += 1
             except Exception as e:
                 failed_count += 1

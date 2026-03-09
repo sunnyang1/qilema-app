@@ -2,10 +2,9 @@
 高负载测试 - 验证熔断器和重试机制在高负载下的表现
 """
 
-import gc
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from app.models.notification_model import Notification

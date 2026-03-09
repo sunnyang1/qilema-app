@@ -1,6 +1,5 @@
 """紧急联系人缓存失效测试"""
 
-from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest

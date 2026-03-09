@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """启动脚本，手动加载环境变量"""
-import os
-import sys
 
 from dotenv import load_dotenv
 

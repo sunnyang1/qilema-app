@@ -6,7 +6,6 @@ AED设备服务测试
 
 from datetime import datetime, timedelta
 
-import pytest
 from app.models.emergency_resource_model import AEDStatus, EmergencyResource
 from app.services.aed_service import AEDService
 from sqlalchemy.orm import Session

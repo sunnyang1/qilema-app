@@ -17,19 +17,14 @@ from app.core.response_builder import ApiResponseBuilder
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.emergency_center import (
-    AmbulanceCreate,
     AmbulanceLocation,
     AmbulanceResponse,
     AmbulanceTracking,
-    AmbulanceUpdate,
     Call120Request,
-    Call120Response,
-    EmergencyCallCreate,
     EmergencyCallResponse,
     EmergencyCallUpdate,
     EmergencyCenterCreate,
     EmergencyCenterResponse,
-    EmergencyCenterUpdate,
     HealthSummary,
     RescueRecordCreate,
     RescueRecordResponse,

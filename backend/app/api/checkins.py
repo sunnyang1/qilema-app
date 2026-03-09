@@ -5,20 +5,14 @@
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from app.core.database import get_db
 from app.core.exceptions import AlreadyCheckedInException, ValidationException
 from app.core.response_builder import ApiResponseBuilder
 from app.core.security import get_current_user
 from app.models.user import User
-from app.schemas.checkin import (
-    CheckInCreate,
-    CheckInDateQuery,
-    CheckInResponse,
-    CheckInStatsResponse,
-    CheckInStatusResponse,
-)
+from app.schemas.checkin import CheckInCreate, CheckInDateQuery, CheckInResponse
 from app.services.checkin_service import CheckInService
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session

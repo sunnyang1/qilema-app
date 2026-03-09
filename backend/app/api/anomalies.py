@@ -6,7 +6,6 @@
 """
 
 from datetime import datetime, timedelta
-from typing import List
 
 from app.core.database import get_db
 from app.core.exceptions import (
@@ -19,16 +18,11 @@ from app.core.security import get_current_user
 from app.models.anomaly import Anomaly
 from app.models.user import User
 from app.schemas.anomaly import (
-    ActivityAnalysisRequest,
-    ActivityPatternResponse,
     AnomalyCreate,
     AnomalyDetectionConfig,
     AnomalyQuery,
     AnomalyResponse,
-    AnomalyStatistics,
     AnomalyUpdate,
-    HealthTrendResponse,
-    HeartHealthAnalysis,
     TrendAnalysisRequest,
 )
 from app.services.anomaly_service import AnomalyService
@@ -236,7 +230,7 @@ def set_anomaly_detection_config(
     """
     # 将配置保存到用户设置中(示例实现)
     # 实际应该保存到专门的配置表
-    user_config_key = f"anomaly_detection_config_{current_user.user_id}"
+    # user_config_key = f"anomaly_detection_config_{current_user.user_id}"
 
     # 简化实现:只返回配置信息
     # 实际应该保存到数据库

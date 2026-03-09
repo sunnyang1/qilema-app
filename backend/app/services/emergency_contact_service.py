@@ -10,10 +10,9 @@ from typing import List, Optional
 from app.core.cache import cache_result, get_cached, invalidate_cache
 from app.core.cache_config import CacheConfig
 from app.models.emergency_contact import EmergencyContact
-from app.models.user import User
 from app.schemas.emergency_contact import EmergencyContactCreate, EmergencyContactUpdate
 from app.services.base_service import BaseService
-from sqlalchemy import and_, desc, func
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 

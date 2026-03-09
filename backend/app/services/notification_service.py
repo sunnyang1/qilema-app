@@ -17,9 +17,7 @@ from app.models.notification_model import Notification, NotificationPreference
 from app.models.user import User
 from app.schemas.notification import (
     BatchSendNotificationRequest,
-    MarkAsReadRequest,
     NotificationChannelEnum,
-    NotificationCreate,
     NotificationPreferenceCreate,
     NotificationPreferenceUpdate,
     NotificationPriority,
@@ -31,12 +29,10 @@ from app.schemas.notification import (
 from app.schemas.notification import (
     NotificationStatusEnum,
     NotificationTemplateCreate,
-    NotificationTemplateUpdate,
     NotificationTypeEnum,
-    NotificationUpdate,
     SendNotificationRequest,
 )
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 
@@ -704,7 +700,7 @@ class NotificationService(BaseService[Notification]):
         )
 
         # 尝试从缓存获取
-        cached = cache_result(cache_key, None, ttl=CacheConfig.TTL_NOTIFICATION_LIST)
+        # cached = cache_result(cache_key, None, ttl=CacheConfig.TTL_NOTIFICATION_LIST)
         # 注意：这里简化处理，实际应该使用get_cached获取
 
         query = db.query(Notification).filter(
@@ -771,9 +767,9 @@ class NotificationService(BaseService[Notification]):
     @classmethod
     def get_unread_count(cls, db: Session, user_id: str) -> int:
         """获取未读通知数量（带缓存）"""
-        cache_key = CacheConfig.make_key(
-            CacheConfig.PREFIX_NOTIFICATION, user_id, "unread_count"
-        )
+        # cache_key = CacheConfig.make_key(
+        #     CacheConfig.PREFIX_NOTIFICATION, user_id, "unread_count"
+        # )
 
         # 这里简化处理，实际应该使用缓存装饰器
         count = (
@@ -848,7 +844,7 @@ class NotificationService(BaseService[Notification]):
         cls, db: Session, user_id: str
     ) -> Optional[NotificationPreference]:
         """获取通知偏好设置（带缓存）"""
-        cache_key = CacheConfig.make_key(CacheConfig.PREFIX_NOTIFICATION_PREFS, user_id)
+        # cache_key = CacheConfig.make_key(CacheConfig.PREFIX_NOTIFICATION_PREFS, user_id)
 
         # 这里简化处理，实际应该使用缓存装饰器
         return (

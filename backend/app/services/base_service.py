@@ -4,7 +4,6 @@
 提供通用的CRUD操作和缓存管理机制
 """
 
-import uuid
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 

@@ -5,8 +5,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from app.core.cache import cache, cache_result, invalidate_cache
-from app.core.config import settings
+from app.core.cache import invalidate_cache
 from app.core.redis import redis_manager
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User

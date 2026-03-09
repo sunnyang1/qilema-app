@@ -6,7 +6,6 @@
 """
 
 from datetime import datetime
-from typing import List
 
 from app.core.database import get_db
 from app.core.exceptions import (
@@ -20,18 +19,13 @@ from app.models.user import User
 from app.schemas.notification import (
     BatchSendNotificationRequest,
     MarkAsReadRequest,
-    NotificationCreate,
     NotificationPreferenceCreate,
     NotificationPreferenceResponse,
     NotificationPreferenceUpdate,
     NotificationQuery,
     NotificationResponse,
-    NotificationStatistics,
-    NotificationStatsQuery,
     NotificationTemplateCreate,
     NotificationTemplateResponse,
-    NotificationTemplateUpdate,
-    NotificationUpdate,
     SendNotificationRequest,
 )
 from app.services.notification_service import NotificationService

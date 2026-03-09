@@ -2,8 +2,6 @@
 测试DEBUG模式根据环境配置
 """
 
-import os
-
 import pytest
 from app.core.config import Settings
 

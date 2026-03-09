@@ -9,7 +9,6 @@ from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.response_builder import ApiResponseBuilder
-from app.models.knowledge_base import KnowledgeArticle, KnowledgeCategory, KnowledgeTag
 from app.services.knowledge_service import (
     KnowledgeArticleService,
     KnowledgeBaseService,

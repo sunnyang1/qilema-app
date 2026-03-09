@@ -8,7 +8,6 @@ import math
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import requests
 from app.models.emergency_resource_model import (
     EmergencyResource,
     NavigationRoute,
@@ -16,7 +15,6 @@ from app.models.emergency_resource_model import (
     ResourceFacility,
     ResourceUsageLog,
 )
-from app.models.user import User
 from app.schemas.emergency_resource import (
     NavigationRequest,
     NavigationResponse,
@@ -30,9 +28,8 @@ from app.schemas.emergency_resource import (
     ResourceStatus,
     ResourceType,
     ResourceUpdate,
-    ResourceUsageLogCreate,
 )
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 

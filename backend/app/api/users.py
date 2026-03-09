@@ -4,12 +4,10 @@
 使用 ApiResponseBuilder 统一构建响应
 """
 
-from typing import List
-
 from app.core.database import get_db
 from app.core.exceptions import UserAlreadyExistsException, UserNotFoundException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user, get_password_hash
+from app.core.security import get_current_user
 from app.models.user import User
 from app.services.user_service import UserService
 from fastapi import APIRouter, Depends
@@ -27,7 +25,7 @@ async def register(user_data: dict, db: Session = Depends(get_db)):
         return ApiResponseBuilder.success(
             data={"user_id": user.user_id}, message="注册成功"
         )
-    except ValueError as e:
+    except ValueError:
         raise UserAlreadyExistsException(phone=user_data.get("phone"))
 
 

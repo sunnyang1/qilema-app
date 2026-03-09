@@ -8,12 +8,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.models.sos_request import SOSRequest
-from app.models.user import User
-from app.schemas.sos_request import (
-    SOSRequestCreate,
-    SOSRequestUpdate,
-    SOSStatusUpdateRequest,
-)
+from app.schemas.sos_request import SOSRequestCreate, SOSStatusUpdateRequest
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 

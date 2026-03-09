@@ -6,15 +6,15 @@
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from app.core.database import get_db
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import ValidationException
 from app.core.response_builder import ApiResponseBuilder
 from app.core.security import get_current_active_user
 from app.models.user import User
 from app.services.health_report_service import HealthReportService, ReportPeriod
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 

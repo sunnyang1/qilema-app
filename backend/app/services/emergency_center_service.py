@@ -6,7 +6,7 @@
 
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import requests
 from app.models.anomaly import Anomaly
@@ -22,26 +22,22 @@ from app.models.emergency_center_model import (
 )
 from app.models.emergency_contact import EmergencyContact
 from app.models.health_record import HealthRecord
-from app.models.sos_request import SOSRequest
 from app.models.user import User
 from app.schemas.emergency_center import (
     AmbulanceCreate,
     AmbulanceLocation,
     AmbulanceTracking,
-    AmbulanceUpdate,
     Call120Request,
     Call120Response,
     EmergencyCallCreate,
-    EmergencyCallUpdate,
     EmergencyCenterCreate,
-    EmergencyCenterUpdate,
     HealthSummary,
     RescueRecordCreate,
     RescueRecordUpdate,
 )
 from app.services.health_record_service import HealthRecordService
 from app.services.location_service import LocationService
-from sqlalchemy import and_, desc, func
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 
@@ -89,7 +85,7 @@ class EmergencyCenterService:
             )
 
         # 模拟拨打120电话
-        is_successful = self._dial_120_phone(db, call, emergency_center)
+        self._dial_120_phone(db, call, emergency_center)
 
         db.commit()
         db.refresh(call)
@@ -129,7 +125,7 @@ class EmergencyCenterService:
 
         # 计算距离并找出最近的
         nearest_center = None
-        min_distance = float("inf")
+        # min_distance = float("inf")
 
         for center in centers:
             # 这里应该有坐标字段,简化处理,直接返回第一个

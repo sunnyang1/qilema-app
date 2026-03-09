@@ -7,8 +7,6 @@
 from datetime import datetime, timedelta
 
 import pytest
-from app.models.device import Device
-from app.models.device_data import DeviceData, DeviceThreshold
 from app.models.user import User
 from app.schemas.device import (
     DeviceBind,
@@ -19,7 +17,6 @@ from app.schemas.device import (
     DeviceType,
 )
 from app.services.device_service import DeviceService
-from sqlalchemy.orm import Session
 
 
 @pytest.fixture(scope="function")

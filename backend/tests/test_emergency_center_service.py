@@ -5,8 +5,7 @@
 """
 
 import os
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
+from datetime import datetime
 
 import pytest
 from app.core.database import Base

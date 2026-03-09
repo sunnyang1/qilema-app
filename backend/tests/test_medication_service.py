@@ -6,7 +6,6 @@
 
 from datetime import date, datetime, time, timedelta
 
-import pytest
 from app.models.medication import (
     LogStatus,
     MedicationReminderItem,

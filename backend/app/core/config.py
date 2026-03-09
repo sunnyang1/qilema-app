@@ -5,7 +5,7 @@
 import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Optional, Union
 

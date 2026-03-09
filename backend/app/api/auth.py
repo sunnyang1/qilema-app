@@ -7,18 +7,11 @@
 import asyncio
 import time
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Dict
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import (
-    create_access_token,
-    decode_access_token,
-    get_current_active_user,
-    get_current_user,
-    verify_password,
-)
+from app.core.security import create_access_token, get_current_user, verify_password
 from app.models.user import User
 from app.schemas.user import UserRegisterRequest
 from app.services.user_service import UserService

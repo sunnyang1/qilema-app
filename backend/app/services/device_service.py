@@ -4,13 +4,11 @@
 实现设备绑定、数据管理、状态监控、异常检测等核心业务逻辑
 """
 
-import json
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from app.models.device import Device
 from app.models.device_data import DeviceData, DeviceThreshold
-from app.models.user import User
 from app.schemas.device import (
     DeviceAlert,
     DeviceBind,
@@ -22,7 +20,7 @@ from app.schemas.device import (
     DeviceUpdate,
 )
 from app.services.base_service import BaseService
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
 

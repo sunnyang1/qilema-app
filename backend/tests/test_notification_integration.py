@@ -6,7 +6,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
 from app.core.notification_simulators import NotificationServiceConfig
 from app.models.notification_model import Notification
 from app.schemas.notification import (

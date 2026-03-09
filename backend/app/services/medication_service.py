@@ -4,7 +4,7 @@
 提供药品管理、用药计划、服药记录等功能
 """
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from app.models.medication import (
@@ -14,12 +14,9 @@ from app.models.medication import (
     MedicationReminderNotification,
     MedicationReminderSchedule,
     MedicationType,
-    MedicationUnit,
     ReminderStatus,
-    ScheduleFrequency,
 )
 from app.services.base_service import BaseService
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 

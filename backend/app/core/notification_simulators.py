@@ -12,7 +12,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
-from app.schemas.notification import NotificationChannelEnum
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,6 @@ class NotificationSimulator(ABC):
         Returns:
             dict: 包含status, message, data等字段
         """
-        pass
 
     def send(self, **kwargs) -> Dict[str, Any]:
         """

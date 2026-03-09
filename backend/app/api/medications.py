@@ -5,8 +5,8 @@
 使用 ApiResponseBuilder 统一构建响应
 """
 
-from datetime import date, datetime, timedelta
-from typing import List, Optional
+from datetime import date, timedelta
+from typing import Optional
 
 from app.core.database import get_db
 from app.core.response_builder import ApiResponseBuilder
@@ -18,7 +18,7 @@ from app.services.medication_service import (
     MedicationScheduleService,
     MedicationService,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["用药提醒"])

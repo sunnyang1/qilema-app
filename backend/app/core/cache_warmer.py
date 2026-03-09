@@ -6,7 +6,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Optional
 
 from app.core.database import SessionLocal
 from app.core.redis import redis_manager

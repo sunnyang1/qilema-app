@@ -6,7 +6,7 @@ import pytest
 
 # 检查psycopg2是否安装
 try:
-    import psycopg2
+    pass
 
     POSTGRESQL_AVAILABLE = True
 except ImportError:

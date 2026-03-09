@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from app.models.anomaly import (
-    ActivityPattern,
     Anomaly,
     AnomalyStatus,
     AnomalyTypeEnum,
@@ -19,11 +18,7 @@ from app.models.anomaly import (
 )
 from app.models.device import Device
 from app.models.device_data import DeviceData
-from app.models.sos_request import SOSRequest
-from app.models.user import User
 from app.schemas.anomaly import (
-    ActivityAnalysisRequest,
-    ActivityPatternResponse,
     AnomalyCreate,
     AnomalyDetectionConfig,
     AnomalyQuery,
@@ -35,7 +30,7 @@ from app.schemas.anomaly import (
 )
 from app.services.notification_service import NotificationService
 from app.services.sos_service import SOSService
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
 
@@ -1032,7 +1027,6 @@ class AnomalyService:
 
     def _get_metric_field(self, metric_type: str):
         """根据指标类型获取数据库字段"""
-        from sqlalchemy import case
 
         field_mapping = {
             "heart_rate": DeviceData.heart_rate,

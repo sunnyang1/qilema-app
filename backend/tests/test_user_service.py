@@ -1,12 +1,10 @@
-from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
-import redis
-from app.core.database import Base, get_db
+from app.core.database import Base
 from app.core.redis import redis_manager
 from app.models.user import User
-from app.schemas.user import UserLogin, UserRegister
+from app.schemas.user import UserRegister
 from app.services.user_service import UserService
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

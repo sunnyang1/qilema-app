@@ -2,13 +2,11 @@
 Redis连接管理
 """
 
-import json
 import logging
 import time
-from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Union
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 import redis
 import redis.asyncio as aioredis
@@ -19,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 class RedisConnectionError(Exception):
     """Redis连接异常"""
-
-    pass
 
 
 @dataclass

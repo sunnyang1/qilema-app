@@ -5,8 +5,6 @@
 使用 ApiResponseBuilder 统一构建响应
 """
 
-from typing import List
-
 from app.core.database import get_db
 from app.core.exceptions import NotFoundException
 from app.core.response_builder import ApiResponseBuilder
@@ -14,9 +12,7 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.emergency_resource import (
     NavigationRequest,
-    NavigationResponse,
     NearbySearchRequest,
-    PopularResource,
     ResourceCreate,
     ResourceDepartmentCreate,
     ResourceDepartmentResponse,
@@ -24,7 +20,6 @@ from app.schemas.emergency_resource import (
     ResourceFacilityResponse,
     ResourceQuery,
     ResourceResponse,
-    ResourceStatistics,
     ResourceUpdate,
 )
 from app.services.emergency_resource_service import EmergencyResourceService

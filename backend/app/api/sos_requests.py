@@ -4,7 +4,7 @@ SOS紧急求助API路由
 使用 ApiResponseBuilder 统一构建响应
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from app.core.database import get_db
 from app.core.exceptions import NotFoundException, ValidationException

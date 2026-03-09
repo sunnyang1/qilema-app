@@ -2,8 +2,7 @@
 测试签到服务缓存功能
 """
 
-from datetime import date, timedelta
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from app.schemas.checkin import CheckInCreate

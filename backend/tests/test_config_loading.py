@@ -2,13 +2,10 @@
 配置文件加载单元测试
 """
 
-import os
-import tempfile
 from pathlib import Path
 
-import pytest
 import yaml
-from app.core.container import Container, init_container, reset_container
+from app.core.container import init_container, reset_container
 
 
 class TestConfigFileLoading:

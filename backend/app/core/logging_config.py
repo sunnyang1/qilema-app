@@ -8,7 +8,6 @@
 import json
 import logging
 import logging.handlers
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -291,5 +290,5 @@ if __name__ == "__main__":
     # 记录异常日志
     try:
         1 / 0
-    except Exception as e:
+    except Exception:
         logger.error("Division by zero", exc_info=True)

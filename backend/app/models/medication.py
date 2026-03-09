@@ -4,9 +4,9 @@
 提供药品管理、用药计划、提醒和服药记录功能
 """
 
-from datetime import date, datetime, time
+from datetime import datetime
 from enum import Enum as PyEnum
-from typing import List, Optional
+from typing import List
 
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin

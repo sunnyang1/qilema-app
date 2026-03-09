@@ -1,11 +1,9 @@
 """健康档案服务层"""
 
-import os
 from datetime import datetime
 from typing import List, Optional
 
 from app.models.health_record import Allergy, HealthRecord, MedicalHistory, Medication
-from app.models.user import User
 from app.schemas.health_record import (
     AllergyCreate,
     AllergyUpdate,
@@ -19,7 +17,7 @@ from app.schemas.health_record import (
 )
 from app.services.base_service import BaseService
 from cryptography.fernet import Fernet
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 
 class EncryptionService:

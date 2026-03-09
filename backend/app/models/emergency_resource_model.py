@@ -8,18 +8,7 @@ from typing import List, Optional
 
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
-from sqlalchemy.orm import relationship as db_relationship
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 
 
 class AEDStatus(str, PyEnum):
