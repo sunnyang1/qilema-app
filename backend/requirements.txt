@@ -1,46 +1,45 @@
 # 起了吗App - 项目依赖
-# 更新时间: 2026-03-09
+# Python 版本: 3.8+
 
-# ========== Web 框架 ==========
-fastapi==0.115.11
-uvicorn[standard]==0.34.0
+# Web框架
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
 
-# ========== 数据库 ==========
-sqlalchemy==2.0.38
-psycopg2-binary==2.9.10
+# 数据库
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
 
-# ========== Redis ==========
-redis==5.2.1
+# Redis
+redis==5.0.1
 
-# ========== 数据验证 ==========
-pydantic==2.10.6
-pydantic-settings==2.8.1
-email-validator==2.2.0
+# 数据验证
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
 
-# ========== 安全认证 ==========
-python-jose[cryptography]==3.4.0
+# 安全认证
+python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.20
+python-multipart==0.0.6
 
-# ========== 测试 ==========
-pytest==8.3.5
-pytest-asyncio==0.25.3
-pytest-cov==6.0.0
-httpx==0.28.1
+# 测试
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
 
-# ========== 其他 ==========
-python-dotenv==1.0.1
+# 其他
+python-dotenv==1.0.0
 
-# ========== 依赖注入 ==========
-dependency-injector==4.45.0
+# 依赖注入
+dependency-injector==4.41.0
 
-# ========== 监控 ==========
-prometheus-client==0.21.1
+# 监控
+prometheus-client==0.19.0
 
-# ========== Markdown 渲染 ==========
-Markdown==3.7
+# Markdown渲染
+Markdown==3.5.1
 
-# ========== 第三方服务适配器（可选，真实环境使用）==========
-# 阿里云短信服务 - 取消注释以启用真实短信服务
+# 第三方服务适配器（可选，真实环境使用）
 # alibabacloud_dysmsapi20170525==2.0.24
 # alibabacloud_tea_openapi==0.3.12
