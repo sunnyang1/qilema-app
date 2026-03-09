@@ -1,7 +1,7 @@
 # 起了吗 App - 后端Docker镜像
 
 # 构建阶段
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 # 设置工作目录
 WORKDIR /app
@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # 运行阶段
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # 设置工作目录
 WORKDIR /app
