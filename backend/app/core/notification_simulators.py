@@ -87,13 +87,18 @@ class NotificationSimulator(ABC):
             # 判断是否可重试
             if attempt < self.max_retries and self._should_retry(result):
                 logger.warning(
-                    f"{self.__class__.__name__}发送失败，将在{self.retry_interval_ms}ms后重试（尝试{attempt}/{self.max_retries}）：{result.get('message')}"
+                    f"{self.__class__.__name__}发送失败，"
+                    f"将在{self.retry_interval_ms}ms后重试"
+                    f"（尝试{attempt}/{self.max_retries}）："
+                    f"{result.get('message')}"
                 )
                 time.sleep(self.retry_interval_ms / 1000.0)
                 last_result = result
             else:
                 logger.error(
-                    f"{self.__class__.__name__}发送失败（尝试{attempt}/{self.max_retries}）：{result.get('message')}"
+                    f"{self.__class__.__name__}发送失败"
+                    f"（尝试{attempt}/{self.max_retries}）："
+                    f"{result.get('message')}"
                 )
                 return result
 

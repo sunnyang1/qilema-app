@@ -223,7 +223,11 @@ class MedicationReminderSchedule(Base, BaseModelMixin):
     )
 
     def __repr__(self):
-        return f"<MedicationReminderSchedule(id={self.id}, medication_item={self.medication_item_id})>"
+        return (
+            f"<MedicationReminderSchedule("
+            f"id={self.id}, "
+            f"medication_item={self.medication_item_id})>"
+        )
 
     def get_times_list(self) -> List[str]:
         """获取用药时间列表"""

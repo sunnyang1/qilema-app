@@ -124,7 +124,9 @@ class AEDService(BaseService[EmergencyResource]):
         return {
             "amap": (
                 f"https://uri.amap.com/navigation?"
-                f"from={from_coord_lonlat},起点&to={to_coord_lonlat},AED位置&mode={nav_type}&callnative=1"
+                f"from={from_coord_lonlat},起点&"
+                f"to={to_coord_lonlat},AED位置&"
+                f"mode={nav_type}&callnative=1"
             ),
             "baidu": (
                 f"https://api.map.baidu.com/direction?origin=latlng:{from_coord_latlon}|"

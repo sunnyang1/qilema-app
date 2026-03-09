@@ -101,7 +101,7 @@ class AliyunVoiceAdapter(PhoneNotificationSimulator):
                 access_key_id=self.access_key_id,
                 access_key_secret=self.access_key_secret,
             )
-            config.endpoint = f"dyvmsapi.aliyuncs.com"
+            config.endpoint = "dyvmsapi.aliyuncs.com"
 
             self._client = Client(config)
             self._dyvmsapi_models = dyvmsapi_models

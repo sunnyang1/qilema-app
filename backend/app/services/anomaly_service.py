@@ -245,7 +245,11 @@ class AnomalyService:
                 anomaly_value=current_hr,
                 threshold_value=previous_hr,
                 deviation_ratio=change_ratio,
-                description=f"心率骤变: 从 {previous_hr} bpm 变为 {current_hr} bpm (变化: {change_ratio:.1f}%)",
+                description=(
+                    f"心率骤变: 从 {previous_hr} bpm "
+                    f"变为 {current_hr} bpm "
+                    f"(变化: {change_ratio:.1f}%)"
+                ),
                 trigger_condition=f"|heart_rate_change| >= {threshold}%",
                 metadata=json.dumps(
                     {

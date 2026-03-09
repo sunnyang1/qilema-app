@@ -282,8 +282,8 @@ class Settings(BaseSettings):
         if not v or v.strip() == "":
             raise ValueError(
                 "SECRET_KEY不能为空。"
-                f"请通过环境变量设置或修改 .env 文件。"
-                f"请使用以下命令生成强随机密钥: python backend/scripts/generate_secret_key.py"
+                "请通过环境变量设置或修改 .env 文件。"
+                "请使用以下命令生成强随机密钥: python backend/scripts/generate_secret_key.py"
             )
 
         # 获取环境类型

@@ -12,6 +12,15 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from app.core.cache import invalidate_cache
+from app.core.cache_config import CacheConfig
+from app.core.notification_simulators import (
+    NotificationServiceConfig,
+    create_email_simulator,
+    create_phone_simulator,
+    create_push_simulator,
+    create_sms_simulator,
+)
 from app.models.emergency_contact import EmergencyContact
 from app.models.notification_model import Notification, NotificationPreference
 from app.models.user import User
@@ -32,6 +41,7 @@ from app.schemas.notification import (
     NotificationTypeEnum,
     SendNotificationRequest,
 )
+from app.services.base_service import BaseService
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
@@ -44,17 +54,6 @@ class NotificationTemplate:
         self.title_template = title_template
         self.content_template = content_template
 
-
-from app.core.cache import cache_result, invalidate_cache
-from app.core.cache_config import CacheConfig
-from app.core.notification_simulators import (
-    NotificationServiceConfig,
-    create_email_simulator,
-    create_phone_simulator,
-    create_push_simulator,
-    create_sms_simulator,
-)
-from app.services.base_service import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -363,8 +362,10 @@ class NotificationService(BaseService[Notification]):
                 time_since_failure = (datetime.utcnow() - last_failure).total_seconds()
                 if time_since_failure < self.CIRCUIT_BREAKER_TIMEOUT:
                     logger.warning(
-                        f"熔断器开启（渠道: {channel_str}），连续失败 {failures} 次，"
-                        f"距离上次失败 {time_since_failure:.0f} 秒，还需等待 {self.CIRCUIT_BREAKER_TIMEOUT - time_since_failure:.0f} 秒"
+                        f"熔断器开启（渠道: {channel_str}），"
+                        f"连续失败 {failures} 次，"
+                        f"距离上次失败 {time_since_failure:.0f} 秒，"
+                        f"还需等待 {self.CIRCUIT_BREAKER_TIMEOUT - time_since_failure:.0f} 秒"
                     )
                     return False
                 else:
@@ -452,7 +453,9 @@ class NotificationService(BaseService[Notification]):
                 else:
                     # 发送失败，记录日志
                     logger.warning(
-                        f"通知发送失败（渠道: {channel_str}，尝试次数: {attempt + 1}/{self.MAX_RETRIES}）: {result['error']}"
+                        f"通知发送失败（渠道: {channel_str}，"
+                        f"尝试次数: {attempt + 1}/{self.MAX_RETRIES}）: "
+                        f"{result['error']}"
                     )
                     if attempt == self.MAX_RETRIES - 1:
                         # 最后一次重试失败，记录熔断器失败
@@ -689,15 +692,15 @@ class NotificationService(BaseService[Notification]):
         cls, db: Session, query_params: NotificationQuery
     ) -> List[Notification]:
         """查询通知记录（带缓存）"""
-        # 构建缓存键
-        cache_key = CacheConfig.make_key(
-            CacheConfig.PREFIX_NOTIFICATION_LIST,
-            query_params.user_id,
-            query_params.notification_type or "all",
-            query_params.status or "all",
-            query_params.offset,
-            query_params.limit,
-        )
+        # 构建缓存键（缓存功能暂未启用）
+        # cache_key = CacheConfig.make_key(
+        #     CacheConfig.PREFIX_NOTIFICATION_LIST,
+        #     query_params.user_id,
+        #     query_params.notification_type or "all",
+        #     query_params.status or "all",
+        #     query_params.offset,
+        #     query_params.limit,
+        # )
 
         # 尝试从缓存获取
         # cached = cache_result(cache_key, None, ttl=CacheConfig.TTL_NOTIFICATION_LIST)
