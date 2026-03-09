@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from app.core.schemas import BaseSchema
 from pydantic import BaseModel, Field, field_validator
@@ -236,9 +236,9 @@ class HealthRecordSummary(BaseModel):
     weight: Optional[float]
 
     # 慢性病史
-    chronic_diseases: Optional[list[str]] = None
-    current_medications: Optional[list[str]] = None
-    allergies: Optional[list[str]] = None
+    chronic_diseases: Optional[List[str]] = None
+    current_medications: Optional[List[str]] = None
+    allergies: Optional[List[str]] = None
 
     # 最新健康数据
     latest_heart_rate: Optional[float] = None
@@ -246,7 +246,7 @@ class HealthRecordSummary(BaseModel):
     latest_blood_oxygen: Optional[float] = None
 
     # 紧急联系人
-    emergency_contacts: Optional[list[dict]] = None
+    emergency_contacts: Optional[List[Dict]] = None
 
     # 最近设备异常
-    recent_anomalies: Optional[list[dict]] = None
+    recent_anomalies: Optional[List[Dict]] = None

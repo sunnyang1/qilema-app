@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from app.core.cache import cache_result, get_cached, invalidate_cache
 from app.core.cache_config import CacheConfig
@@ -241,7 +241,7 @@ class AlertService(BaseService[Alert]):
         status: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
-    ) -> tuple[List[Alert], int]:
+    ) -> Tuple[List[Alert], int]:
         """获取用户预警列表"""
         # 尝试从缓存获取
         cache_key = CacheConfig.make_key(

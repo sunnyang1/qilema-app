@@ -7,7 +7,7 @@ import json
 import logging
 import time
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from app.core.redis import redis_manager
 
@@ -297,7 +297,7 @@ NULL_VALUE_MARKER = "__CACHE_NULL__"
 NULL_VALUE_TTL = 60  # 空值缓存TTL（秒）
 
 
-def get_cached_with_null_protection(key: str) -> tuple[Optional[Any], bool]:
+def get_cached_with_null_protection(key: str) -> Tuple[Optional[Any], bool]:
     """获取缓存值（带缓存穿透防护）
 
     Args:

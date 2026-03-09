@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from app.core.schemas import BaseSchema
 from pydantic import BaseModel, Field, field_validator
@@ -153,7 +153,7 @@ class DeviceDataResponse(BaseModel):
 class DeviceThresholdCreate(BaseModel):
     """创建设备阈值"""
 
-    device_id: str | int = Field(..., description="设备ID")
+    device_id: Union[str, int] = Field(..., description="设备ID")
     heart_rate_min: Optional[int] = Field(None, ge=30, le=200)
     heart_rate_max: Optional[int] = Field(None, ge=30, le=200)
     blood_pressure_systolic_min: Optional[int] = Field(None, ge=60, le=200)

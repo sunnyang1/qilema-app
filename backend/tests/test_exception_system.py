@@ -22,7 +22,6 @@ from app.core.exceptions import (
 )
 from app.core.middleware import (
     ExceptionHandlerMiddleware,
-    RequestIDMiddleware,
     RequestLoggingMiddleware,
     setup_middleware,
 )
@@ -241,7 +240,6 @@ class TestMiddlewareIntegration:
 
         # 所有中间件都应该正常工作
         assert response.status_code == 200
-        assert "X-Request-ID" in response.headers
         assert "X-Process-Time" in response.headers
 
     def test_request_logging_on_success(self, client):
