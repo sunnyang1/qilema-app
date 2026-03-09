@@ -1,5 +1,5 @@
 export default function (results) {
-  
+
   return results
     .flatMap(file =>
       file.messages.map(m => {

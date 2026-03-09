@@ -5,42 +5,60 @@
 继承BaseService获得统一的CRUD和缓存能力
 """
 
-import time
-import threading
 import json
-from typing import List, Optional, Dict, Any
-from datetime import datetime
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, desc
 import logging
+import threading
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from app.models.emergency_contact import EmergencyContact
 from app.models.notification_model import Notification, NotificationPreference
 from app.models.user import User
-from app.models.emergency_contact import EmergencyContact
 from app.schemas.notification import (
-    NotificationCreate, NotificationUpdate, NotificationQuery, NotificationStatistics as NotificationStatisticsSchema,
-    SendNotificationRequest, BatchSendNotificationRequest, MarkAsReadRequest,
-    NotificationPreferenceCreate, NotificationPreferenceUpdate,
-    NotificationTemplateCreate, NotificationTemplateUpdate,
-    NotificationPriority, NotificationChannelEnum, NotificationStatusEnum, NotificationTypeEnum
+    BatchSendNotificationRequest,
+    MarkAsReadRequest,
+    NotificationChannelEnum,
+    NotificationCreate,
+    NotificationPreferenceCreate,
+    NotificationPreferenceUpdate,
+    NotificationPriority,
+    NotificationQuery,
 )
+from app.schemas.notification import (
+    NotificationStatistics as NotificationStatisticsSchema,
+)
+from app.schemas.notification import (
+    NotificationStatusEnum,
+    NotificationTemplateCreate,
+    NotificationTemplateUpdate,
+    NotificationTypeEnum,
+    NotificationUpdate,
+    SendNotificationRequest,
+)
+from sqlalchemy import and_, desc, func, or_
+from sqlalchemy.orm import Session
+
 
 # 临时定义 NotificationTemplate 类型（待模型实现后移除）
 class NotificationTemplate:
     """通知模板（临时定义）"""
+
     def __init__(self, title_template: str, content_template: str):
         self.title_template = title_template
         self.content_template = content_template
+
+
+from app.core.cache import cache_result, invalidate_cache
+from app.core.cache_config import CacheConfig
 from app.core.notification_simulators import (
     NotificationServiceConfig,
+    create_email_simulator,
+    create_phone_simulator,
     create_push_simulator,
     create_sms_simulator,
-    create_phone_simulator,
-    create_email_simulator
 )
 from app.services.base_service import BaseService
-from app.core.cache_config import CacheConfig
-from app.core.cache import cache_result, invalidate_cache
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +102,7 @@ class NotificationService(BaseService[Notification]):
         self.push_service_config = {
             "enabled": self.push_simulator.enabled,
             "app_key": "",
-            "master_secret": ""
+            "master_secret": "",
         }
 
         self.sms_service_config = {
@@ -92,7 +110,7 @@ class NotificationService(BaseService[Notification]):
             "access_key": "",
             "access_secret": "",
             "sign_name": "",
-            "template_code": ""
+            "template_code": "",
         }
 
         # 熔断器状态
@@ -114,6 +132,7 @@ class NotificationService(BaseService[Notification]):
         """
         try:
             from app.core.redis import get_redis_manager
+
             redis_mgr = get_redis_manager()
 
             if not redis_mgr.is_healthy():
@@ -134,11 +153,17 @@ class NotificationService(BaseService[Notification]):
                         data = redis_mgr.redis_client.get(key)
                         if data:
                             state = json.loads(data)
-                            channel = key.decode("utf-8").replace("circuit_breaker:", "")
-                            self._circuit_breaker_failures[channel] = state.get("failures", 0)
+                            channel = key.decode("utf-8").replace(
+                                "circuit_breaker:", ""
+                            )
+                            self._circuit_breaker_failures[channel] = state.get(
+                                "failures", 0
+                            )
                             last_failure_time = state.get("last_failure_time")
                             if last_failure_time:
-                                self._circuit_breaker_last_failure[channel] = datetime.fromisoformat(last_failure_time)
+                                self._circuit_breaker_last_failure[
+                                    channel
+                                ] = datetime.fromisoformat(last_failure_time)
                     except Exception as e:
                         logger.error(f"加载熔断器状态失败（key: {key}）：{str(e)}")
                         continue
@@ -156,6 +181,7 @@ class NotificationService(BaseService[Notification]):
         """
         try:
             from app.core.redis import get_redis_manager
+
             redis_mgr = get_redis_manager()
 
             if not redis_mgr.is_healthy():
@@ -164,7 +190,7 @@ class NotificationService(BaseService[Notification]):
             key = f"circuit_breaker:{channel}"
             state = {
                 "failures": self._circuit_breaker_failures.get(channel, 0),
-                "last_failure_time": None
+                "last_failure_time": None,
             }
 
             last_failure = self._circuit_breaker_last_failure.get(channel)
@@ -186,6 +212,7 @@ class NotificationService(BaseService[Notification]):
         """
         try:
             from app.core.redis import get_redis_manager
+
             redis_mgr = get_redis_manager()
 
             if not redis_mgr.is_healthy():
@@ -197,13 +224,13 @@ class NotificationService(BaseService[Notification]):
             logger.error(f"清除熔断器状态失败（channel: {channel}）：{str(e)}")
 
     # ========== 通知发送核心逻辑 ==========
-    
+
     def send_notification(
         self,
         db: Session,
         request: SendNotificationRequest,
         recipient_type: Optional[str] = None,
-        recipient_id: Optional[str] = None
+        recipient_id: Optional[str] = None,
     ) -> Optional[Notification]:
         """
         发送通知
@@ -220,14 +247,20 @@ class NotificationService(BaseService[Notification]):
             logger.error(f"无法为用户 {request.user_id} 选择通知渠道")
             return None
 
-        notification = self._create_and_send_notification(db, request, channel, recipient_type, recipient_id)
+        notification = self._create_and_send_notification(
+            db, request, channel, recipient_type, recipient_id
+        )
         return notification
 
-    def _get_or_create_preference(self, db: Session, user_id: str) -> NotificationPreference:
+    def _get_or_create_preference(
+        self, db: Session, user_id: str
+    ) -> NotificationPreference:
         """获取或创建用户通知偏好设置"""
-        preference = db.query(NotificationPreference).filter(
-            NotificationPreference.user_id == user_id
-        ).first()
+        preference = (
+            db.query(NotificationPreference)
+            .filter(NotificationPreference.user_id == user_id)
+            .first()
+        )
 
         if not preference:
             preference = self._create_default_preference(db, user_id)
@@ -235,12 +268,12 @@ class NotificationService(BaseService[Notification]):
         return preference
 
     def _is_notification_enabled(
-        self,
-        preference: NotificationPreference,
-        request: SendNotificationRequest
+        self, preference: NotificationPreference, request: SendNotificationRequest
     ) -> bool:
         """检查通知是否应该发送"""
-        if not self._is_notification_type_enabled(preference, request.notification_type):
+        if not self._is_notification_type_enabled(
+            preference, request.notification_type
+        ):
             logger.info(f"用户 {request.user_id} 的 {request.notification_type} 通知已禁用")
             return False
 
@@ -251,9 +284,7 @@ class NotificationService(BaseService[Notification]):
         return True
 
     def _should_send_during_mute(
-        self,
-        preference: NotificationPreference,
-        request: SendNotificationRequest
+        self, preference: NotificationPreference, request: SendNotificationRequest
     ) -> bool:
         """判断免打扰时段是否应该发送通知"""
         if not self._is_mute_enabled(preference):
@@ -263,12 +294,12 @@ class NotificationService(BaseService[Notification]):
         return request.priority == NotificationPriority.URGENT
 
     def _select_notification_channel(
-        self,
-        preference: NotificationPreference,
-        request: SendNotificationRequest
+        self, preference: NotificationPreference, request: SendNotificationRequest
     ) -> Optional[str]:
         """选择通知渠道"""
-        return request.channel or self._select_channel(preference, request.notification_type, request.priority)
+        return request.channel or self._select_channel(
+            preference, request.notification_type, request.priority
+        )
 
     def _create_and_send_notification(
         self,
@@ -276,7 +307,7 @@ class NotificationService(BaseService[Notification]):
         request: SendNotificationRequest,
         channel: str,
         recipient_type: Optional[str],
-        recipient_id: Optional[str]
+        recipient_id: Optional[str],
     ) -> Notification:
         """创建并发送通知"""
         notification = Notification(
@@ -291,7 +322,7 @@ class NotificationService(BaseService[Notification]):
             recipient_id=recipient_id,
             related_type=request.related_type,
             related_id=request.related_id,
-            status=NotificationStatusEnum.PENDING
+            status=NotificationStatusEnum.PENDING,
         )
         db.add(notification)
         db.commit()
@@ -356,9 +387,13 @@ class NotificationService(BaseService[Notification]):
         """
         channel_str = str(channel)
         with self._circuit_breaker_lock:
-            self._circuit_breaker_failures[channel_str] = self._circuit_breaker_failures.get(channel_str, 0) + 1
+            self._circuit_breaker_failures[channel_str] = (
+                self._circuit_breaker_failures.get(channel_str, 0) + 1
+            )
             self._circuit_breaker_last_failure[channel_str] = datetime.utcnow()
-            logger.warning(f"熔断器记录失败（渠道: {channel_str}，失败次数: {self._circuit_breaker_failures[channel_str]}）")
+            logger.warning(
+                f"熔断器记录失败（渠道: {channel_str}，失败次数: {self._circuit_breaker_failures[channel_str]}）"
+            )
 
             # 如果启用了持久化，保存到 Redis
             if self.config.is_circuit_breaker_persist_enabled():
@@ -381,7 +416,9 @@ class NotificationService(BaseService[Notification]):
                 if self.config.is_circuit_breaker_persist_enabled():
                     self._clear_circuit_breaker_state_from_redis(channel_str)
 
-    def _try_send_with_retry(self, notification: Notification, channel: str) -> Dict[str, Any]:
+    def _try_send_with_retry(
+        self, notification: Notification, channel: str
+    ) -> Dict[str, Any]:
         """
         带重试机制的通知发送（同步方法）
 
@@ -401,7 +438,9 @@ class NotificationService(BaseService[Notification]):
             # 记录重试日志
             if attempt > 0:
                 delay = self.RETRY_DELAYS[attempt - 1]
-                logger.info(f"通知重试（渠道: {channel_str}，重试次数: {attempt}/{self.MAX_RETRIES}，延迟: {delay}s）")
+                logger.info(
+                    f"通知重试（渠道: {channel_str}，重试次数: {attempt}/{self.MAX_RETRIES}，延迟: {delay}s）"
+                )
                 # 注意：time.sleep 在同步上下文中是安全的
                 # 如果需要在异步上下文中使用，请改用 asyncio.sleep
                 time.sleep(delay)
@@ -437,12 +476,11 @@ class NotificationService(BaseService[Notification]):
                 # 不是最后一次重试，继续重试
 
         # 所有重试都失败
-        return {
-            "success": False,
-            "error": f"重试 {self.MAX_RETRIES} 次后仍然失败"
-        }
+        return {"success": False, "error": f"重试 {self.MAX_RETRIES} 次后仍然失败"}
 
-    def _send_notification_with_degradation(self, notification: Notification, initial_channel: str):
+    def _send_notification_with_degradation(
+        self, notification: Notification, initial_channel: str
+    ):
         """
         使用降级策略发送通知（带重试机制）
 
@@ -461,7 +499,9 @@ class NotificationService(BaseService[Notification]):
             if result["success"]:
                 # 发送成功
                 self._mark_notification_sent(notification)
-                logger.info(f"通知发送成功（使用渠道: {initial_channel_str}）: {notification.title}")
+                logger.info(
+                    f"通知发送成功（使用渠道: {initial_channel_str}）: {notification.title}"
+                )
                 return
             # 初始渠道失败，记录日志
             logger.warning(f"初始渠道发送失败（渠道: {initial_channel_str}）: {result['error']}")
@@ -522,7 +562,9 @@ class NotificationService(BaseService[Notification]):
         else:
             self._mark_notification_failed(notification, result["error"])
 
-    def _try_send_by_channel(self, notification: Notification, channel: str) -> Dict[str, Any]:
+    def _try_send_by_channel(
+        self, notification: Notification, channel: str
+    ) -> Dict[str, Any]:
         """
         尝试通过指定渠道发送通知
 
@@ -565,19 +607,17 @@ class NotificationService(BaseService[Notification]):
         notification.retry_count += 1
         db = notification._sa_instance_state.session
         db.commit()
-    
+
     def batch_send_notification(
-        self,
-        db: Session,
-        request: BatchSendNotificationRequest
+        self, db: Session, request: BatchSendNotificationRequest
     ) -> List[Notification]:
         """
         批量发送通知
-        
+
         向多个用户发送相同的通知
         """
         notifications = []
-        
+
         for user_id in request.user_ids:
             send_request = SendNotificationRequest(
                 user_id=user_id,
@@ -586,15 +626,15 @@ class NotificationService(BaseService[Notification]):
                 content=request.content,
                 channel=request.channel,
                 priority=request.priority,
-                data=request.data
+                data=request.data,
             )
-            
+
             notification = self.send_notification(db, send_request)
             if notification:
                 notifications.append(notification)
-        
+
         return notifications
-    
+
     def send_to_emergency_contacts(
         self,
         db: Session,
@@ -603,21 +643,24 @@ class NotificationService(BaseService[Notification]):
         title: str,
         content: str,
         priority: NotificationPriority = NotificationPriority.HIGH,
-        data: Optional[Dict[str, Any]] = None
+        data: Optional[Dict[str, Any]] = None,
     ) -> List[Notification]:
         """
         向紧急联系人发送通知
-        
+
         用于签到、预警、SOS等场景
         """
         # 查询紧急联系人
-        emergency_contacts = db.query(EmergencyContact).filter(
-            EmergencyContact.user_id == user_id,
-            EmergencyContact.is_active == True
-        ).all()
-        
+        emergency_contacts = (
+            db.query(EmergencyContact)
+            .filter(
+                EmergencyContact.user_id == user_id, EmergencyContact.is_active == True
+            )
+            .all()
+        )
+
         notifications = []
-        
+
         for contact in emergency_contacts:
             send_request = SendNotificationRequest(
                 user_id=user_id,
@@ -628,19 +671,26 @@ class NotificationService(BaseService[Notification]):
                 priority=priority,
                 data=data,
                 related_type="emergency_contact",
-                related_id=contact.id
+                related_id=contact.id,
             )
-            
-            notification = self.send_notification(db, send_request, recipient_type="emergency_contact", recipient_id=str(contact.id))
+
+            notification = self.send_notification(
+                db,
+                send_request,
+                recipient_type="emergency_contact",
+                recipient_id=str(contact.id),
+            )
             if notification:
                 notifications.append(notification)
-        
+
         return notifications
-    
+
     # ========== 通知记录管理 ==========
-    
+
     @classmethod
-    def get_notifications(cls, db: Session, query_params: NotificationQuery) -> List[Notification]:
+    def get_notifications(
+        cls, db: Session, query_params: NotificationQuery
+    ) -> List[Notification]:
         """查询通知记录（带缓存）"""
         # 构建缓存键
         cache_key = CacheConfig.make_key(
@@ -649,46 +699,57 @@ class NotificationService(BaseService[Notification]):
             query_params.notification_type or "all",
             query_params.status or "all",
             query_params.offset,
-            query_params.limit
+            query_params.limit,
         )
-        
+
         # 尝试从缓存获取
         cached = cache_result(cache_key, None, ttl=CacheConfig.TTL_NOTIFICATION_LIST)
         # 注意：这里简化处理，实际应该使用get_cached获取
-        
-        query = db.query(Notification).filter(Notification.user_id == query_params.user_id)
-        
+
+        query = db.query(Notification).filter(
+            Notification.user_id == query_params.user_id
+        )
+
         if query_params.notification_type:
-            query = query.filter(Notification.notification_type == query_params.notification_type)
-        
+            query = query.filter(
+                Notification.notification_type == query_params.notification_type
+            )
+
         if query_params.channel:
             query = query.filter(Notification.channel == query_params.channel)
-        
+
         if query_params.status:
             query = query.filter(Notification.status == query_params.status)
-        
+
         if query_params.priority:
             query = query.filter(Notification.priority == query_params.priority)
-        
+
         if query_params.start_date:
             query = query.filter(Notification.created_at >= query_params.start_date)
-        
+
         if query_params.end_date:
             query = query.filter(Notification.created_at <= query_params.end_date)
-        
+
         if query_params.is_unread is not None:
             if query_params.is_unread:
                 query = query.filter(Notification.read_at.is_(None))
             else:
                 query = query.filter(Notification.read_at.isnot(None))
-        
-        return query.order_by(desc(Notification.created_at)).offset(query_params.offset).limit(query_params.limit).all()
-    
+
+        return (
+            query.order_by(desc(Notification.created_at))
+            .offset(query_params.offset)
+            .limit(query_params.limit)
+            .all()
+        )
+
     @classmethod
     def mark_as_read(cls, db: Session, notification_ids: List[int]) -> int:
         """标记通知为已读"""
-        notifications = db.query(Notification).filter(Notification.id.in_(notification_ids)).all()
-        
+        notifications = (
+            db.query(Notification).filter(Notification.id.in_(notification_ids)).all()
+        )
+
         count = 0
         user_ids = set()
         for notification in notifications:
@@ -697,83 +758,110 @@ class NotificationService(BaseService[Notification]):
                 notification.status = NotificationStatusEnum.READ
                 count += 1
                 user_ids.add(notification.user_id)
-        
+
         db.commit()
-        
+
         # 清除相关缓存
         for user_id in user_ids:
             cls._invalidate_user_notification_cache(user_id)
-        
+
         return count
-    
+
     @classmethod
     def get_unread_count(cls, db: Session, user_id: str) -> int:
         """获取未读通知数量（带缓存）"""
         cache_key = CacheConfig.make_key(
-            CacheConfig.PREFIX_NOTIFICATION,
-            user_id,
-            "unread_count"
+            CacheConfig.PREFIX_NOTIFICATION, user_id, "unread_count"
         )
-        
+
         # 这里简化处理，实际应该使用缓存装饰器
-        count = db.query(func.count(Notification.id)).filter(
-            Notification.user_id == user_id,
-            Notification.read_at.is_(None)
-        ).scalar()
-        
+        count = (
+            db.query(func.count(Notification.id))
+            .filter(Notification.user_id == user_id, Notification.read_at.is_(None))
+            .scalar()
+        )
+
         return count or 0
-    
+
     @classmethod
     def _invalidate_user_notification_cache(cls, user_id: str):
         """清除用户通知相关缓存"""
-        invalidate_cache(CacheConfig.make_pattern(CacheConfig.PREFIX_NOTIFICATION_LIST, user_id))
-        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_NOTIFICATION, user_id, "unread_count"))
-    
+        invalidate_cache(
+            CacheConfig.make_pattern(CacheConfig.PREFIX_NOTIFICATION_LIST, user_id)
+        )
+        invalidate_cache(
+            CacheConfig.make_key(
+                CacheConfig.PREFIX_NOTIFICATION, user_id, "unread_count"
+            )
+        )
+
     # ========== 通知偏好管理 ==========
-    
+
     @classmethod
-    def create_preference(cls, db: Session, preference_data: NotificationPreferenceCreate) -> NotificationPreference:
+    def create_preference(
+        cls, db: Session, preference_data: NotificationPreferenceCreate
+    ) -> NotificationPreference:
         """创建通知偏好设置"""
         preference = NotificationPreference(**preference_data.dict())
         db.add(preference)
         db.commit()
         db.refresh(preference)
-        
+
         # 清除缓存
-        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_NOTIFICATION_PREFS, preference.user_id))
-        
+        invalidate_cache(
+            CacheConfig.make_key(
+                CacheConfig.PREFIX_NOTIFICATION_PREFS, preference.user_id
+            )
+        )
+
         return preference
-    
+
     @classmethod
-    def update_preference(cls, db: Session, user_id: str, update_data: NotificationPreferenceUpdate) -> Optional[NotificationPreference]:
+    def update_preference(
+        cls, db: Session, user_id: str, update_data: NotificationPreferenceUpdate
+    ) -> Optional[NotificationPreference]:
         """更新通知偏好设置"""
-        preference = db.query(NotificationPreference).filter(NotificationPreference.user_id == user_id).first()
+        preference = (
+            db.query(NotificationPreference)
+            .filter(NotificationPreference.user_id == user_id)
+            .first()
+        )
         if not preference:
             return None
-        
+
         for field, value in update_data.dict(exclude_unset=True).items():
             setattr(preference, field, value)
-        
+
         db.commit()
         db.refresh(preference)
-        
+
         # 清除缓存
-        invalidate_cache(CacheConfig.make_key(CacheConfig.PREFIX_NOTIFICATION_PREFS, user_id))
-        
+        invalidate_cache(
+            CacheConfig.make_key(CacheConfig.PREFIX_NOTIFICATION_PREFS, user_id)
+        )
+
         return preference
-    
+
     @classmethod
-    def get_preference(cls, db: Session, user_id: str) -> Optional[NotificationPreference]:
+    def get_preference(
+        cls, db: Session, user_id: str
+    ) -> Optional[NotificationPreference]:
         """获取通知偏好设置（带缓存）"""
         cache_key = CacheConfig.make_key(CacheConfig.PREFIX_NOTIFICATION_PREFS, user_id)
-        
+
         # 这里简化处理，实际应该使用缓存装饰器
-        return db.query(NotificationPreference).filter(NotificationPreference.user_id == user_id).first()
-    
+        return (
+            db.query(NotificationPreference)
+            .filter(NotificationPreference.user_id == user_id)
+            .first()
+        )
+
     # ========== 通知模板管理 ==========
-    
+
     @classmethod
-    def create_template(cls, db: Session, template_data: NotificationTemplateCreate) -> Dict[str, Any]:
+    def create_template(
+        cls, db: Session, template_data: NotificationTemplateCreate
+    ) -> Dict[str, Any]:
         """创建通知模板（暂存内存中，待NotificationTemplate模型实现后迁移到数据库）"""
         # TODO: 待NotificationTemplate模型实现后，迁移到数据库
         logger.info(f"创建通知模板: {template_data.template_code}")
@@ -787,58 +875,114 @@ class NotificationService(BaseService[Notification]):
             "content_template": template_data.content_template,
             "data_schema": template_data.data_schema,
             "priority": template_data.priority,
-            "is_active": True
+            "is_active": True,
         }
-    
+
     @classmethod
     def get_template(cls, db: Session, template_code: str) -> Optional[Dict[str, Any]]:
         """获取通知模板（暂存内存中，待NotificationTemplate模型实现后迁移到数据库）"""
         # TODO: 待NotificationTemplate模型实现后，从数据库查询
         logger.info(f"获取通知模板: {template_code}")
         return None
-    
-    def render_template(self, template: NotificationTemplate, data: Dict[str, Any]) -> Dict[str, str]:
+
+    def render_template(
+        self, template: NotificationTemplate, data: Dict[str, Any]
+    ) -> Dict[str, str]:
         """渲染通知模板"""
         title = template.title_template
         content = template.content_template
-        
+
         # 简单的模板渲染(实际可以使用更强大的模板引擎如Jinja2)
         for key, value in data.items():
             placeholder = f"{{{{{key}}}}}"
             title = title.replace(placeholder, str(value))
             content = content.replace(placeholder, str(value))
-        
+
         return {"title": title, "content": content}
-    
+
     # ========== 通知统计 ==========
-    
+
     @classmethod
-    def get_statistics(cls, db: Session, user_id: str, start_date: datetime, end_date: datetime) -> NotificationStatisticsSchema:
+    def get_statistics(
+        cls, db: Session, user_id: str, start_date: datetime, end_date: datetime
+    ) -> NotificationStatisticsSchema:
         """获取通知统计数据"""
-        notifications = db.query(Notification).filter(
-            Notification.user_id == user_id,
-            Notification.created_at >= start_date,
-            Notification.created_at <= end_date
-        ).all()
-        
+        notifications = (
+            db.query(Notification)
+            .filter(
+                Notification.user_id == user_id,
+                Notification.created_at >= start_date,
+                Notification.created_at <= end_date,
+            )
+            .all()
+        )
+
         # 统计总数
-        total_sent = len([n for n in notifications if n.status == NotificationStatusEnum.SENT])
-        total_delivered = len([n for n in notifications if n.status == NotificationStatusEnum.DELIVERED])
+        total_sent = len(
+            [n for n in notifications if n.status == NotificationStatusEnum.SENT]
+        )
+        total_delivered = len(
+            [n for n in notifications if n.status == NotificationStatusEnum.DELIVERED]
+        )
         total_read = len([n for n in notifications if n.read_at is not None])
-        total_failed = len([n for n in notifications if n.status == NotificationStatusEnum.FAILED])
-        
+        total_failed = len(
+            [n for n in notifications if n.status == NotificationStatusEnum.FAILED]
+        )
+
         # 按类型统计
-        checkin_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.CHECKIN])
-        alert_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.ALERT])
-        sos_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.SOS])
-        system_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.SYSTEM])
-        health_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.HEALTH])
-        device_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.DEVICE])
-        reminder_count = len([n for n in notifications if n.notification_type == NotificationTypeEnum.REMINDER])
-        
+        checkin_count = len(
+            [
+                n
+                for n in notifications
+                if n.notification_type == NotificationTypeEnum.CHECKIN
+            ]
+        )
+        alert_count = len(
+            [
+                n
+                for n in notifications
+                if n.notification_type == NotificationTypeEnum.ALERT
+            ]
+        )
+        sos_count = len(
+            [
+                n
+                for n in notifications
+                if n.notification_type == NotificationTypeEnum.SOS
+            ]
+        )
+        system_count = len(
+            [
+                n
+                for n in notifications
+                if n.notification_type == NotificationTypeEnum.SYSTEM
+            ]
+        )
+        health_count = len(
+            [
+                n
+                for n in notifications
+                if n.notification_type == NotificationTypeEnum.HEALTH
+            ]
+        )
+        device_count = len(
+            [
+                n
+                for n in notifications
+                if n.notification_type == NotificationTypeEnum.DEVICE
+            ]
+        )
+        reminder_count = len(
+            [
+                n
+                for n in notifications
+                if n.notification_type == NotificationTypeEnum.REMINDER
+            ]
+        )
+
         # 未读数量
         unread_count = len([n for n in notifications if n.read_at is None])
-        
+
         return NotificationStatisticsSchema(
             user_id=user_id,
             stat_date=start_date.strftime("%Y-%m-%d"),
@@ -853,101 +997,114 @@ class NotificationService(BaseService[Notification]):
             system_count=system_count,
             health_count=health_count,
             device_count=device_count,
-            reminder_count=reminder_count
+            reminder_count=reminder_count,
         )
-    
+
     # ========== 私有方法 ==========
-    
-    def _create_default_preference(self, db: Session, user_id: str) -> NotificationPreference:
+
+    def _create_default_preference(
+        self, db: Session, user_id: str
+    ) -> NotificationPreference:
         """创建默认通知偏好设置"""
         preference = NotificationPreference(user_id=user_id)
         db.add(preference)
         db.commit()
         db.refresh(preference)
         return preference
-    
+
     @staticmethod
-    def _is_notification_type_enabled(preference: NotificationPreference, notification_type: NotificationTypeEnum) -> bool:
+    def _is_notification_type_enabled(
+        preference: NotificationPreference, notification_type: NotificationTypeEnum
+    ) -> bool:
         """检查通知类型是否启用"""
         # 从偏好设置中查找对应的启用字段
         type_field_map = {
             "checkin": "checkin_enabled",
-            "alert": "alert_enabled", 
+            "alert": "alert_enabled",
             "sos": "sos_enabled",
             "system": "system_enabled",
             "health": "health_enabled",
             "device": "device_enabled",
-            "reminder": "reminder_enabled"
+            "reminder": "reminder_enabled",
         }
-        
-        type_str = notification_type.value if hasattr(notification_type, 'value') else str(notification_type)
+
+        type_str = (
+            notification_type.value
+            if hasattr(notification_type, "value")
+            else str(notification_type)
+        )
         field_name = type_field_map.get(type_str)
-        
+
         if field_name and hasattr(preference, field_name):
             return getattr(preference, field_name)
         return True
-    
+
     @staticmethod
     def _is_mute_enabled(preference: NotificationPreference) -> bool:
         """检查是否处于免打扰时段"""
-        if not hasattr(preference, 'mute_enabled') or not preference.mute_enabled:
+        if not hasattr(preference, "mute_enabled") or not preference.mute_enabled:
             return False
-        
-        if not hasattr(preference, 'mute_start_time') or not hasattr(preference, 'mute_end_time'):
+
+        if not hasattr(preference, "mute_start_time") or not hasattr(
+            preference, "mute_end_time"
+        ):
             return False
-            
+
         if not preference.mute_start_time or not preference.mute_end_time:
             return False
-        
+
         current_time = datetime.now().strftime("%H:%M")
         start_time = preference.mute_start_time
         end_time = preference.mute_end_time
-        
+
         # 判断当前时间是否在免打扰时段内
         if start_time <= end_time:
             return start_time <= current_time <= end_time
         else:
             # 跨天情况
             return current_time >= start_time or current_time <= end_time
-    
+
     @staticmethod
     def _select_channel(
         preference: NotificationPreference,
         notification_type: NotificationTypeEnum,
-        priority: NotificationPriority
+        priority: NotificationPriority,
     ) -> Optional[NotificationChannelEnum]:
         """选择通知渠道"""
         # 根据优先级和用户偏好选择渠道
         if priority == NotificationPriority.URGENT or str(priority) == "urgent":
             # 紧急通知: 优先电话通知,然后短信
-            if hasattr(preference, 'phone_enabled') and preference.phone_enabled:
+            if hasattr(preference, "phone_enabled") and preference.phone_enabled:
                 return NotificationChannelEnum.PHONE
-            elif hasattr(preference, 'sms_enabled') and preference.sms_enabled:
+            elif hasattr(preference, "sms_enabled") and preference.sms_enabled:
                 return NotificationChannelEnum.SMS
-            elif hasattr(preference, 'push_enabled') and preference.push_enabled:
+            elif hasattr(preference, "push_enabled") and preference.push_enabled:
                 return NotificationChannelEnum.PUSH
         elif priority == NotificationPriority.HIGH or str(priority) == "high":
             # 高优先级: 优先短信,然后推送
-            if hasattr(preference, 'sms_enabled') and preference.sms_enabled:
+            if hasattr(preference, "sms_enabled") and preference.sms_enabled:
                 return NotificationChannelEnum.SMS
-            elif hasattr(preference, 'push_enabled') and preference.push_enabled:
+            elif hasattr(preference, "push_enabled") and preference.push_enabled:
                 return NotificationChannelEnum.PUSH
         else:
             # 普通/低优先级: 优先推送
-            if hasattr(preference, 'push_enabled') and preference.push_enabled:
+            if hasattr(preference, "push_enabled") and preference.push_enabled:
                 return NotificationChannelEnum.PUSH
-        
+
         return None
-    
+
     @staticmethod
     def _select_contact_channel(contact: EmergencyContact) -> NotificationChannelEnum:
         """选择紧急联系人通知渠道"""
         # 根据紧急联系人的通知方式选择渠道
-        if hasattr(contact, 'notification_method') and contact.notification_method == "phone":
+        if (
+            hasattr(contact, "notification_method")
+            and contact.notification_method == "phone"
+        ):
             return NotificationChannelEnum.PHONE
         else:
             return NotificationChannelEnum.SMS
-    
+
     def _send_push_notification(self, notification: Notification):
         """
         发送APP推送通知
@@ -969,7 +1126,7 @@ class NotificationService(BaseService[Notification]):
             user_id=notification.user_id,
             title=notification.title,
             content=notification.content,
-            data=notification.data
+            data=notification.data,
         )
 
         # 记录结果
@@ -978,7 +1135,6 @@ class NotificationService(BaseService[Notification]):
         else:
             logger.error(f"推送通知发送失败: {result.get('message')}")
 
-    
     def _send_sms_notification(self, notification: Notification):
         """
         发送短信通知
@@ -997,8 +1153,7 @@ class NotificationService(BaseService[Notification]):
 
         # 使用模拟器发送短信
         result = self.sms_simulator.send(
-            phone_number=user.phone,
-            content=notification.content
+            phone_number=user.phone, content=notification.content
         )
 
         # 记录结果
@@ -1007,7 +1162,6 @@ class NotificationService(BaseService[Notification]):
         else:
             logger.error(f"短信通知发送失败: {result.get('message')}")
 
-    
     def _send_phone_notification(self, notification: Notification):
         """
         发送电话通知
@@ -1033,8 +1187,7 @@ class NotificationService(BaseService[Notification]):
 
         # 使用模拟器发送电话
         result = self.phone_simulator.call(
-            phone_number=phone_number,
-            content=notification.content
+            phone_number=phone_number, content=notification.content
         )
 
         # 记录结果
@@ -1043,7 +1196,6 @@ class NotificationService(BaseService[Notification]):
         else:
             logger.error(f"电话通知发送失败: {result.get('message')}")
 
-    
     def _send_email_notification(self, notification: Notification):
         """
         发送邮件通知
@@ -1060,7 +1212,7 @@ class NotificationService(BaseService[Notification]):
         result = self.email_simulator.send(
             to_email=user.email,
             subject=notification.title,
-            content=notification.content
+            content=notification.content,
         )
 
         # 记录结果
@@ -1080,13 +1232,16 @@ class NotificationService(BaseService[Notification]):
             User: 用户对象，如果不存在则返回None
         """
         from app.core.database import get_db
+
         db = next(get_db())
         try:
             return db.query(User).filter(User.user_id == notification.user_id).first()
         finally:
             db.close()
 
-    def _get_emergency_contact(self, notification: Notification) -> Optional[EmergencyContact]:
+    def _get_emergency_contact(
+        self, notification: Notification
+    ) -> Optional[EmergencyContact]:
         """
         根据通知获取紧急联系人信息
 
@@ -1100,11 +1255,13 @@ class NotificationService(BaseService[Notification]):
             return None
 
         from app.core.database import get_db
+
         db = next(get_db())
         try:
-            return db.query(EmergencyContact).filter(
-                EmergencyContact.id == notification.recipient_id
-            ).first()
+            return (
+                db.query(EmergencyContact)
+                .filter(EmergencyContact.id == notification.recipient_id)
+                .first()
+            )
         finally:
             db.close()
-

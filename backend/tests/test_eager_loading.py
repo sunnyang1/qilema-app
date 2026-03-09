@@ -5,13 +5,14 @@
 """
 
 import os
-import pytest
 from unittest.mock import patch
+
+import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
 # 设置测试用的加密密钥
-os.environ['ENCRYPTION_KEY'] = 'IDXYznWU6bqgQff_7jYMLX65z0zID49Ced5fWB9XdtY='
+os.environ["ENCRYPTION_KEY"] = "IDXYznWU6bqgQff_7jYMLX65z0zID49Ced5fWB9XdtY="
 
 
 # 追踪查询次数
@@ -38,10 +39,11 @@ def reset_query_count():
 def test_user(db):
     """创建测试用户"""
     from app.models.user import User
+
     user = User(
         user_id="test_eager_loading_user",
         phone="13900139000",
-        password_hash="hashed_password"
+        password_hash="hashed_password",
     )
     db.add(user)
     db.commit()
@@ -60,14 +62,17 @@ class TestEagerLoading:
         2. 关联数据（病史、用药、过敏）在同一查询中加载
         3. 访问关联数据不会触发额外的查询
         """
-        from app.models.health_record import HealthRecord, MedicalHistory, Medication, Allergy
+        from app.models.health_record import (
+            Allergy,
+            HealthRecord,
+            MedicalHistory,
+            Medication,
+        )
         from app.services.health_record_service import HealthRecordService
 
         # 创建健康档案
         health_record = HealthRecord(
-            user_id=test_user.user_id,
-            real_name="张三",
-            gender="男"
+            user_id=test_user.user_id, real_name="张三", gender="男"
         )
         db.add(health_record)
         db.commit()
@@ -75,17 +80,10 @@ class TestEagerLoading:
 
         # 添加关联数据
         medical_history = MedicalHistory(
-            health_record_id=health_record.id,
-            disease_name="高血压"
+            health_record_id=health_record.id, disease_name="高血压"
         )
-        medication = Medication(
-            health_record_id=health_record.id,
-            drug_name="阿司匹林"
-        )
-        allergy = Allergy(
-            health_record_id=health_record.id,
-            allergen="青霉素"
-        )
+        medication = Medication(health_record_id=health_record.id, drug_name="阿司匹林")
+        allergy = Allergy(health_record_id=health_record.id, allergen="青霉素")
         db.add_all([medical_history, medication, allergy])
         db.commit()
 
@@ -131,9 +129,7 @@ class TestEagerLoading:
 
         # 创建健康档案（没有关联数据）
         health_record = HealthRecord(
-            user_id=test_user.user_id,
-            real_name="李四",
-            gender="女"
+            user_id=test_user.user_id, real_name="李四", gender="女"
         )
         db.add(health_record)
         db.commit()
@@ -151,9 +147,7 @@ class TestEagerLoading:
         assert record.user_id == test_user.user_id
 
         # 即使没有关联数据，查询次数也应该很少（1 次或更少）
-        assert query_count <= 1, (
-            f"查询次数过多：{query_count} 次，预期不超过 1 次"
-        )
+        assert query_count <= 1, f"查询次数过多：{query_count} 次，预期不超过 1 次"
 
     def test_get_health_record_multiple_associations(self, db, test_user):
         """测试获取有多个关联数据的健康档案"""
@@ -162,9 +156,7 @@ class TestEagerLoading:
 
         # 创建健康档案
         health_record = HealthRecord(
-            user_id=test_user.user_id,
-            real_name="王五",
-            gender="男"
+            user_id=test_user.user_id, real_name="王五", gender="男"
         )
         db.add(health_record)
         db.commit()
@@ -173,8 +165,7 @@ class TestEagerLoading:
         # 添加多个病史记录
         for i in range(5):
             medical_history = MedicalHistory(
-                health_record_id=health_record.id,
-                disease_name=f"疾病{i}"
+                health_record_id=health_record.id, disease_name=f"疾病{i}"
             )
             db.add(medical_history)
         db.commit()

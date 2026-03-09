@@ -4,21 +4,21 @@
 测试密码哈希、JWT令牌、用户认证等安全功能
 """
 
-import pytest
 from datetime import datetime, timedelta
-from fastapi import HTTPException, status
 from unittest.mock import Mock, patch
 
+import pytest
+from app.core.config import settings
 from app.core.security import (
-    verify_password,
-    get_password_hash,
     create_access_token,
     decode_access_token,
     get_current_user,
-    oauth2_scheme
+    get_password_hash,
+    oauth2_scheme,
+    verify_password,
 )
-from app.core.config import settings
 from app.models.user import User
+from fastapi import HTTPException, status
 
 
 class TestPasswordHashing:

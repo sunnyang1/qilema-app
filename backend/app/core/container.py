@@ -4,10 +4,9 @@
 使用 dependency-injector 管理应用的所有服务和资源
 """
 
-from dependency_injector import containers, providers
-
 from app.core.database import get_engine
 from app.core.redis import redis_manager
+from dependency_injector import containers, providers
 
 
 class Container(containers.DeclarativeContainer):
@@ -51,34 +50,42 @@ class Container(containers.DeclarativeContainer):
     # 为避免循环导入，使用延迟导入
     def get_checkin_service():
         from app.services.checkin_service import CheckInService
+
         return CheckInService
 
     def get_user_service():
         from app.services.user_service import UserService
+
         return UserService
 
     def get_sos_service():
         from app.services.sos_service import SosService
+
         return SosService
 
     def get_emergency_contact_service():
         from app.services.emergency_contact_service import EmergencyContactService
+
         return EmergencyContactService
 
     def get_health_record_service():
         from app.services.health_record_service import HealthRecordService
+
         return HealthRecordService
 
     def get_notification_service():
         from app.services.notification_service import NotificationService
+
         return NotificationService
 
     def get_device_service():
         from app.services.device_service import DeviceService
+
         return DeviceService
 
     def get_alert_service():
         from app.services.alert_service import AlertService
+
         return AlertService
 
     checkin_service = providers.Factory(get_checkin_service)

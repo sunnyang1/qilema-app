@@ -1,13 +1,15 @@
 """
 高负载测试 - 验证熔断器和重试机制在高负载下的表现
 """
-import pytest
-import time
+
 import gc
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import Mock, patch
-from app.services.notification_service import NotificationService
+
+import pytest
 from app.models.notification_model import Notification
+from app.services.notification_service import NotificationService
 from conftest import TEST_CONFIG
 
 
@@ -28,24 +30,27 @@ class TestHighLoadPerformance:
                 title=f"Test {i}",
                 content=f"Content {i}",
                 channel="push",
-                retry_count=0
+                retry_count=0,
             )
             for i in range(50)
         ]
 
         # 模拟前10次成功，后40次失败
-        with patch.object(service, '_try_send_by_channel', side_effect=[
-            {"success": True}
-        ] * 10 + [{"success": False, "error": "Fail"}] * 40):
-            with patch.object(service, '_mark_notification_sent'):
-                with patch.object(service, '_mark_notification_failed'):
+        with patch.object(
+            service,
+            "_try_send_by_channel",
+            side_effect=[{"success": True}] * 10
+            + [{"success": False, "error": "Fail"}] * 40,
+        ):
+            with patch.object(service, "_mark_notification_sent"):
+                with patch.object(service, "_mark_notification_failed"):
                     # 并发发送50个通知
                     with ThreadPoolExecutor(max_workers=10) as executor:
                         futures = [
                             executor.submit(
                                 service._send_notification_directly,
                                 notification,
-                                "push"
+                                "push",
                             )
                             for notification in notifications
                         ]
@@ -75,7 +80,7 @@ class TestHighLoadPerformance:
                 title=f"Test {i}",
                 content=f"Content {i}",
                 channel="push",
-                retry_count=0
+                retry_count=0,
             )
             for i in range(100)
         ]
@@ -94,9 +99,9 @@ class TestHighLoadPerformance:
         # 使用配置文件中的超时时间
         test_timeout = TEST_CONFIG["timeout"]["stress_test"]
 
-        with patch.object(service, '_try_send_by_channel', mock_try_send):
-            with patch.object(service, '_mark_notification_sent'):
-                with patch.object(service, '_mark_notification_failed'):
+        with patch.object(service, "_try_send_by_channel", mock_try_send):
+            with patch.object(service, "_mark_notification_sent"):
+                with patch.object(service, "_mark_notification_failed"):
                     start_time = time.time()
 
                     # 并发发送100个通知
@@ -105,7 +110,7 @@ class TestHighLoadPerformance:
                             executor.submit(
                                 service._send_notification_directly,
                                 notification,
-                                "push"
+                                "push",
                             )
                             for notification in notifications
                         ]
@@ -137,14 +142,18 @@ class TestHighLoadPerformance:
                 title=f"Test {i}",
                 content=f"Content {i}",
                 channel="push",
-                retry_count=0
+                retry_count=0,
             )
             for i in range(20)
         ]
 
         # 阶段1：触发熔断器（前5次失败）
-        with patch.object(service, '_try_send_by_channel', return_value={"success": False, "error": "Fail"}):
-            with patch.object(service, '_mark_notification_failed'):
+        with patch.object(
+            service,
+            "_try_send_by_channel",
+            return_value={"success": False, "error": "Fail"},
+        ):
+            with patch.object(service, "_mark_notification_failed"):
                 for i in range(5):
                     try:
                         service._send_notification_directly(notifications[i], "push")
@@ -167,8 +176,10 @@ class TestHighLoadPerformance:
             success_count[0] += 1
             return {"success": True}
 
-        with patch.object(service, '_try_send_by_channel', mock_try_send_after_recovery):
-            with patch.object(service, '_mark_notification_sent'):
+        with patch.object(
+            service, "_try_send_by_channel", mock_try_send_after_recovery
+        ):
+            with patch.object(service, "_mark_notification_sent"):
                 for i in range(5, 10):
                     service._send_notification_directly(notifications[i], "push")
 
@@ -187,7 +198,7 @@ class TestHighLoadPerformance:
                 title=f"Test {i}",
                 content=f"Content {i}",
                 channel="push",
-                retry_count=0
+                retry_count=0,
             )
             for i in range(10)
         ]
@@ -203,9 +214,9 @@ class TestHighLoadPerformance:
             else:
                 return {"success": True}
 
-        with patch.object(service, '_try_send_by_channel', mock_try_send):
-            with patch.object(service, '_mark_notification_sent'):
-                with patch.object(service, '_mark_notification_failed'):
+        with patch.object(service, "_try_send_by_channel", mock_try_send):
+            with patch.object(service, "_mark_notification_sent"):
+                with patch.object(service, "_mark_notification_failed"):
                     start_time = time.time()
 
                     # 顺序发送10个通知

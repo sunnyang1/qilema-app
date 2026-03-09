@@ -1,14 +1,17 @@
 """
 测试数据库迁移脚本
 """
+
 import os
 import subprocess
-import pytest
 from pathlib import Path
+
+import pytest
+
 from scripts.migrate_sqlite_to_postgresql import (
-    check_pgloader_installed,
     backup_sqlite_database,
-    migrate_with_pgloader
+    check_pgloader_installed,
+    migrate_with_pgloader,
 )
 
 
@@ -26,6 +29,7 @@ class TestDatabaseMigrationScript:
         """测试备份SQLite数据库"""
         # 创建一个测试数据库文件
         import sqlite3
+
         test_db = tmp_path / "test.db"
         conn = sqlite3.connect(str(test_db))
         conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
@@ -69,7 +73,7 @@ class TestDatabaseMigrationScript:
             success = migrate_with_pgloader(
                 test_db,
                 "postgresql://invalid:invalid@localhost:9999/invalid",
-                verbose=False
+                verbose=False,
             )
 
             # 应该失败（因为PostgreSQL不存在）
@@ -82,12 +86,15 @@ class TestDatabaseMigrationScript:
 
     def test_migration_script_exists(self):
         """测试迁移脚本文件存在"""
-        script_path = Path(__file__).parent.parent / "scripts" / "migrate_sqlite_to_postgresql.py"
+        script_path = (
+            Path(__file__).parent.parent / "scripts" / "migrate_sqlite_to_postgresql.py"
+        )
         assert script_path.exists()
 
     def test_migration_script_has_main_function(self):
         """测试迁移脚本有main函数"""
         from scripts.migrate_sqlite_to_postgresql import main
+
         assert callable(main)
 
     def test_migration_script_imports(self):
@@ -107,7 +114,7 @@ class TestDatabaseMigrationScript:
             ["python", "scripts/migrate_sqlite_to_postgresql.py", "--help"],
             capture_output=True,
             text=True,
-            cwd=Path(__file__).parent.parent
+            cwd=Path(__file__).parent.parent,
         )
 
         # 验证帮助信息包含关键参数

@@ -8,10 +8,10 @@
 输出:
     生成的64字节随机密钥（base64编码）
 """
-import os
-import sys
-import secrets
 import base64
+import os
+import secrets
+import sys
 
 
 def generate_secret_key() -> str:
@@ -24,7 +24,7 @@ def generate_secret_key() -> str:
     random_bytes = secrets.token_bytes(64)
 
     # 使用 base64 编码，便于在配置文件中使用
-    secret_key = base64.b64encode(random_bytes).decode('utf-8')
+    secret_key = base64.b64encode(random_bytes).decode("utf-8")
 
     return secret_key
 

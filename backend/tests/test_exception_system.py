@@ -4,30 +4,30 @@
 测试异常类、异常处理中间件等功能
 """
 
-import pytest
-from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
 import time
+from unittest.mock import AsyncMock, patch
 
+import pytest
 from app.core.exceptions import (
-    BaseAppException,
-    ValidationException,
-    UnauthorizedException,
-    NotFoundException,
-    UserNotFoundException,
-    DeviceNotFoundException,
-    DatabaseException,
-    UserAlreadyExistsException,
     AlreadyCheckedInException,
-    handle_database_error
+    BaseAppException,
+    DatabaseException,
+    DeviceNotFoundException,
+    NotFoundException,
+    UnauthorizedException,
+    UserAlreadyExistsException,
+    UserNotFoundException,
+    ValidationException,
+    handle_database_error,
 )
 from app.core.middleware import (
     ExceptionHandlerMiddleware,
-    RequestLoggingMiddleware,
     RequestIDMiddleware,
-    setup_middleware
+    RequestLoggingMiddleware,
+    setup_middleware,
 )
+from fastapi import FastAPI, Request
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -157,7 +157,7 @@ class TestExceptionHandlerMiddleware:
         response_data = {
             "code": exc.code,
             "message": exc.message,
-            "timestamp": int(time.time())
+            "timestamp": int(time.time()),
         }
 
         assert response_data["code"] == 400
@@ -226,10 +226,7 @@ class TestRequestIDMiddleware:
         """测试使用自定义请求ID"""
         custom_id = "custom-request-id-123"
 
-        response = client.get(
-            "/test-success",
-            headers={"X-Request-ID": custom_id}
-        )
+        response = client.get("/test-success", headers={"X-Request-ID": custom_id})
 
         # 验证使用自定义请求ID
         assert response.headers["X-Request-ID"] == custom_id
@@ -249,7 +246,7 @@ class TestMiddlewareIntegration:
 
     def test_request_logging_on_success(self, client):
         """测试成功请求日志记录"""
-        with patch('app.core.middleware.logger.info') as mock_logger:
+        with patch("app.core.middleware.logger.info") as mock_logger:
             client.get("/test-success")
 
             # 验证记录了请求日志

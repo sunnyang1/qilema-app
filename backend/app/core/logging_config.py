@@ -5,22 +5,35 @@
 支持日志轮转和敏感信息脱敏
 """
 
+import json
 import logging
 import logging.handlers
-import json
-import sys
 import re
+import sys
 from datetime import datetime
-from typing import Any, Dict
 from pathlib import Path
-
+from typing import Any, Dict
 
 # 敏感信息字段列表（自动脱敏）
 SENSITIVE_FIELDS = {
-    'password', 'pwd', 'passwd', 'secret', 'token', 'authorization',
-    'api_key', 'apikey', 'access_token', 'refresh_token',
-    'id_token', 'client_secret', 'private_key', 'credit_card',
-    'ssn', 'social_security', 'cvv', 'pin'
+    "password",
+    "pwd",
+    "passwd",
+    "secret",
+    "token",
+    "authorization",
+    "api_key",
+    "apikey",
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "client_secret",
+    "private_key",
+    "credit_card",
+    "ssn",
+    "social_security",
+    "cvv",
+    "pin",
 }
 
 
@@ -57,35 +70,35 @@ class JSONFormatter(logging.Formatter):
         """
         # 基础日志字段
         log_data = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
         }
 
         # 添加请求 ID（如果有）
-        if hasattr(record, 'request_id'):
-            log_data['request_id'] = record.request_id
+        if hasattr(record, "request_id"):
+            log_data["request_id"] = record.request_id
 
         # 添加用户 ID（如果有）
-        if hasattr(record, 'user_id'):
-            log_data['user_id'] = record.user_id
+        if hasattr(record, "user_id"):
+            log_data["user_id"] = record.user_id
 
         # 添加异常信息（如果有）
         if record.exc_info:
-            log_data['exception'] = {
-                'type': record.exc_info[0].__name__,
-                'message': str(record.exc_info[1]),
-                'traceback': self.formatException(record.exc_info)
+            log_data["exception"] = {
+                "type": record.exc_info[0].__name__,
+                "message": str(record.exc_info[1]),
+                "traceback": self.formatException(record.exc_info),
             }
 
         # 添加额外字段（如果有）
-        if hasattr(record, 'extra_fields') and isinstance(record.extra_fields, dict):
+        if hasattr(record, "extra_fields") and isinstance(record.extra_fields, dict):
             # 脱敏敏感信息
-            log_data['extra'] = self._sanitize_extra_fields(record.extra_fields)
+            log_data["extra"] = self._sanitize_extra_fields(record.extra_fields)
 
         return json.dumps(log_data, ensure_ascii=False)
 
@@ -121,15 +134,15 @@ class JSONFormatter(logging.Formatter):
             str: 脱敏后的字符串
         """
         if value is None:
-            return 'null'
+            return "null"
 
         if isinstance(value, str):
             # 如果是字符串，保留前 2 位和后 2 位，中间用 * 代替
             if len(value) <= 4:
-                return '****'
-            return value[:2] + '*' * (len(value) - 4) + value[-2:]
+                return "****"
+            return value[:2] + "*" * (len(value) - 4) + value[-2:]
 
-        return '****'
+        return "****"
 
 
 class ContextFilter(logging.Filter):
@@ -153,7 +166,7 @@ class ContextFilter(logging.Filter):
         try:
             from contextvars import ContextVar
 
-            request_id_var = ContextVar('request_id', default=None)
+            request_id_var = ContextVar("request_id", default=None)
             request_id = request_id_var.get()
             if request_id:
                 record.request_id = request_id
@@ -164,7 +177,7 @@ class ContextFilter(logging.Filter):
         try:
             from contextvars import ContextVar
 
-            user_id_var = ContextVar('user_id', default=None)
+            user_id_var = ContextVar("user_id", default=None)
             user_id = user_id_var.get()
             if user_id:
                 record.user_id = user_id
@@ -175,9 +188,7 @@ class ContextFilter(logging.Filter):
 
 
 def setup_logging(
-    log_level: str = 'INFO',
-    log_file: str = None,
-    log_to_console: bool = True
+    log_level: str = "INFO", log_file: str = None, log_to_console: bool = True
 ) -> logging.Logger:
     """
     配置日志系统
@@ -225,7 +236,7 @@ def setup_logging(
             filename=log_file,
             maxBytes=50 * 1024 * 1024,  # 50MB
             backupCount=10,
-            encoding='utf-8'
+            encoding="utf-8",
         )
         file_handler.setLevel(level)
         file_handler.setFormatter(json_formatter)
@@ -249,31 +260,36 @@ def get_logger(name: str) -> logging.Logger:
 
 
 # 简易示例（如果直接运行此文件）
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 配置日志
-    setup_logging(log_level='DEBUG', log_to_console=True)
+    setup_logging(log_level="DEBUG", log_to_console=True)
 
     # 获取日志记录器
-    logger = get_logger('example')
+    logger = get_logger("example")
 
     # 记录普通日志
-    logger.info('Application started')
+    logger.info("Application started")
 
     # 记录带请求 ID 的日志
-    request_id_logger = get_logger('example')
-    request_id_logger.info('Processing request', extra={'extra_fields': {'request_id': '12345678'}})
+    request_id_logger = get_logger("example")
+    request_id_logger.info(
+        "Processing request", extra={"extra_fields": {"request_id": "12345678"}}
+    )
 
     # 记录带敏感信息的日志
-    logger.info('User login attempt', extra={
-        'extra_fields': {
-            'username': 'test@example.com',
-            'password': 'secret123',
-            'api_key': 'sk-1234567890abcdef'
-        }
-    })
+    logger.info(
+        "User login attempt",
+        extra={
+            "extra_fields": {
+                "username": "test@example.com",
+                "password": "secret123",
+                "api_key": "sk-1234567890abcdef",
+            }
+        },
+    )
 
     # 记录异常日志
     try:
         1 / 0
     except Exception as e:
-        logger.error('Division by zero', exc_info=True)
+        logger.error("Division by zero", exc_info=True)

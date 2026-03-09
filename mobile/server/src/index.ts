@@ -16,7 +16,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     status: 'ok',
     message: '起了吗 App 前端服务器运行正常'
   });

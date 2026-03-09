@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./backups:/backups  # 备份目录
-    
+
     # 生产环境添加资源限制
     deploy:
       resources:
@@ -26,7 +26,7 @@ services:
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_prod_data:/data
-    
+
     # 生产环境添加资源限制
     deploy:
       resources:
@@ -45,34 +45,34 @@ services:
       DEBUG: "False"
       APP_NAME: "起了吗App"
       APP_VERSION: "1.0.0"
-      
+
       # 数据库配置（从环境变量读取）
       DATABASE_URL: ${DATABASE_URL:-postgresql://qilema:qilema_password@postgres:5432/qilema_prod}
-      
+
       # Redis配置（从环境变量读取）
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      
+
       # JWT配置（必须从环境变量设置）
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      
+
       # 加密密钥（必须从环境变量设置）
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      
+
       # CORS配置（生产环境仅允许指定域名）
       CORS_ORIGINS: ${CORS_ORIGINS}
-      
+
       # 签到配置
       DEFAULT_CHECKIN_HOURS: 24
-      
+
       # 日志级别
       LOG_LEVEL: WARNING
-    
+
     # 生产环境不挂载源码，使用打包后的镜像
     volumes:
       - ./backend/logs:/app/logs
-    
+
     # 生产环境设置资源限制
     deploy:
       resources:
@@ -82,9 +82,9 @@ services:
         reservations:
           cpus: '1.0'
           memory: 1G
-    
+
     restart: always
-    
+
     # 生产环境更严格的健康检查
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

@@ -7,6 +7,7 @@
 
 import os
 import sys
+
 import psycopg2
 import redis
 from dotenv import load_dotenv
@@ -15,18 +16,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 必需的环境变量列表
-REQUIRED_ENV_VARS = [
-    'SECRET_KEY',
-    'DATABASE_URL',
-    'REDIS_URL',
-    'ENCRYPTION_KEY'
-]
+REQUIRED_ENV_VARS = ["SECRET_KEY", "DATABASE_URL", "REDIS_URL", "ENCRYPTION_KEY"]
 
 # 可选的环境变量列表
-OPTIONAL_ENV_VARS = [
-    'CORS_ORIGINS',
-    'LOG_LEVEL'
-]
+OPTIONAL_ENV_VARS = ["CORS_ORIGINS", "LOG_LEVEL"]
 
 
 def validate_required_env_vars() -> bool:
@@ -41,7 +34,7 @@ def validate_required_env_vars() -> bool:
         value = os.getenv(var)
         if not value:
             missing_vars.append(var)
-        elif var == 'SECRET_KEY' and value == 'your-secret-key-change-in-production':
+        elif var == "SECRET_KEY" and value == "your-secret-key-change-in-production":
             print(f"❌ {var}: 使用了默认值，请设置强随机密钥")
             return False
 
@@ -60,7 +53,7 @@ def validate_secret_key_strength() -> bool:
     Returns:
         bool: SECRET_KEY 强度足够返回 True
     """
-    secret_key = os.getenv('SECRET_KEY', '')
+    secret_key = os.getenv("SECRET_KEY", "")
     if len(secret_key) < 32:
         print(f"❌ SECRET_KEY 长度不足: {len(secret_key)} < 32")
         return False
@@ -76,7 +69,7 @@ def validate_encryption_key_exists() -> bool:
     Returns:
         bool: ENCRYPTION_KEY 已设置返回 True
     """
-    encryption_key = os.getenv('ENCRYPTION_KEY', '')
+    encryption_key = os.getenv("ENCRYPTION_KEY", "")
     if not encryption_key:
         print("❌ ENCRYPTION_KEY 未设置")
         return False
@@ -97,17 +90,17 @@ def validate_database_connection() -> bool:
         bool: 数据库连接成功返回 True
     """
     try:
-        db_url = os.getenv('DATABASE_URL', '')
+        db_url = os.getenv("DATABASE_URL", "")
         if not db_url:
             print("❌ DATABASE_URL 未设置")
             return False
 
         # 解析数据库 URL
-        if db_url.startswith('postgresql://'):
+        if db_url.startswith("postgresql://"):
             # PostgreSQL 连接
             conn = psycopg2.connect(db_url)
             cur = conn.cursor()
-            cur.execute('SELECT 1')
+            cur.execute("SELECT 1")
             result = cur.fetchone()
             cur.close()
             conn.close()
@@ -132,13 +125,13 @@ def validate_redis_connection() -> bool:
         bool: Redis 连接成功返回 True
     """
     try:
-        redis_url = os.getenv('REDIS_URL', '')
+        redis_url = os.getenv("REDIS_URL", "")
         if not redis_url:
             print("❌ REDIS_URL 未设置")
             return False
 
         # 解析 Redis URL
-        if redis_url.startswith('redis://'):
+        if redis_url.startswith("redis://"):
             r = redis.from_url(redis_url)
             r.ping()
             print("✅ Redis 连接成功")
@@ -158,10 +151,11 @@ def validate_disk_space() -> bool:
     """
     try:
         import shutil
-        total, used, free = shutil.disk_usage('/')
+
+        total, used, free = shutil.disk_usage("/")
 
         # 检查至少有 1GB 可用空间
-        free_gb = free / (1024 ** 3)
+        free_gb = free / (1024**3)
         if free_gb < 1:
             print(f"❌ 磁盘空间不足: {free_gb:.2f}GB < 1GB")
             return False
@@ -218,5 +212,5 @@ def main():
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

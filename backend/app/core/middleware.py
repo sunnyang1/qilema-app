@@ -4,17 +4,17 @@
 提供全局异常处理、请求日志、CORS等中间件功能
 """
 
-import time
-import uuid
 import logging
 import re
+import time
+import uuid
 from typing import Callable, Optional
-from fastapi import Request, Response, FastAPI
+
+from app.core.exceptions import BaseAppException
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-
-from app.core.exceptions import BaseAppException
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -77,7 +77,9 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
         except Exception as exc:
             return await self._handle_unexpected_exception(request, exc)
 
-    async def _handle_app_exception(self, request: Request, exc: BaseAppException) -> JSONResponse:
+    async def _handle_app_exception(
+        self, request: Request, exc: BaseAppException
+    ) -> JSONResponse:
         """处理应用异常"""
         request_id = getattr(request.state, "request_id", "unknown")
 
@@ -89,9 +91,9 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
                 "error_message": exc.message,
                 "detail": exc.detail,
                 "path": request.url.path,
-                "method": request.method
+                "method": request.method,
             },
-            exc_info=exc
+            exc_info=exc,
         )
 
         sanitized_detail = self._sanitize_sensitive_info(exc.detail)
@@ -104,11 +106,13 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
                 "message": exc.message,
                 "detail": sanitized_detail,
                 "request_id": request_id,
-                "timestamp": int(time.time())
-            }
+                "timestamp": int(time.time()),
+            },
         )
 
-    async def _handle_unexpected_exception(self, request: Request, exc: Exception) -> JSONResponse:
+    async def _handle_unexpected_exception(
+        self, request: Request, exc: Exception
+    ) -> JSONResponse:
         """处理未预期的异常"""
         request_id = getattr(request.state, "request_id", "unknown")
 
@@ -119,9 +123,9 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
                 "exception_type": type(exc).__name__,
                 "exception_message": str(exc),
                 "path": request.url.path,
-                "method": request.method
+                "method": request.method,
             },
-            exc_info=exc
+            exc_info=exc,
         )
 
         sanitized_message = self._sanitize_sensitive_info(str(exc))
@@ -132,10 +136,12 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
             content={
                 "code": 500,
                 "message": "服务器内部错误",
-                "detail": sanitized_message if logger.isEnabledFor(logging.DEBUG) else None,
+                "detail": (
+                    sanitized_message if logger.isEnabledFor(logging.DEBUG) else None
+                ),
                 "request_id": request_id,
-                "timestamp": int(time.time())
-            }
+                "timestamp": int(time.time()),
+            },
         )
 
     def _sanitize_sensitive_info(self, info: Optional[any]) -> Optional[str]:
@@ -146,11 +152,26 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
         info_str = str(info)
 
         # 脱敏密码字段
-        info_str = re.sub(r'(["\']?password["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)', r'\1****', info_str, flags=re.IGNORECASE)
+        info_str = re.sub(
+            r'(["\']?password["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)',
+            r"\1****",
+            info_str,
+            flags=re.IGNORECASE,
+        )
         # 脱敏token字段
-        info_str = re.sub(r'(["\']?token["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)', r'\1****', info_str, flags=re.IGNORECASE)
+        info_str = re.sub(
+            r'(["\']?token["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)',
+            r"\1****",
+            info_str,
+            flags=re.IGNORECASE,
+        )
         # 脱敏secret字段
-        info_str = re.sub(r'(["\']?secret["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)', r'\1****', info_str, flags=re.IGNORECASE)
+        info_str = re.sub(
+            r'(["\']?secret["\']?\s*[:=]\s*["\']?)([^"\'\s,}]+)',
+            r"\1****",
+            info_str,
+            flags=re.IGNORECASE,
+        )
 
         return info_str
 
@@ -179,8 +200,8 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "query_params": str(request.query_params),
                 "client": request.client.host if request.client else None,
-                "user_agent": request.headers.get("user-agent")
-            }
+                "user_agent": request.headers.get("user-agent"),
+            },
         )
 
         try:
@@ -204,8 +225,8 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                         "method": request.method,
                         "path": request.url.path,
                         "duration_ms": duration_ms,
-                        "slow_request": True
-                    }
+                        "slow_request": True,
+                    },
                 )
 
             # 记录响应日志
@@ -218,8 +239,8 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                     "path": request.url.path,
                     "status_code": response.status_code,
                     "duration_ms": duration_ms,
-                    "slow_request": is_slow
-                }
+                    "slow_request": is_slow,
+                },
             )
 
             return response
@@ -237,9 +258,9 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                     "method": request.method,
                     "path": request.url.path,
                     "duration_ms": duration_ms,
-                    "exception": str(exc)
+                    "exception": str(exc),
                 },
-                exc_info=exc
+                exc_info=exc,
             )
             raise
 

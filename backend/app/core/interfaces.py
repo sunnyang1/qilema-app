@@ -5,8 +5,9 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Any
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import Any, List, Optional
+
 from sqlalchemy.orm import Session
 
 
@@ -19,7 +20,9 @@ class ICheckInService(ABC):
         pass
 
     @abstractmethod
-    def get_user_checkins(self, db: Session, user_id: str, offset: int = 0, limit: int = 20) -> List[Any]:
+    def get_user_checkins(
+        self, db: Session, user_id: str, offset: int = 0, limit: int = 20
+    ) -> List[Any]:
         """获取用户签到记录"""
         pass
 
@@ -97,7 +100,9 @@ class IEmergencyContactService(ABC):
         pass
 
     @abstractmethod
-    def update_emergency_contact(self, db: Session, contact_id: int, update_data: Any) -> Any:
+    def update_emergency_contact(
+        self, db: Session, contact_id: int, update_data: Any
+    ) -> Any:
         """更新紧急联系人信息"""
         pass
 
@@ -126,7 +131,9 @@ class ISosService(ABC):
         pass
 
     @abstractmethod
-    def get_user_sos_requests(self, db: Session, user_id: str, offset: int = 0, limit: int = 20) -> List[Any]:
+    def get_user_sos_requests(
+        self, db: Session, user_id: str, offset: int = 0, limit: int = 20
+    ) -> List[Any]:
         """获取用户的SOS请求列表"""
         pass
 
@@ -155,7 +162,9 @@ class IHealthRecordService(ABC):
         pass
 
     @abstractmethod
-    def get_health_records(self, db: Session, user_id: str, offset: int = 0, limit: int = 20) -> List[Any]:
+    def get_health_records(
+        self, db: Session, user_id: str, offset: int = 0, limit: int = 20
+    ) -> List[Any]:
         """获取用户的健康记录"""
         pass
 
@@ -165,7 +174,9 @@ class IHealthRecordService(ABC):
         pass
 
     @abstractmethod
-    def update_health_record(self, db: Session, record_id: int, update_data: Any) -> Any:
+    def update_health_record(
+        self, db: Session, record_id: int, update_data: Any
+    ) -> Any:
         """更新健康记录"""
         pass
 
@@ -175,7 +186,9 @@ class IHealthRecordService(ABC):
         pass
 
     @abstractmethod
-    def get_latest_records(self, db: Session, user_id: str, limit: int = 10) -> List[Any]:
+    def get_latest_records(
+        self, db: Session, user_id: str, limit: int = 10
+    ) -> List[Any]:
         """获取最新健康记录"""
         pass
 
@@ -189,7 +202,9 @@ class INotificationService(ABC):
         pass
 
     @abstractmethod
-    def get_user_notifications(self, db: Session, user_id: str, offset: int = 0, limit: int = 20) -> List[Any]:
+    def get_user_notifications(
+        self, db: Session, user_id: str, offset: int = 0, limit: int = 20
+    ) -> List[Any]:
         """获取用户通知"""
         pass
 
@@ -247,7 +262,14 @@ class IAlertService(ABC):
         pass
 
     @abstractmethod
-    def get_alerts(self, db: Session, user_id: Optional[str] = None, status: Optional[str] = None, offset: int = 0, limit: int = 20) -> List[Any]:
+    def get_alerts(
+        self,
+        db: Session,
+        user_id: Optional[str] = None,
+        status: Optional[str] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> List[Any]:
         """获取告警列表"""
         pass
 

@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
   Keyboard,
   Platform,
   useColorScheme,
@@ -15,7 +15,7 @@ import dayjs from 'dayjs';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 // --------------------------------------------------------
-// 1. 配置 Dayjs 
+// 1. 配置 Dayjs
 // --------------------------------------------------------
 // 即使服务端返回 '2023-10-20T10:00:00Z' (UTC)，
 // dayjs(utcString).format() 会自动转为手机当前的本地时区显示。
@@ -29,7 +29,7 @@ interface SmartDateInputProps {
   mode?: 'date' | 'time' | 'datetime'; // 支持日期、时间、或两者
   displayFormat?: string;   // UI展示的格式，默认 YYYY-MM-DD
   error?: string;           // 错误信息
-  
+
   // 样式自定义（可选）
   containerStyle?: ViewStyle;        // 外层容器样式
   inputStyle?: ViewStyle;            // 输入框样式
@@ -41,10 +41,10 @@ interface SmartDateInputProps {
   iconSize?: number;                 // 图标大小
 }
 
-export const SmartDateInput = ({ 
-  label, 
-  value, 
-  onChange, 
+export const SmartDateInput = ({
+  label,
+  value,
+  onChange,
   placeholder = '请选择',
   mode = 'date',
   displayFormat,
@@ -66,9 +66,9 @@ export const SmartDateInput = ({
   const format = displayFormat || (mode === 'time' ? 'HH:mm' : 'YYYY-MM-DD');
 
   // --------------------------------------------------------
-  // 2. 核心：数据转换逻辑 
+  // 2. 核心：数据转换逻辑
   // --------------------------------------------------------
-  
+
   // 解析服务端值，确保无效值不传给控件；time 模式兼容仅时间字符串
   const parsedValue = useMemo(() => {
     if (!value) return null;
@@ -103,7 +103,7 @@ export const SmartDateInput = ({
   const showDatePicker = () => {
     // 【关键点】打开日期控件前，必须强制收起键盘！
     // 否则键盘会遮挡 iOS 的底部滚轮，或者导致 Android 焦点混乱
-    Keyboard.dismiss(); 
+    Keyboard.dismiss();
     setDatePickerVisibility(true);
   };
 
@@ -126,20 +126,20 @@ export const SmartDateInput = ({
       {/* 标题 */}
       {label && <Text style={[styles.label, labelStyle]}>{label}</Text>}
 
-      {/* 
+      {/*
          这里用 TouchableOpacity 模拟 Input。
          模拟组件永远不会唤起键盘。
       */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
-          styles.inputBox, 
+          styles.inputBox,
           error ? styles.inputBoxError : null,
           inputStyle
-        ]} 
+        ]}
         onPress={showDatePicker}
         activeOpacity={0.7}
       >
-        <Text 
+        <Text
           style={[
             styles.text,
             textStyle,
@@ -150,18 +150,18 @@ export const SmartDateInput = ({
         >
           {displayString || placeholder}
         </Text>
-        
-        <FontAwesome6 
-          name={iconName} 
-          size={iconSize} 
-          color={iconColor || (value ? '#4B5563' : '#9CA3AF')} 
+
+        <FontAwesome6
+          name={iconName}
+          size={iconSize}
+          color={iconColor || (value ? '#4B5563' : '#9CA3AF')}
           style={styles.icon}
         />
       </TouchableOpacity>
-      
+
       {error && <Text style={[styles.errorText, errorTextStyle]}>{error}</Text>}
 
-      {/* 
+      {/*
          DateTimePickerModal 是 React Native Modal。
          它会覆盖在所有 View 之上。
       */}
@@ -172,7 +172,7 @@ export const SmartDateInput = ({
         onConfirm={handleConfirm}
         onCancel={hideDatePicker}
         // iOS 只有用这个 display 样式才最稳，避免乱七八糟的 inline 样式
-        display={Platform.OS === 'ios' ? 'spinner' : 'default'} 
+        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
         // 自动适配系统深色模式，或者根据 isDark 变量控制
         isDarkModeEnabled={isDark}
         // 强制使用中文环境

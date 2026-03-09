@@ -1,15 +1,17 @@
 """
 SOS求救相关的Schema验证
 """
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 from app.core.schemas import BaseSchema
+from pydantic import BaseModel, Field
 
 
 class SOSRequestCreate(BaseModel):
     """创建SOS求救请求"""
+
     user_id: str = Field(..., description="用户ID")
     device_id: Optional[str] = Field(None, description="设备ID")
     sos_type: Optional[str] = Field(None, description="SOS类型: manual/auto/device")
@@ -17,7 +19,9 @@ class SOSRequestCreate(BaseModel):
     latitude: Optional[float] = Field(None, description="纬度")
     longitude: Optional[float] = Field(None, description="经度")
     address: Optional[str] = Field(None, max_length=255, description="地址描述")
-    location_description: Optional[str] = Field(None, max_length=200, description="位置描述")
+    location_description: Optional[str] = Field(
+        None, max_length=200, description="位置描述"
+    )
     location_accuracy: Optional[float] = Field(None, description="定位精度(米)")
     emergency_reason: Optional[str] = Field(None, description="紧急原因描述")
     health_data: Optional[Dict[str, Any]] = Field(None, description="健康数据")
@@ -26,12 +30,14 @@ class SOSRequestCreate(BaseModel):
 
 class SOSRequestUpdate(BaseModel):
     """更新SOS求救请求"""
+
     status: Optional[str] = Field(None, description="状态: pending/responding/resolved")
     responder_notes: Optional[str] = Field(None, max_length=500, description="救援人员备注")
 
 
 class SOSRequestResponse(BaseSchema):
     """SOS求救请求响应"""
+
     sos_id: str
     user_id: str
     device_id: Optional[str]
@@ -74,40 +80,50 @@ class SOSRequestResponse(BaseSchema):
             triggered_at=sos_request.triggered_at,
             responded_at=sos_request.responded_at,
             resolved_at=sos_request.resolved_at,
-            created_at=sos_request.created_at
+            created_at=sos_request.created_at,
         )
 
 
 class SOSLocationUpdate(BaseModel):
     """SOS位置更新"""
+
     sos_id: Optional[str] = Field(None, description="SOS请求ID")
     sos_request_id: Optional[int] = Field(None, description="SOS请求ID(备用)")
     latitude: float = Field(..., ge=-90, le=90, description="纬度")
     longitude: float = Field(..., ge=-180, le=180, description="经度")
-    location_description: Optional[str] = Field(None, max_length=200, description="位置描述")
+    location_description: Optional[str] = Field(
+        None, max_length=200, description="位置描述"
+    )
     location_accuracy: Optional[float] = Field(None, description="定位精度(米)")
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow, description="更新时间")
+    updated_at: Optional[datetime] = Field(
+        default_factory=datetime.utcnow, description="更新时间"
+    )
 
 
 class SOSCancelRequest(BaseModel):
     """SOS取消请求"""
+
     sos_id: Optional[str] = Field(None, description="SOS请求ID")
     sos_request_id: Optional[int] = Field(None, description="SOS请求ID(备用)")
     cancel_reason: Optional[str] = Field(None, max_length=500, description="取消原因")
     reason: Optional[str] = Field(None, max_length=500, description="取消原因(备用)")
     confirm_code: Optional[str] = Field(None, description="确认码")
-    cancelled_at: Optional[datetime] = Field(default_factory=datetime.utcnow, description="取消时间")
+    cancelled_at: Optional[datetime] = Field(
+        default_factory=datetime.utcnow, description="取消时间"
+    )
 
 
 class SOSStatusUpdateRequest(BaseModel):
     """SOS状态更新请求"""
+
     sos_id: Optional[str] = Field(None, description="SOS请求ID")
     status: str = Field(..., description="状态: pending/rescuing/resolved/cancelled")
-    status_change_reason: Optional[str] = Field(None, max_length=255, description="状态变更原因")
+    status_change_reason: Optional[str] = Field(
+        None, max_length=255, description="状态变更原因"
+    )
     ambulance_contact: Optional[str] = Field(None, max_length=50, description="救护车联系方式")
     ambulance_eta: Optional[int] = Field(None, description="救护车预计到达时间(分钟)")
     responder_notes: Optional[str] = Field(None, max_length=500, description="救援人员备注")
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow, description="更新时间")
-
-
-
+    updated_at: Optional[datetime] = Field(
+        default_factory=datetime.utcnow, description="更新时间"
+    )

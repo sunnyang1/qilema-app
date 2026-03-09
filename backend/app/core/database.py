@@ -1,13 +1,14 @@
 """
 数据库连接和会话管理
 """
+
+from typing import Optional
+
+from app.core.config import settings
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
-from typing import Optional
-
-from app.core.config import settings
 
 
 def get_engine(
@@ -112,5 +113,5 @@ def check_database_health(engine_url: Optional[str] = None) -> bool:
         print(f"数据库健康检查失败: {e}")
         return False
     finally:
-        if 'engine' in locals():
+        if "engine" in locals():
             engine.dispose()

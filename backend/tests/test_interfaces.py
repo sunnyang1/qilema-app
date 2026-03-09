@@ -2,19 +2,19 @@
 服务接口单元测试
 """
 
-import pytest
 from abc import ABC
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
+import pytest
 from app.core.interfaces import (
+    IAlertService,
     ICheckInService,
-    IUserService,
+    IDeviceService,
     IEmergencyContactService,
-    ISosService,
     IHealthRecordService,
     INotificationService,
-    IDeviceService,
-    IAlertService
+    ISosService,
+    IUserService,
 )
 
 
@@ -28,11 +28,11 @@ class TestICheckInService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'create_checkin',
-            'get_user_checkins',
-            'get_checkin_stats',
-            'get_checkin_status',
-            'check_today_checked_in'
+            "create_checkin",
+            "get_user_checkins",
+            "get_checkin_stats",
+            "get_checkin_status",
+            "check_today_checked_in",
         ]
 
         for method in required_methods:
@@ -77,13 +77,13 @@ class TestIUserService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'create_user',
-            'get_user_by_id',
-            'get_user_by_phone',
-            'update_user',
-            'authenticate',
-            'delete_user',
-            'get_all_users'
+            "create_user",
+            "get_user_by_id",
+            "get_user_by_phone",
+            "update_user",
+            "authenticate",
+            "delete_user",
+            "get_all_users",
         ]
 
         for method in required_methods:
@@ -100,12 +100,12 @@ class TestIEmergencyContactService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'create_emergency_contact',
-            'get_emergency_contacts',
-            'get_emergency_contact_by_id',
-            'update_emergency_contact',
-            'delete_emergency_contact',
-            'delete_user_emergency_contacts'
+            "create_emergency_contact",
+            "get_emergency_contacts",
+            "get_emergency_contact_by_id",
+            "update_emergency_contact",
+            "delete_emergency_contact",
+            "delete_user_emergency_contacts",
         ]
 
         for method in required_methods:
@@ -122,12 +122,12 @@ class TestISosService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'create_sos_request',
-            'get_sos_request',
-            'get_user_sos_requests',
-            'cancel_sos_request',
-            'update_sos_status',
-            'get_active_sos_requests'
+            "create_sos_request",
+            "get_sos_request",
+            "get_user_sos_requests",
+            "cancel_sos_request",
+            "update_sos_status",
+            "get_active_sos_requests",
         ]
 
         for method in required_methods:
@@ -144,12 +144,12 @@ class TestIHealthRecordService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'create_health_record',
-            'get_health_records',
-            'get_health_record_by_id',
-            'update_health_record',
-            'delete_health_record',
-            'get_latest_records'
+            "create_health_record",
+            "get_health_records",
+            "get_health_record_by_id",
+            "update_health_record",
+            "delete_health_record",
+            "get_latest_records",
         ]
 
         for method in required_methods:
@@ -166,11 +166,11 @@ class TestINotificationService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'send_notification',
-            'get_user_notifications',
-            'mark_as_read',
-            'mark_all_as_read',
-            'delete_notification'
+            "send_notification",
+            "get_user_notifications",
+            "mark_as_read",
+            "mark_all_as_read",
+            "delete_notification",
         ]
 
         for method in required_methods:
@@ -187,11 +187,11 @@ class TestIDeviceService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'register_device',
-            'get_user_devices',
-            'update_device',
-            'delete_device',
-            'update_device_status'
+            "register_device",
+            "get_user_devices",
+            "update_device",
+            "delete_device",
+            "update_device_status",
         ]
 
         for method in required_methods:
@@ -208,11 +208,11 @@ class TestIAlertService:
     def test_has_required_methods(self):
         """测试接口有必需的方法"""
         required_methods = [
-            'create_alert',
-            'get_alerts',
-            'get_alert_by_id',
-            'update_alert_status',
-            'get_active_alerts'
+            "create_alert",
+            "get_alerts",
+            "get_alert_by_id",
+            "update_alert_status",
+            "get_active_alerts",
         ]
 
         for method in required_methods:

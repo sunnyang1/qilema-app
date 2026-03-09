@@ -1,11 +1,13 @@
 """
 测试通知服务的熔断器和重试机制
 """
-import pytest
+
 import time
 from unittest.mock import Mock, patch
-from app.services.notification_service import NotificationService
+
+import pytest
 from app.models.notification_model import Notification
+from app.services.notification_service import NotificationService
 from conftest import TEST_CONFIG
 
 
@@ -22,19 +24,23 @@ class TestNotificationServiceRetryAndCircuitBreaker:
             title="Test",
             content="Test content",
             channel="push",
-            retry_count=0
+            retry_count=0,
         )
 
         # 模拟 _try_send_by_channel 方法
-        with patch.object(service, '_try_send_by_channel', side_effect=[
-            {"success": False, "error": "Fail"},
-            {"success": False, "error": "Fail"},
-            {"success": True}
-        ]):
+        with patch.object(
+            service,
+            "_try_send_by_channel",
+            side_effect=[
+                {"success": False, "error": "Fail"},
+                {"success": False, "error": "Fail"},
+                {"success": True},
+            ],
+        ):
             # 模拟数据库 session
             mock_db = Mock()
-            with patch.object(service, '_mark_notification_sent'):
-                with patch.object(service, '_mark_notification_failed'):
+            with patch.object(service, "_mark_notification_sent"):
+                with patch.object(service, "_mark_notification_failed"):
                     service._send_notification_directly(notification, "push")
 
             # 验证调用了3次（第1次 + 2次重试）

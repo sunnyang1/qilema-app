@@ -1,35 +1,38 @@
 """
 用户服务层
 """
-from typing import Optional, List
-from datetime import datetime
-from sqlalchemy.orm import Session
 
-from app.models.user import User
-from app.core.security import get_password_hash, verify_password
+from datetime import datetime
+from typing import List, Optional
+
+from app.core.cache import cache, cache_result, invalidate_cache
 from app.core.config import settings
-from app.core.cache import cache, invalidate_cache, cache_result
 from app.core.redis import redis_manager
+from app.core.security import get_password_hash, verify_password
+from app.models.user import User
 from app.services.base_service import BaseService
+from sqlalchemy.orm import Session
 
 
 class UserService(BaseService[User]):
     """用户服务类"""
-    
+
     model_class = User
     cache_prefix = "user"
     cache_ttl = 300
 
     def __init__(self, db: Session = None):
         """初始化用户服务
-        
+
         Args:
             db: 数据库会话(可选),为空时使用静态方法模式
         """
         self.db = db
 
     @staticmethod
-    def create_user(db: Session, user_data: dict, verify_code: Optional[str] = None) -> User:
+    def create_user(
+        db: Session, user_data: dict, verify_code: Optional[str] = None
+    ) -> User:
         """创建用户（统一方法）
 
         Args:
@@ -44,19 +47,23 @@ class UserService(BaseService[User]):
             ValueError: 手机号已注册、验证码错误等
         """
         # 兼容不同参数名
-        if 'verification_code' in user_data:
-            user_data['verify_code'] = user_data.pop('verification_code')
+        if "verification_code" in user_data:
+            user_data["verify_code"] = user_data.pop("verification_code")
         if verify_code is not None:
-            user_data['verify_code'] = verify_code
+            user_data["verify_code"] = verify_code
 
         # 检查手机号是否已存在
-        existing_user = db.query(User).filter(User.phone == user_data.get("phone")).first()
+        existing_user = (
+            db.query(User).filter(User.phone == user_data.get("phone")).first()
+        )
         if existing_user:
             raise ValueError("该手机号已注册")
 
         # 验证码验证（如果提供）
         if user_data.get("verify_code"):
-            if not UserService.verify_code(user_data.get("phone"), user_data.get("verify_code")):
+            if not UserService.verify_code(
+                user_data.get("phone"), user_data.get("verify_code")
+            ):
                 raise ValueError("验证码错误或已过期")
 
         # 限制密码长度,避免bcrypt超限
@@ -65,6 +72,7 @@ class UserService(BaseService[User]):
             password = password[:72]
 
         import uuid
+
         user = User(
             user_id=str(uuid.uuid4()),
             phone=user_data.get("phone"),
@@ -93,12 +101,13 @@ class UserService(BaseService[User]):
 
         # 生成JWT token
         from app.core.security import create_access_token
+
         access_token = create_access_token(data={"sub": user.user_id})
 
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "user": user.to_dict()
+            "user": user.to_dict(),
         }
 
     @staticmethod
@@ -130,7 +139,7 @@ class UserService(BaseService[User]):
     @classmethod
     def get_user_by_id(cls, db: Session, user_id: str) -> Optional[User]:
         """根据ID获取用户
-        
+
         使用 BaseService 的统一缓存机制
         """
         return cls.get_by_id(db, user_id, pk_column="user_id")
@@ -138,7 +147,7 @@ class UserService(BaseService[User]):
     @classmethod
     def get_user_by_phone(cls, db: Session, phone: str) -> Optional[User]:
         """根据手机号获取用户
-        
+
         使用 BaseService 的字段查询方法
         """
         return cls.get_by_field(db, "phone", phone)
@@ -146,7 +155,7 @@ class UserService(BaseService[User]):
     @classmethod
     def update_user(cls, db: Session, user_id: str, update_data: dict) -> User:
         """更新用户信息
-        
+
         使用 BaseService 的统一更新方法
         """
         user = cls.get_user_by_id(db, user_id)
@@ -156,13 +165,13 @@ class UserService(BaseService[User]):
         # 过滤允许更新的字段
         allowed_fields = ["nickname", "avatar", "email", "bio"]
         filtered_data = {k: v for k, v in update_data.items() if k in allowed_fields}
-        
+
         return cls.update_record(db, user_id, filtered_data, pk_column="user_id")
 
     @classmethod
     def delete_user(cls, db: Session, user_id: str) -> bool:
         """删除用户
-        
+
         使用 BaseService 的统一删除方法
         """
         return cls.delete_record(db, user_id, pk_column="user_id")
@@ -170,10 +179,12 @@ class UserService(BaseService[User]):
     @classmethod
     def list_users(cls, db: Session, skip: int = 0, limit: int = 100) -> List[User]:
         """获取用户列表
-        
+
         使用 BaseService 的统一列表查询方法
         """
-        return cls.list_records(db, skip=skip, limit=limit, order_by="created_at", order_desc=True)
+        return cls.list_records(
+            db, skip=skip, limit=limit, order_by="created_at", order_desc=True
+        )
 
     @staticmethod
     def authenticate_user(db: Session, phone: str, password: str) -> Optional[User]:
@@ -211,6 +222,7 @@ class UserService(BaseService[User]):
     def generate_verify_code(phone: str) -> str:
         """生成验证码"""
         import random
+
         code = str(random.randint(100000, 999999))
         # 存储到Redis,有效期5分钟
         redis_client = redis_manager.get_sync_client()

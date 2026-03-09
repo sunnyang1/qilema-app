@@ -2,12 +2,19 @@
 BaseSchema 单元测试
 """
 
-import pytest
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
 
-from app.core.schemas import BaseSchema, TimestampMixin, PaginationResponse, ListResponse, SuccessResponse, ErrorResponse
+import pytest
+from app.core.schemas import (
+    BaseSchema,
+    ErrorResponse,
+    ListResponse,
+    PaginationResponse,
+    SuccessResponse,
+    TimestampMixin,
+)
+from pydantic import BaseModel
 
 
 # 测试用的模拟ORM对象
@@ -40,7 +47,7 @@ class UserResponse(BaseSchema):
             phone=user.phone,
             nickname=user.nickname,
             created_at=user.created_at,
-            updated_at=user.updated_at
+            updated_at=user.updated_at,
         )
 
 
@@ -53,7 +60,7 @@ class TestBaseSchema:
 
     def test_schema_has_model_config(self):
         """测试Schema有正确的model_config"""
-        assert hasattr(UserResponse, 'model_config')
+        assert hasattr(UserResponse, "model_config")
         assert UserResponse.model_config["from_attributes"] is True
 
     def test_from_orm_converts_single_object(self):
@@ -72,7 +79,7 @@ class TestBaseSchema:
         mock_users = [
             MockUser(id=1, phone="13800138000", nickname="用户1"),
             MockUser(id=2, phone="13800138001", nickname="用户2"),
-            MockUser(id=3, phone="13800138002", nickname=None)
+            MockUser(id=3, phone="13800138002", nickname=None),
         ]
         user_responses = UserResponse.from_orm_list(mock_users)
 
@@ -98,6 +105,7 @@ class TestBaseSchema:
 
     def test_safe_from_orm_handles_exception(self):
         """测试safe_from_orm处理异常"""
+
         # 创建一个会导致异常的对象
         class BadUser:
             pass
@@ -109,6 +117,7 @@ class TestBaseSchema:
 
     def test_from_orm_abstract_method_raises_error(self):
         """测试未实现的from_orm方法会抛出错误"""
+
         class IncompleteSchema(BaseSchema):
             name: str
 
@@ -129,7 +138,7 @@ class TestTimestampMixin:
         schema = TimestampedSchema(
             name="test",
             created_at=datetime(2024, 1, 1, 12, 0, 0),
-            updated_at=datetime(2024, 1, 2, 12, 0, 0)
+            updated_at=datetime(2024, 1, 2, 12, 0, 0),
         )
 
         assert schema.created_at == datetime(2024, 1, 1, 12, 0, 0)
@@ -142,9 +151,7 @@ class TestTimestampMixin:
             name: str
 
         schema = TimestampedSchema(
-            name="test",
-            created_at=datetime(2024, 1, 1, 12, 0, 0),
-            updated_at=None
+            name="test", created_at=datetime(2024, 1, 1, 12, 0, 0), updated_at=None
         )
 
         assert schema.updated_at is None
@@ -155,12 +162,7 @@ class TestPaginationResponse:
 
     def test_pagination_response_fields(self):
         """测试PaginationResponse字段验证"""
-        pagination = PaginationResponse(
-            total=100,
-            page=1,
-            page_size=20,
-            total_pages=5
-        )
+        pagination = PaginationResponse(total=100, page=1, page_size=20, total_pages=5)
 
         assert pagination.total == 100
         assert pagination.page == 1
@@ -170,20 +172,10 @@ class TestPaginationResponse:
     def test_pagination_response_validation(self):
         """测试PaginationResponse字段验证"""
         with pytest.raises(Exception):  # page < 1 应该失败
-            PaginationResponse(
-                total=100,
-                page=0,
-                page_size=20,
-                total_pages=5
-            )
+            PaginationResponse(total=100, page=0, page_size=20, total_pages=5)
 
         with pytest.raises(Exception):  # page_size > 100 应该失败
-            PaginationResponse(
-                total=100,
-                page=1,
-                page_size=101,
-                total_pages=1
-            )
+            PaginationResponse(total=100, page=1, page_size=101, total_pages=1)
 
 
 class TestListResponse:
@@ -201,17 +193,24 @@ class TestListResponse:
     def test_list_response_with_data(self):
         """测试ListResponse包含数据"""
         items = [
-            UserResponse(user_id="1", phone="13800138000", nickname="用户1",
-                        created_at=datetime.now(), updated_at=datetime.now()),
-            UserResponse(user_id="2", phone="13800138001", nickname="用户2",
-                        created_at=datetime.now(), updated_at=datetime.now())
+            UserResponse(
+                user_id="1",
+                phone="13800138000",
+                nickname="用户1",
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            ),
+            UserResponse(
+                user_id="2",
+                phone="13800138001",
+                nickname="用户2",
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            ),
         ]
 
         response = ListResponse[UserResponse](
-            items=items,
-            total=2,
-            page=1,
-            page_size=20
+            items=items, total=2, page=1, page_size=20
         )
 
         assert len(response.items) == 2
@@ -232,10 +231,7 @@ class TestSuccessResponse:
 
     def test_success_response_custom(self):
         """测试SuccessResponse自定义值"""
-        response = SuccessResponse(
-            message="创建成功",
-            data={"id": 1}
-        )
+        response = SuccessResponse(message="创建成功", data={"id": 1})
 
         assert response.success is True
         assert response.message == "创建成功"
@@ -258,7 +254,7 @@ class TestErrorResponse:
         response = ErrorResponse(
             error="ValidationError",
             message="字段验证失败",
-            details={"field": "phone", "reason": "格式不正确"}
+            details={"field": "phone", "reason": "格式不正确"},
         )
 
         assert response.success is False
@@ -268,10 +264,7 @@ class TestErrorResponse:
 
     def test_error_response_without_details(self):
         """测试ErrorResponse不包含详情"""
-        response = ErrorResponse(
-            error="ServerError",
-            message="服务器内部错误"
-        )
+        response = ErrorResponse(error="ServerError", message="服务器内部错误")
 
         assert response.success is False
         assert response.error == "ServerError"
@@ -285,7 +278,7 @@ class TestUserResponseSerialization:
     def test_user_response_from_real_user_model(self):
         """测试从真实 User ORM 对象序列化"""
         from app.models.user import User
-        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+        from app.schemas.user import BloodTypeEnum, GenderEnum, UserResponse
 
         # 创建一个模拟的 User 对象
         user = User()
@@ -320,7 +313,7 @@ class TestUserResponseSerialization:
     def test_user_response_excludes_password_hash(self):
         """测试 UserResponse 不包含敏感字段 password_hash"""
         from app.models.user import User
-        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+        from app.schemas.user import BloodTypeEnum, GenderEnum, UserResponse
 
         user = User()
         user.user_id = "test-user-002"
@@ -334,7 +327,7 @@ class TestUserResponseSerialization:
         user_response = UserResponse.model_validate(user)
 
         # 确保敏感字段不在响应中
-        assert not hasattr(user_response, 'password_hash')
+        assert not hasattr(user_response, "password_hash")
         # 确保其他字段正常
         assert user_response.user_id == "test-user-002"
         assert user_response.phone == "13800138001"
@@ -342,7 +335,7 @@ class TestUserResponseSerialization:
     def test_user_response_handles_optional_fields(self):
         """测试 UserResponse 正确处理可选字段"""
         from app.models.user import User
-        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+        from app.schemas.user import BloodTypeEnum, GenderEnum, UserResponse
 
         user = User()
         user.user_id = "test-user-003"
@@ -370,7 +363,7 @@ class TestUserResponseSerialization:
     def test_user_response_enum_serialization(self):
         """测试枚举类型的序列化"""
         from app.models.user import User
-        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
+        from app.schemas.user import BloodTypeEnum, GenderEnum, UserResponse
 
         # 测试所有性别枚举值
         for gender in [GenderEnum.UNKNOWN, GenderEnum.MALE, GenderEnum.FEMALE]:
@@ -386,7 +379,13 @@ class TestUserResponseSerialization:
             assert isinstance(user_response.gender, GenderEnum)
 
         # 测试所有血型枚举值
-        for blood_type in [BloodTypeEnum.A, BloodTypeEnum.B, BloodTypeEnum.O, BloodTypeEnum.AB, BloodTypeEnum.UNKNOWN]:
+        for blood_type in [
+            BloodTypeEnum.A,
+            BloodTypeEnum.B,
+            BloodTypeEnum.O,
+            BloodTypeEnum.AB,
+            BloodTypeEnum.UNKNOWN,
+        ]:
             user = User()
             user.user_id = f"user-{blood_type.value}"
             user.phone = "13800138004"
@@ -400,9 +399,10 @@ class TestUserResponseSerialization:
 
     def test_user_response_serialization_to_json(self):
         """测试序列化为 JSON"""
-        from app.models.user import User
-        from app.schemas.user import UserResponse, GenderEnum, BloodTypeEnum
         import json
+
+        from app.models.user import User
+        from app.schemas.user import BloodTypeEnum, GenderEnum, UserResponse
 
         user = User()
         user.user_id = "test-user-004"

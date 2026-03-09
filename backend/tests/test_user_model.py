@@ -1,9 +1,11 @@
 """
 User模型单元测试 - 测试重构后的to_dict方法
 """
-import pytest
+
 from datetime import datetime
-from app.models.user import User, GenderEnum, BloodTypeEnum
+
+import pytest
+from app.models.user import BloodTypeEnum, GenderEnum, User
 
 
 class TestUserModel:
@@ -20,9 +22,9 @@ class TestUserModel:
         user.blood_type = BloodTypeEnum.A
         user.height = 175
         user.weight = 70
-        
+
         result = user.to_dict()
-        
+
         assert result["user_id"] == "user-123"
         assert result["phone"] == "13800138000"
         assert result["nickname"] == "测试用户"
@@ -38,9 +40,9 @@ class TestUserModel:
         user.phone = "13800138000"
         user.password_hash = "secret_hash"
         user.nickname = "测试用户"
-        
+
         result = user.to_dict()
-        
+
         # password_hash不应该在结果中
         assert "password_hash" not in result
         assert "password" not in result
@@ -54,9 +56,9 @@ class TestUserModel:
         user.updated_at = datetime(2024, 1, 16, 12, 0, 0)
         user.last_sign_in = datetime(2024, 1, 20, 8, 0, 0)
         user.birth_date = datetime(1990, 5, 20, 0, 0, 0)
-        
+
         result = user.to_dict()
-        
+
         assert result["created_at"] == "2024-01-15T10:30:00"
         assert result["updated_at"] == "2024-01-16T12:00:00"
         assert result["last_sign_in"] == "2024-01-20T08:00:00"
@@ -74,9 +76,9 @@ class TestUserModel:
         user.height = None
         user.weight = None
         user.last_sign_in = None
-        
+
         result = user.to_dict()
-        
+
         assert result["nickname"] is None
         assert result["gender"] is None
         assert result["blood_type"] is None
@@ -92,9 +94,9 @@ class TestUserModel:
         user.phone = "13800138000"
         user.gender = GenderEnum.UNKNOWN
         user.blood_type = BloodTypeEnum.UNKNOWN
-        
+
         result = user.to_dict()
-        
+
         assert result["gender"] == "0"
         assert result["blood_type"] == "UNKNOWN"
 
@@ -103,9 +105,9 @@ class TestUserModel:
         user = User()
         user.user_id = "user-123"
         user.phone = "13800138000"
-        
+
         result = user.to_dict()
-        
+
         # SQLAlchemy内部属性不应该在结果中
         assert "_sa_instance_state" not in result
 
@@ -117,9 +119,9 @@ class TestUserModel:
         user.nickname = "测试用户"
         user.height = 175
         user.weight = 70
-        
+
         result = user.to_dict(include=["user_id", "nickname"])
-        
+
         assert result["user_id"] == "user-123"
         assert result["nickname"] == "测试用户"
         assert "phone" not in result
@@ -134,9 +136,9 @@ class TestUserModel:
         user.nickname = "测试用户"
         user.height = 175
         user.weight = 70
-        
+
         result = user.to_dict(exclude=["height", "weight"])
-        
+
         assert result["user_id"] == "user-123"
         assert result["phone"] == "13800138000"
         assert result["nickname"] == "测试用户"
@@ -159,9 +161,9 @@ class TestUserModel:
         user.created_at = datetime(2024, 1, 15, 10, 30, 0)
         user.updated_at = datetime(2024, 1, 16, 12, 0, 0)
         user.last_sign_in = None
-        
+
         result = user.to_dict()
-        
+
         # 验证所有预期的字段都存在且格式正确
         assert "user_id" in result
         assert "phone" in result
@@ -174,7 +176,7 @@ class TestUserModel:
         assert "created_at" in result
         assert "updated_at" in result
         assert "last_sign_in" in result
-        
+
         # 验证格式
         assert isinstance(result["user_id"], str)
         assert isinstance(result["phone"], str)

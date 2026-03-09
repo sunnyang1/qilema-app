@@ -3,12 +3,16 @@
 
 模拟原始问题场景：验证 "无法连接到后端服务" 不会出现乱码
 """
+
 import pytest
+from app.core.exceptions import BaseAppException
+from app.core.middleware import (
+    EncodingMiddleware,
+    ExceptionHandlerMiddleware,
+    setup_middleware,
+)
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from app.core.middleware import EncodingMiddleware, ExceptionHandlerMiddleware, setup_middleware
-from app.core.exceptions import BaseAppException
 
 
 def test_backend_connection_error_no_mojibake():
@@ -20,11 +24,7 @@ def test_backend_connection_error_no_mojibake():
     @app.get("/test-backend-connection")
     def test_backend_connection():
         # 模拟原始错误场景
-        raise BaseAppException(
-            code=1000,
-            message="无法连接到后端服务",
-            status_code=500
-        )
+        raise BaseAppException(code=1000, message="无法连接到后端服务", status_code=500)
 
     client = TestClient(app)
     response = client.get("/test-backend-connection")
@@ -71,13 +71,12 @@ def test_common_chinese_error_messages():
     ]
 
     for message, status_code, endpoint in test_cases:
+
         @app.get(f"/test/{endpoint}")
         def test_endpoint():
             if status_code >= 400:
                 raise BaseAppException(
-                    code=status_code,
-                    message=message,
-                    status_code=status_code
+                    code=status_code, message=message, status_code=status_code
                 )
             return {"message": message}
 

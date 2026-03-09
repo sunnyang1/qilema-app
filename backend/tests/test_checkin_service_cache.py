@@ -2,13 +2,13 @@
 测试签到服务缓存功能
 """
 
-import pytest
 from datetime import date, timedelta
-from unittest.mock import Mock, patch, MagicMock
-from sqlalchemy.orm import Session
+from unittest.mock import MagicMock, Mock, patch
 
-from app.services.checkin_service import CheckInService
+import pytest
 from app.schemas.checkin import CheckInCreate
+from app.services.checkin_service import CheckInService
+from sqlalchemy.orm import Session
 
 
 class TestCheckInServiceCache:
@@ -29,9 +29,9 @@ class TestCheckInServiceCache:
     def test_get_user_checkins_uses_cache(self, mock_db, mock_redis_client):
         """测试获取签到记录使用缓存"""
         # Mock Redis 缓存命中 - 返回一个非空列表（truthy 值）
-        mock_redis_client.get.return_value = '[{"id":1}]'.encode('utf-8')
+        mock_redis_client.get.return_value = '[{"id":1}]'.encode("utf-8")
 
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             mock_redis_mgr.get_sync_client.return_value = mock_redis_client
             mock_redis_mgr.check_health.return_value = True
 
@@ -52,7 +52,7 @@ class TestCheckInServiceCache:
         # Mock Redis 缓存未命中
         mock_redis_client.get.return_value = None
 
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             mock_redis_mgr.get_sync_client.return_value = mock_redis_client
             mock_redis_mgr.check_health.return_value = True
 
@@ -74,9 +74,11 @@ class TestCheckInServiceCache:
         from app.schemas.checkin import CheckInStatsResponse
 
         # Mock Redis 缓存命中
-        mock_redis_client.get.return_value = '{"total_checkins":30,"current_streak":7,"longest_streak":15,"checkin_rate":100.0}'.encode('utf-8')
+        mock_redis_client.get.return_value = '{"total_checkins":30,"current_streak":7,"longest_streak":15,"checkin_rate":100.0}'.encode(
+            "utf-8"
+        )
 
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             mock_redis_mgr.get_sync_client.return_value = mock_redis_client
             mock_redis_mgr.check_health.return_value = True
 
@@ -90,9 +92,11 @@ class TestCheckInServiceCache:
             mock_db.query.assert_not_called()
 
             # 验证返回的是 dict 类型（缓存返回的JSON反序列化后）
-            assert isinstance(result1, dict) or isinstance(result1, CheckInStatsResponse)
+            assert isinstance(result1, dict) or isinstance(
+                result1, CheckInStatsResponse
+            )
             if isinstance(result1, dict):
-                assert result1['total_checkins'] == 30
+                assert result1["total_checkins"] == 30
             else:
                 assert result1.total_checkins == 30
 
@@ -105,9 +109,11 @@ class TestCheckInServiceCache:
         mock_checkin = Mock()
         mock_checkin.checkin_date = "2026-01-30"
         mock_db.query.return_value.filter.return_value.scalar.return_value = 30
-        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [mock_checkin]
+        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [
+            mock_checkin
+        ]
 
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             mock_redis_mgr.get_sync_client.return_value = mock_redis_client
             mock_redis_mgr.check_health.return_value = True
 
@@ -132,9 +138,13 @@ class TestCheckInServiceCache:
         from app.schemas.checkin import CheckInStatusResponse
 
         # Mock Redis 缓存命中
-        mock_redis_client.get.return_value = '{"is_checked_in":true,"checkin_time":"2026-01-30T10:00:00"}'.encode('utf-8')
+        mock_redis_client.get.return_value = (
+            '{"is_checked_in":true,"checkin_time":"2026-01-30T10:00:00"}'.encode(
+                "utf-8"
+            )
+        )
 
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             mock_redis_mgr.get_sync_client.return_value = mock_redis_client
             mock_redis_mgr.check_health.return_value = True
 
@@ -148,9 +158,11 @@ class TestCheckInServiceCache:
             mock_db.query.assert_not_called()
 
             # 验证返回的是 dict 类型（缓存返回的JSON反序列化后）
-            assert isinstance(result1, dict) or isinstance(result1, CheckInStatusResponse)
+            assert isinstance(result1, dict) or isinstance(
+                result1, CheckInStatusResponse
+            )
             if isinstance(result1, dict):
-                assert result1['is_checked_in'] == True
+                assert result1["is_checked_in"] == True
             else:
                 assert result1.is_checked_in == True
 
@@ -159,14 +171,16 @@ class TestCheckInServiceCache:
         # Mock Redis 缓存未命中
         mock_redis_client.get.return_value = None
 
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             mock_redis_mgr.get_sync_client.return_value = mock_redis_client
             mock_redis_mgr.check_health.return_value = True
 
             # Mock 数据库查询结果
             mock_checkin = Mock()
             mock_checkin.checkin_time = "2026-01-30T10:00:00"
-            mock_db.query.return_value.filter.return_value.first.return_value = mock_checkin
+            mock_db.query.return_value.filter.return_value.first.return_value = (
+                mock_checkin
+            )
 
             # 调用函数
             result = CheckInService.get_checkin_status(mock_db, "user123")
@@ -184,16 +198,18 @@ class TestCheckInServiceCache:
     def test_create_checkin_invalidates_cache(self, mock_db, mock_redis_client):
         """测试创建签到时失效缓存"""
         # Mock Redis 客户端 - 缓存失效时不返回数据
-        mock_db.query.return_value.filter.return_value.first.return_value = None  # 今天未签到
+        mock_db.query.return_value.filter.return_value.first.return_value = (
+            None  # 今天未签到
+        )
 
         checkin_data = CheckInCreate(
             latitude="39.9042",
             longitude="116.4074",
             checkin_method="manual",
-            notes="测试签到"
+            notes="测试签到",
         )
 
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             mock_redis_mgr.get_sync_client.return_value = mock_redis_client
             mock_redis_mgr.check_health.return_value = True
 
@@ -208,12 +224,14 @@ class TestCheckInServiceCache:
 
     def test_redis_unavailable_fallback(self, mock_db):
         """测试 Redis 不可用时降级处理"""
-        with patch('app.core.cache.redis_manager') as mock_redis_mgr:
+        with patch("app.core.cache.redis_manager") as mock_redis_mgr:
             # Mock Redis 不可用
             mock_redis_mgr.get_sync_client.return_value = None
 
             # Mock 数据库查询
-            mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+            mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
+                []
+            )
 
             # 调用函数，应该降级到数据库查询
             result = CheckInService.get_user_checkins(mock_db, "user123", days=7)

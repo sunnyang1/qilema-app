@@ -5,13 +5,13 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, List, Type, Any, Optional
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Any, Generic, List, Optional, Type, TypeVar
 
+from pydantic import BaseModel, Field
 
-T = TypeVar('T', bound=BaseModel)
-M = TypeVar('M')
+T = TypeVar("T", bound=BaseModel)
+M = TypeVar("M")
 
 
 class BaseSchema(BaseModel, ABC, Generic[T]):

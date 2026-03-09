@@ -4,10 +4,11 @@
 测试通知渠道降级策略的各种场景
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from app.services.notification_service import NotificationService
+
+import pytest
 from app.core.notification_simulators import NotificationServiceConfig
+from app.services.notification_service import NotificationService
 
 
 class TestNotificationDegradationStrategy:
@@ -25,16 +26,32 @@ class TestNotificationDegradationStrategy:
         mock_config.is_degradation_enabled.return_value = False
         # 模拟配置方法
         mock_config.get_push_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
         mock_config.get_sms_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
         mock_config.get_phone_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
         mock_config.get_email_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
 
         service = NotificationService(mock_config)
@@ -65,7 +82,8 @@ class TestNotificationDegradationStrategy:
         notification.user_id = "test_user"
 
         # 模拟push失败，phone成功（phone优先级最高）
-        with patch.object(service, '_try_send_by_channel') as mock_send:
+        with patch.object(service, "_try_send_by_channel") as mock_send:
+
             def side_effect(notification, channel):
                 if channel == "push":
                     return {"success": False, "error": "推送失败"}
@@ -76,7 +94,7 @@ class TestNotificationDegradationStrategy:
             mock_send.side_effect = side_effect
 
             # 模拟标记发送成功
-            with patch.object(service, '_mark_notification_sent'):
+            with patch.object(service, "_mark_notification_sent"):
                 service._send_notification_by_channel(notification, "push")
 
                 # 应该尝试了两个渠道：push和phone
@@ -88,16 +106,32 @@ class TestNotificationDegradationStrategy:
         mock_config.is_degradation_enabled.return_value = False
         # 模拟配置方法
         mock_config.get_push_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
         mock_config.get_sms_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
         mock_config.get_phone_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
         mock_config.get_email_simulator_config.return_value = {
-            "enabled": True, "success_rate": 100.0, "delay_ms": 0, "max_retries": 3, "retry_interval_ms": 1000
+            "enabled": True,
+            "success_rate": 100.0,
+            "delay_ms": 0,
+            "max_retries": 3,
+            "retry_interval_ms": 1000,
         }
 
         service = NotificationService(mock_config)
@@ -108,10 +142,10 @@ class TestNotificationDegradationStrategy:
         notification.channel = "push"
 
         # 模拟发送
-        with patch.object(service, '_try_send_by_channel') as mock_send:
+        with patch.object(service, "_try_send_by_channel") as mock_send:
             mock_send.return_value = {"success": True, "error": None}
 
-            with patch.object(service, '_mark_notification_sent'):
+            with patch.object(service, "_mark_notification_sent"):
                 service._send_notification_by_channel(notification, "push")
 
                 # 只尝试一个渠道
@@ -127,10 +161,10 @@ class TestNotificationDegradationStrategy:
         notification.channel = "push"
 
         # 模拟所有渠道都失败
-        with patch.object(service, '_try_send_by_channel') as mock_send:
+        with patch.object(service, "_try_send_by_channel") as mock_send:
             mock_send.return_value = {"success": False, "error": "发送失败"}
 
-            with patch.object(service, '_mark_notification_failed'):
+            with patch.object(service, "_mark_notification_failed"):
                 service._send_notification_by_channel(notification, "push")
 
                 # 应该尝试所有渠道
@@ -147,10 +181,10 @@ class TestNotificationDegradationStrategy:
         notification.channel = "phone"
 
         # 模拟第一个渠道就成功
-        with patch.object(service, '_try_send_by_channel') as mock_send:
+        with patch.object(service, "_try_send_by_channel") as mock_send:
             mock_send.return_value = {"success": True, "error": None}
 
-            with patch.object(service, '_mark_notification_sent'):
+            with patch.object(service, "_mark_notification_sent"):
                 service._send_notification_by_channel(notification, "phone")
 
                 # 只尝试一个渠道
@@ -166,11 +200,11 @@ class TestNotificationDegradationStrategy:
         notification.channel = "wechat"  # wechat不在默认优先级列表中
 
         # 模拟发送
-        with patch.object(service, '_try_send_by_channel') as mock_send:
+        with patch.object(service, "_try_send_by_channel") as mock_send:
             mock_send.return_value = {"success": True, "error": None}
 
-            with patch.object(service, '_mark_notification_sent'):
-                with patch.object(service, '_mark_notification_failed'):
+            with patch.object(service, "_mark_notification_sent"):
+                with patch.object(service, "_mark_notification_failed"):
                     service._send_notification_by_channel(notification, "wechat")
 
                     # 应该尝试第一个优先级渠道
@@ -186,7 +220,7 @@ class TestTrySendByChannel:
         notification = Mock()
         notification.title = "测试推送"
 
-        with patch.object(service, '_send_push_notification'):
+        with patch.object(service, "_send_push_notification"):
             result = service._try_send_by_channel(notification, "push")
             assert result["success"] is True
             assert result["error"] is None
@@ -197,7 +231,7 @@ class TestTrySendByChannel:
         notification = Mock()
         notification.title = "测试短信"
 
-        with patch.object(service, '_send_sms_notification'):
+        with patch.object(service, "_send_sms_notification"):
             result = service._try_send_by_channel(notification, "sms")
             assert result["success"] is True
             assert result["error"] is None
@@ -208,7 +242,7 @@ class TestTrySendByChannel:
         notification = Mock()
         notification.title = "测试电话"
 
-        with patch.object(service, '_send_phone_notification'):
+        with patch.object(service, "_send_phone_notification"):
             result = service._try_send_by_channel(notification, "phone")
             assert result["success"] is True
             assert result["error"] is None
@@ -219,7 +253,7 @@ class TestTrySendByChannel:
         notification = Mock()
         notification.title = "测试邮件"
 
-        with patch.object(service, '_send_email_notification'):
+        with patch.object(service, "_send_email_notification"):
             result = service._try_send_by_channel(notification, "email")
             assert result["success"] is True
             assert result["error"] is None
@@ -240,7 +274,9 @@ class TestTrySendByChannel:
         notification = Mock()
         notification.title = "测试"
 
-        with patch.object(service, '_send_push_notification', side_effect=Exception("发送异常")):
+        with patch.object(
+            service, "_send_push_notification", side_effect=Exception("发送异常")
+        ):
             result = service._try_send_by_channel(notification, "push")
             assert result["success"] is False
             assert "发送异常" in result["error"]

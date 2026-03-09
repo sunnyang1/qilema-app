@@ -1,10 +1,12 @@
 """
 测试SECRET_KEY安全性
 """
+
 import os
-import pytest
 from pathlib import Path
-from app.core.config import settings, Settings
+
+import pytest
+from app.core.config import Settings, settings
 
 
 class TestSecretKeySecurity:
@@ -16,7 +18,7 @@ class TestSecretKeySecurity:
             # 在生产环境下使用默认值应该失败
             Settings(
                 ENVIRONMENT="production",
-                SECRET_KEY="your-secret-key-change-in-production"
+                SECRET_KEY="your-secret-key-change-in-production",
             )
             assert False, "应该抛出ValueError"
         except ValueError as e:
@@ -26,10 +28,7 @@ class TestSecretKeySecurity:
         """验证SECRET_KEY验证会拒绝短密钥"""
         try:
             # 使用短密钥创建Settings应该失败
-            Settings(
-                ENVIRONMENT="development",
-                SECRET_KEY="short-key"
-            )
+            Settings(ENVIRONMENT="development", SECRET_KEY="short-key")
             assert False, "应该抛出ValueError"
         except ValueError as e:
             assert "SECRET_KEY长度至少64字节" in str(e)
@@ -37,22 +36,21 @@ class TestSecretKeySecurity:
     def test_secret_key_validation_accepts_valid_key(self):
         """验证SECRET_KEY验证接受有效的强随机密钥"""
         # 生成一个有效的强随机密钥
-        import secrets
         import base64
-        valid_key = base64.urlsafe_b64encode(secrets.token_bytes(64)).decode('utf-8')
+        import secrets
+
+        valid_key = base64.urlsafe_b64encode(secrets.token_bytes(64)).decode("utf-8")
 
         # 应该成功创建Settings
-        settings_obj = Settings(
-            ENVIRONMENT="development",
-            SECRET_KEY=valid_key
-        )
+        settings_obj = Settings(ENVIRONMENT="development", SECRET_KEY=valid_key)
         assert settings_obj.SECRET_KEY == valid_key
 
     def test_generate_secret_key_script_exists(self):
         """验证密钥生成脚本存在"""
-        script_path = Path(__file__).parent.parent / "scripts" / "generate_secret_key.py"
-        assert script_path.exists(), \
-            f"密钥生成脚本{script_path}必须存在"
+        script_path = (
+            Path(__file__).parent.parent / "scripts" / "generate_secret_key.py"
+        )
+        assert script_path.exists(), f"密钥生成脚本{script_path}必须存在"
 
     def test_generate_secret_key_script_works(self):
         """验证密钥生成脚本能生成有效密钥"""
@@ -71,13 +69,10 @@ class TestSecretKeySecurity:
             secret_key = generate_secret_key()
 
             # 验证密钥长度
-            assert len(secret_key.encode('utf-8')) >= 64, "生成的密钥长度至少64字节"
+            assert len(secret_key.encode("utf-8")) >= 64, "生成的密钥长度至少64字节"
 
             # 验证可以通过Settings验证
-            settings_obj = Settings(
-                ENVIRONMENT="development",
-                SECRET_KEY=secret_key
-            )
+            settings_obj = Settings(ENVIRONMENT="development", SECRET_KEY=secret_key)
             assert settings_obj.SECRET_KEY == secret_key
 
         finally:

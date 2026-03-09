@@ -4,15 +4,15 @@
 提供消息通知相关的数据验证和序列化
 """
 
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
 
 from app.core.schemas import BaseSchema
-
+from pydantic import BaseModel, Field, validator
 
 # ========== 枚举定义 ==========
+
 
 class NotificationTypeEnum(str, Enum):
     CHECKIN = "checkin"
@@ -50,12 +50,16 @@ class NotificationStatusEnum(str, Enum):
 
 # ========== 通知相关 ==========
 
+
 class NotificationCreate(BaseModel):
     """创建通知"""
+
     user_id: str = Field(..., description="用户ID")
     notification_type: NotificationTypeEnum = Field(..., description="通知类型")
     channel: NotificationChannelEnum = Field(..., description="通知渠道")
-    priority: NotificationPriorityEnum = Field(default=NotificationPriorityEnum.NORMAL, description="优先级")
+    priority: NotificationPriorityEnum = Field(
+        default=NotificationPriorityEnum.NORMAL, description="优先级"
+    )
     title: str = Field(..., min_length=1, max_length=200, description="通知标题")
     content: Optional[str] = Field(None, description="通知内容")
     data: Optional[Dict[str, Any]] = Field(None, description="附加数据")
@@ -67,6 +71,7 @@ class NotificationCreate(BaseModel):
 
 class NotificationUpdate(BaseModel):
     """更新通知"""
+
     status: Optional[NotificationStatusEnum] = Field(None, description="通知状态")
     read_at: Optional[datetime] = Field(None, description="阅读时间")
     error_message: Optional[str] = Field(None, description="错误信息")
@@ -74,6 +79,7 @@ class NotificationUpdate(BaseModel):
 
 class NotificationResponse(BaseModel):
     """通知响应"""
+
     id: int
     user_id: str
     notification_type: NotificationTypeEnum
@@ -94,13 +100,14 @@ class NotificationResponse(BaseModel):
     related_id: Optional[int]
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         orm_mode = True
 
 
 class NotificationQuery(BaseModel):
     """查询通知"""
+
     user_id: str = Field(..., description="用户ID")
     notification_type: Optional[NotificationTypeEnum] = Field(None, description="通知类型")
     channel: Optional[NotificationChannelEnum] = Field(None, description="通知渠道")
@@ -115,6 +122,7 @@ class NotificationQuery(BaseModel):
 
 class NotificationStatistics(BaseModel):
     """通知统计"""
+
     user_id: str
     stat_date: str
     total_sent: int
@@ -133,8 +141,10 @@ class NotificationStatistics(BaseModel):
 
 # ========== 通知模板相关 ==========
 
+
 class NotificationTemplateCreate(BaseModel):
     """创建通知模板"""
+
     template_code: str = Field(..., min_length=1, max_length=100, description="模板编码")
     template_name: str = Field(..., min_length=1, max_length=200, description="模板名称")
     notification_type: NotificationTypeEnum = Field(..., description="通知类型")
@@ -142,13 +152,20 @@ class NotificationTemplateCreate(BaseModel):
     title_template: str = Field(..., min_length=1, max_length=200, description="标题模板")
     content_template: str = Field(..., description="内容模板")
     data_schema: Optional[Dict[str, Any]] = Field(None, description="数据模板结构")
-    priority: NotificationPriorityEnum = Field(default=NotificationPriorityEnum.NORMAL, description="默认优先级")
+    priority: NotificationPriorityEnum = Field(
+        default=NotificationPriorityEnum.NORMAL, description="默认优先级"
+    )
 
 
 class NotificationTemplateUpdate(BaseModel):
     """更新通知模板"""
-    template_name: Optional[str] = Field(None, min_length=1, max_length=200, description="模板名称")
-    title_template: Optional[str] = Field(None, min_length=1, max_length=200, description="标题模板")
+
+    template_name: Optional[str] = Field(
+        None, min_length=1, max_length=200, description="模板名称"
+    )
+    title_template: Optional[str] = Field(
+        None, min_length=1, max_length=200, description="标题模板"
+    )
     content_template: Optional[str] = Field(None, description="内容模板")
     data_schema: Optional[Dict[str, Any]] = Field(None, description="数据模板结构")
     priority: Optional[NotificationPriorityEnum] = Field(None, description="默认优先级")
@@ -157,6 +174,7 @@ class NotificationTemplateUpdate(BaseModel):
 
 class NotificationTemplateResponse(BaseModel):
     """通知模板响应"""
+
     id: int
     template_code: str
     template_name: str
@@ -169,15 +187,17 @@ class NotificationTemplateResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         orm_mode = True
 
 
 # ========== 通知偏好设置相关 ==========
 
+
 class NotificationPreferenceCreate(BaseModel):
     """创建通知偏好设置"""
+
     user_id: str = Field(..., description="用户ID")
     push_enabled: bool = Field(default=True, description="启用APP推送")
     sms_enabled: bool = Field(default=False, description="启用短信通知")
@@ -193,20 +213,21 @@ class NotificationPreferenceCreate(BaseModel):
     mute_enabled: bool = Field(default=False, description="启用免打扰")
     mute_start_time: Optional[str] = Field(None, description="免打扰开始时间(HH:MM)")
     mute_end_time: Optional[str] = Field(None, description="免打扰结束时间(HH:MM)")
-    
-    @validator('mute_start_time', 'mute_end_time')
+
+    @validator("mute_start_time", "mute_end_time")
     def validate_time_format(cls, v, values):
         """验证时间格式"""
         if v is not None:
             try:
-                datetime.strptime(v, '%H:%M')
+                datetime.strptime(v, "%H:%M")
             except ValueError:
-                raise ValueError('时间格式必须是HH:MM')
+                raise ValueError("时间格式必须是HH:MM")
         return v
 
 
 class NotificationPreferenceUpdate(BaseModel):
     """更新通知偏好设置"""
+
     push_enabled: Optional[bool] = Field(None, description="启用APP推送")
     sms_enabled: Optional[bool] = Field(None, description="启用短信通知")
     phone_enabled: Optional[bool] = Field(None, description="启用电话通知")
@@ -225,6 +246,7 @@ class NotificationPreferenceUpdate(BaseModel):
 
 class NotificationPreferenceResponse(BaseModel):
     """通知偏好设置响应"""
+
     id: int
     user_id: str
     push_enabled: bool
@@ -243,21 +265,25 @@ class NotificationPreferenceResponse(BaseModel):
     mute_end_time: Optional[str]
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         orm_mode = True
 
 
 # ========== 通知发送请求 ==========
 
+
 class SendNotificationRequest(BaseModel):
     """发送通知请求"""
+
     user_id: str = Field(..., description="用户ID")
     notification_type: NotificationTypeEnum = Field(..., description="通知类型")
     title: str = Field(..., description="通知标题")
     content: Optional[str] = Field(None, description="通知内容")
     channel: Optional[NotificationChannelEnum] = Field(None, description="通知渠道")
-    priority: NotificationPriorityEnum = Field(default=NotificationPriorityEnum.NORMAL, description="优先级")
+    priority: NotificationPriorityEnum = Field(
+        default=NotificationPriorityEnum.NORMAL, description="优先级"
+    )
     data: Optional[Dict[str, Any]] = Field(None, description="附加数据")
     related_type: Optional[str] = Field(None, description="关联对象类型")
     related_id: Optional[int] = Field(None, description="关联对象ID")
@@ -265,28 +291,34 @@ class SendNotificationRequest(BaseModel):
 
 class BatchSendNotificationRequest(BaseModel):
     """批量发送通知请求"""
+
     user_ids: List[str] = Field(..., min_items=1, description="用户ID列表")
     notification_type: NotificationTypeEnum = Field(..., description="通知类型")
     title: str = Field(..., description="通知标题")
     content: Optional[str] = Field(None, description="通知内容")
     channel: Optional[NotificationChannelEnum] = Field(None, description="通知渠道")
-    priority: NotificationPriorityEnum = Field(default=NotificationPriorityEnum.NORMAL, description="优先级")
+    priority: NotificationPriorityEnum = Field(
+        default=NotificationPriorityEnum.NORMAL, description="优先级"
+    )
     data: Optional[Dict[str, Any]] = Field(None, description="附加数据")
 
 
 class MarkAsReadRequest(BaseModel):
     """标记已读请求"""
+
     notification_ids: List[int] = Field(..., min_items=1, description="通知ID列表")
 
 
 # ========== 通知统计查询 ==========
 
+
 class NotificationStatsQuery(BaseModel):
     """通知统计查询"""
+
     user_id: Optional[str] = Field(None, description="用户ID(为空表示全局统计)")
     start_date: Optional[str] = Field(None, description="开始日期(YYYY-MM-DD)")
     end_date: Optional[str] = Field(None, description="结束日期(YYYY-MM-DD)")
-    period: Optional[Literal['day', 'week', 'month']] = Field(None, description="统计周期")
+    period: Optional[Literal["day", "week", "month"]] = Field(None, description="统计周期")
 
 
 # 别名定义,用于兼容性

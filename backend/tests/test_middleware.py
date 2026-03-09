@@ -2,15 +2,19 @@
 中间件单元测试
 """
 
-import pytest
 import time
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+from app.core.exceptions import BaseAppException
+from app.core.middleware import (
+    SLOW_REQUEST_THRESHOLD,
+    EnhancedLoggingMiddleware,
+    ExceptionHandlerMiddleware,
+)
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
-from unittest.mock import Mock, AsyncMock, patch
 from starlette.datastructures import Headers
-
-from app.core.middleware import EnhancedLoggingMiddleware, ExceptionHandlerMiddleware, SLOW_REQUEST_THRESHOLD
-from app.core.exceptions import BaseAppException
 
 
 class TestEnhancedLoggingMiddleware:
@@ -93,12 +97,15 @@ class TestEnhancedLoggingMiddleware:
         call_next = AsyncMock(side_effect=slow_call_next)
 
         # 调用中间件
-        with patch('app.core.middleware.logger') as mock_logger:
+        with patch("app.core.middleware.logger") as mock_logger:
             response = await middleware.dispatch(request, call_next)
 
             # 验证记录了慢请求警告
-            warning_calls = [call for call in mock_logger.warning.call_args_list
-                           if "慢请求检测" in str(call)]
+            warning_calls = [
+                call
+                for call in mock_logger.warning.call_args_list
+                if "慢请求检测" in str(call)
+            ]
             assert len(warning_calls) > 0
 
     @pytest.mark.asyncio
@@ -118,7 +125,7 @@ class TestEnhancedLoggingMiddleware:
         call_next.return_value = response
 
         # 调用中间件
-        with patch('app.core.middleware.logger') as mock_logger:
+        with patch("app.core.middleware.logger") as mock_logger:
             await middleware.dispatch(request, call_next)
 
             # 验证日志调用
@@ -151,7 +158,7 @@ class TestExceptionHandlerMiddleware:
         call_next = AsyncMock(side_effect=exc)
 
         # 调用中间件
-        with patch('app.core.middleware.logger') as mock_logger:
+        with patch("app.core.middleware.logger") as mock_logger:
             response = await middleware.dispatch(request, call_next)
 
             # 验证返回JSON响应
@@ -159,8 +166,13 @@ class TestExceptionHandlerMiddleware:
             assert response.status_code == 400
 
             # 验证响应内容
-            content = response.body.decode() if isinstance(response.body, bytes) else response.body
+            content = (
+                response.body.decode()
+                if isinstance(response.body, bytes)
+                else response.body
+            )
             import json
+
             data = json.loads(content)
             assert data["code"] == "TEST_ERROR"
             assert data["message"] == "测试错误"
@@ -180,7 +192,7 @@ class TestExceptionHandlerMiddleware:
         call_next = AsyncMock(side_effect=exc)
 
         # 调用中间件
-        with patch('app.core.middleware.logger') as mock_logger:
+        with patch("app.core.middleware.logger") as mock_logger:
             response = await middleware.dispatch(request, call_next)
 
             # 验证返回500错误
@@ -188,8 +200,13 @@ class TestExceptionHandlerMiddleware:
             assert response.status_code == 500
 
             # 验证响应内容
-            content = response.body.decode() if isinstance(response.body, bytes) else response.body
+            content = (
+                response.body.decode()
+                if isinstance(response.body, bytes)
+                else response.body
+            )
             import json
+
             data = json.loads(content)
             assert data["code"] == 500
             assert data["message"] == "服务器内部错误"
@@ -242,7 +259,7 @@ class TestExceptionHandlerMiddleware:
         call_next = AsyncMock(side_effect=exc)
 
         # 调用中间件
-        with patch('app.core.middleware.logger') as mock_logger:
+        with patch("app.core.middleware.logger") as mock_logger:
             await middleware.dispatch(request, call_next)
 
             # 验证错误日志包含请求ID

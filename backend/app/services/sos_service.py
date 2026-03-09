@@ -4,14 +4,18 @@ SOS求救服务
 实现SOS求救请求的核心功能
 """
 
-from typing import Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from typing import Optional
 
 from app.models.sos_request import SOSRequest
 from app.models.user import User
-from app.schemas.sos_request import SOSRequestCreate, SOSRequestUpdate, SOSStatusUpdateRequest
+from app.schemas.sos_request import (
+    SOSRequestCreate,
+    SOSRequestUpdate,
+    SOSStatusUpdateRequest,
+)
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
 
 class SOSService:
@@ -21,7 +25,9 @@ class SOSService:
         pass
 
     @staticmethod
-    def create_sos_request(db: Session, user_id: str, sos_data: SOSRequestCreate) -> SOSRequest:
+    def create_sos_request(
+        db: Session, user_id: str, sos_data: SOSRequestCreate
+    ) -> SOSRequest:
         """创建SOS求救请求
 
         Args:
@@ -34,7 +40,9 @@ class SOSService:
         """
         from app.models.sos_request import SOSTypeEnum
 
-        sos_type = sos_data.sos_type or sos_data.trigger_type or SOSTypeEnum.MANUAL.value
+        sos_type = (
+            sos_data.sos_type or sos_data.trigger_type or SOSTypeEnum.MANUAL.value
+        )
 
         sos = SOSRequest(
             user_id=user_id,  # 使用认证用户的ID，防止IDOR攻击
@@ -43,7 +51,7 @@ class SOSService:
             longitude=sos_data.longitude,
             address=sos_data.address or sos_data.location_description,
             location_accuracy=sos_data.location_accuracy,
-            emergency_reason=sos_data.emergency_reason
+            emergency_reason=sos_data.emergency_reason,
         )
         db.add(sos)
         db.commit()
@@ -53,40 +61,55 @@ class SOSService:
     @staticmethod
     def get_sos_requests(db: Session, user_id: str, limit: int = 20, offset: int = 0):
         """获取用户的SOS请求列表"""
-        return db.query(SOSRequest).filter(
-            SOSRequest.user_id == user_id
-        ).order_by(desc(SOSRequest.trigger_time)).offset(offset).limit(limit).all()
+        return (
+            db.query(SOSRequest)
+            .filter(SOSRequest.user_id == user_id)
+            .order_by(desc(SOSRequest.trigger_time))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
     def get_sos_by_id(db: Session, sos_id: str, user_id: str) -> Optional[SOSRequest]:
         """根据ID获取SOS请求"""
-        return db.query(SOSRequest).filter(
-            SOSRequest.id == sos_id,
-            SOSRequest.user_id == user_id
-        ).first()
+        return (
+            db.query(SOSRequest)
+            .filter(SOSRequest.id == sos_id, SOSRequest.user_id == user_id)
+            .first()
+        )
 
     @staticmethod
     def get_sos_request(db: Session, sos_id: str, user_id: str) -> Optional[SOSRequest]:
         """根据ID获取SOS请求"""
-        return db.query(SOSRequest).filter(
-            SOSRequest.id == sos_id,
-            SOSRequest.user_id == user_id
-        ).first()
+        return (
+            db.query(SOSRequest)
+            .filter(SOSRequest.id == sos_id, SOSRequest.user_id == user_id)
+            .first()
+        )
 
     @staticmethod
     def get_active_sos(db: Session, user_id: str) -> Optional[SOSRequest]:
         """获取活动的SOS请求"""
         from app.models.sos_request import SOSStatusEnum
-        return db.query(SOSRequest).filter(
-            SOSRequest.user_id == user_id,
-            SOSRequest.status == SOSStatusEnum.PENDING.value
-        ).first()
+
+        return (
+            db.query(SOSRequest)
+            .filter(
+                SOSRequest.user_id == user_id,
+                SOSRequest.status == SOSStatusEnum.PENDING.value,
+            )
+            .first()
+        )
 
     @staticmethod
-    def update_sos_status(db: Session, sos_id: str, user_id: str, update_data: SOSStatusUpdateRequest) -> Optional[SOSRequest]:
+    def update_sos_status(
+        db: Session, sos_id: str, user_id: str, update_data: SOSStatusUpdateRequest
+    ) -> Optional[SOSRequest]:
         """更新SOS请求状态"""
-        from app.models.sos_request import SOSStatusEnum
         from datetime import datetime
+
+        from app.models.sos_request import SOSStatusEnum
 
         sos = SOSService.get_sos_by_id(db, sos_id, user_id)
         if not sos:
@@ -98,7 +121,10 @@ class SOSService:
             if update_data.status == SOSStatusEnum.RESCUING.value:
                 sos.rescue_start_time = datetime.utcnow()
             # 如果状态变为已解决或已取消，设置解决时间
-            if update_data.status in [SOSStatusEnum.RESOLVED.value, SOSStatusEnum.CANCELLED.value]:
+            if update_data.status in [
+                SOSStatusEnum.RESOLVED.value,
+                SOSStatusEnum.CANCELLED.value,
+            ]:
                 sos.resolve_time = datetime.utcnow()
 
         if update_data.status_change_reason:
@@ -113,7 +139,9 @@ class SOSService:
         return sos
 
     @staticmethod
-    def cancel_sos_request(db: Session, sos_id: int, user_id: str, cancel_data) -> Optional[SOSRequest]:
+    def cancel_sos_request(
+        db: Session, sos_id: int, user_id: str, cancel_data
+    ) -> Optional[SOSRequest]:
         """取消SOS请求"""
         from app.models.sos_request import SOSStatusEnum
 
@@ -145,7 +173,7 @@ class SOSService:
             latitude=location_data.latitude,
             longitude=location_data.longitude,
             address=location_data.location_description,
-            location_accuracy=location_data.location_accuracy
+            location_accuracy=location_data.location_accuracy,
         )
         db.add(location_history)
         db.commit()
@@ -156,18 +184,28 @@ class SOSService:
     def get_sos_history(db: Session, user_id: str, limit: int = 20, offset: int = 0):
         """获取SOS历史记录"""
         from app.models.sos_request import SOSRequest
+
         query = db.query(SOSRequest).filter(SOSRequest.user_id == user_id)
         total = query.count()
-        sos_requests = query.order_by(desc(SOSRequest.trigger_time)).offset(offset).limit(limit).all()
+        sos_requests = (
+            query.order_by(desc(SOSRequest.trigger_time))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
         return sos_requests, total
 
     @staticmethod
     def get_emergency_contacts(db: Session, user_id: str):
         """获取紧急联系人列表"""
         from app.models.emergency_contact import EmergencyContact
-        return db.query(EmergencyContact).filter(
-            EmergencyContact.user_id == user_id
-        ).order_by(EmergencyContact.priority.asc()).all()
+
+        return (
+            db.query(EmergencyContact)
+            .filter(EmergencyContact.user_id == user_id)
+            .order_by(EmergencyContact.priority.asc())
+            .all()
+        )
 
     @staticmethod
     def get_sos_statistics(db: Session, user_id: str):
@@ -179,7 +217,7 @@ class SOSService:
             "pending_sos": 0,
             "rescuing_sos": 0,
             "resolved_sos": 0,
-            "cancelled_sos": 0
+            "cancelled_sos": 0,
         }
 
         sos_list = db.query(SOSRequest).filter(SOSRequest.user_id == user_id).all()

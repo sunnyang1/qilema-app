@@ -29,17 +29,17 @@ Android 包名必须符合以下规范：
 ```typescript
 const getSafePackageName = (id?: string): string => {
   if (!id) return 'app';
-  
+
   // 如果 ID 是纯数字，添加前缀
   if (/^\d+$/.test(id)) {
     return `app${id}`;
   }
-  
+
   // 确保 ID 以字母开头
   if (/^\d/.test(id)) {
     return `app${id}`;
   }
-  
+
   // 移除非法字符，只保留字母、数字和下划线
   return id.replace(/[^a-zA-Z0-9_]/g, '');
 };

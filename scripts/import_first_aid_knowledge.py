@@ -8,16 +8,20 @@
     python scripts/import_first_aid_knowledge.py
 """
 
-import sys
 import os
+import sys
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.core.database import Base, SessionLocal, engine
+from app.models.knowledge_base import (
+    KnowledgeArticle,
+    KnowledgeCategory,
+    KnowledgeTag,
+    article_tag_association,
+)
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal, engine, Base
-from app.models.knowledge_base import KnowledgeCategory, KnowledgeTag, KnowledgeArticle, article_tag_association
-
 
 # ==================== 急救知识数据 ====================
 
@@ -28,49 +32,49 @@ FIRST_AID_DATA = {
             "description": "急救的基本原则和操作步骤",
             "sort_order": 1,
             "icon": "🚑",
-            "tags": ["急救原则", "急救步骤", "评估", "呼救"]
+            "tags": ["急救原则", "急救步骤", "评估", "呼救"],
         },
         {
             "name": "心肺复苏",
             "description": "心搏骤停的识别和心肺复苏操作",
             "sort_order": 2,
             "icon": "❤️",
-            "tags": ["CPR", "心搏骤停", "心脏复苏", "人工呼吸", "AED"]
+            "tags": ["CPR", "心搏骤停", "心脏复苏", "人工呼吸", "AED"],
         },
         {
             "name": "窒息急救",
             "description": "气道梗阻的识别和处理方法",
             "sort_order": 3,
             "icon": "🫁",
-            "tags": ["窒息", "气道梗阻", "海姆立克", "异物卡喉"]
+            "tags": ["窒息", "气道梗阻", "海姆立克", "异物卡喉"],
         },
         {
             "name": "创伤处理",
             "description": "各类创伤的急救处理方法",
             "sort_order": 4,
             "icon": "🩹",
-            "tags": ["止血", "包扎", "骨折", "烧伤", "伤口"]
+            "tags": ["止血", "包扎", "骨折", "烧伤", "伤口"],
         },
         {
             "name": "中毒急救",
             "description": "各类中毒的紧急处理方法",
             "sort_order": 5,
             "icon": "☠️",
-            "tags": ["中毒", "化学品", "药物过量", "食物中毒"]
+            "tags": ["中毒", "化学品", "药物过量", "食物中毒"],
         },
         {
             "name": "环境急症",
             "description": "环境因素导致的急症处理",
             "sort_order": 6,
             "icon": "🌡️",
-            "tags": ["中暑", "低温", "溺水", "电击", "蛇咬伤"]
+            "tags": ["中暑", "低温", "溺水", "电击", "蛇咬伤"],
         },
         {
             "name": "常见急症",
             "description": "日常生活中常见的急症处理",
             "sort_order": 7,
             "icon": "🏥",
-            "tags": ["晕倒", "抽搐", "过敏反应", "哮喘", "心绞痛"]
+            "tags": ["晕倒", "抽搐", "过敏反应", "哮喘", "心绞痛"],
         },
     ],
     "articles": [
@@ -156,7 +160,7 @@ FIRST_AID_DATA = {
 
 ---
 *内容参考《默沙东诊疗手册大众版》急救章节*
-"""
+""",
         },
         # 心肺复苏
         {
@@ -251,11 +255,11 @@ FIRST_AID_DATA = {
 ## CPR质量要点
 
 ### 高质量CPR标准
-✅ 按压频率100-120次/分钟  
-✅ 按压深度5-6厘米  
-✅ 胸壁完全回弹  
-✅ 尽量减少中断  
-✅ 避免过度通气  
+✅ 按压频率100-120次/分钟
+✅ 按压深度5-6厘米
+✅ 胸壁完全回弹
+✅ 尽量减少中断
+✅ 避免过度通气
 
 ### 按压节拍参考
 可跟随歌曲《Stayin' Alive》的节奏（约103BPM）
@@ -282,7 +286,7 @@ FIRST_AID_DATA = {
 
 ---
 *内容参考《默沙东诊疗手册大众版》心搏骤停章节*
-"""
+""",
         },
         {
             "title": "AED使用指南",
@@ -427,7 +431,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》及AHA急救指南*
-"""
+""",
         },
         # 窒息急救
         {
@@ -591,7 +595,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》窒息章节及AHA急救指南*
-"""
+""",
         },
         # 创伤处理
         {
@@ -788,7 +792,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》出血与伤口章节*
-"""
+""",
         },
         {
             "title": "骨折与固定",
@@ -1007,7 +1011,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》骨折章节*
-"""
+""",
         },
         {
             "title": "烧伤处理",
@@ -1235,7 +1239,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》烧伤章节*
-"""
+""",
         },
         # 环境急症
         {
@@ -1442,7 +1446,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》中暑章节*
-"""
+""",
         },
         {
             "title": "低体温与冻伤",
@@ -1693,7 +1697,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》低体温与冻伤章节*
-"""
+""",
         },
         # 常见急症
         {
@@ -1911,7 +1915,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》昏厥章节*
-"""
+""",
         },
         {
             "title": "癫痫发作急救",
@@ -2136,7 +2140,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》癫痫章节及国际抗癫痫联盟指南*
-"""
+""",
         },
         {
             "title": "过敏反应与过敏性休克",
@@ -2351,7 +2355,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》过敏反应章节及WAO指南*
-"""
+""",
         },
         # 基础急救技能
         {
@@ -2541,7 +2545,7 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考《默沙东诊疗手册大众版》急救章节及红十字会急救指南*
-"""
+""",
         },
         {
             "title": "拨打120急救电话指南",
@@ -2765,18 +2769,18 @@ A: 分析心律时需要车辆停止并保持稳定。
 
 ---
 *内容参考中国急救中心指南*
-"""
+""",
         },
-    ]
+    ],
 }
 
 
 def import_knowledge_data(db: Session):
     """导入急救知识数据"""
-    
+
     print("🚀 开始导入急救知识库数据...")
     print("=" * 60)
-    
+
     # 1. 创建分类
     category_map = {}
     print("\n📂 创建知识分类...")
@@ -2785,13 +2789,13 @@ def import_knowledge_data(db: Session):
             name=cat_data["name"],
             description=cat_data["description"],
             sort_order=cat_data["sort_order"],
-            icon=cat_data["icon"]
+            icon=cat_data["icon"],
         )
         db.add(category)
         db.flush()
         category_map[cat_data["name"]] = category.id
         print(f"  ✓ {cat_data['icon']} {cat_data['name']}")
-    
+
     # 2. 创建标签
     tag_map = {}
     all_tags = set()
@@ -2799,14 +2803,14 @@ def import_knowledge_data(db: Session):
         all_tags.update(cat_data["tags"])
     for article_data in FIRST_AID_DATA["articles"]:
         all_tags.update(article_data["tags"])
-    
+
     print(f"\n🏷️ 创建知识标签（共{len(all_tags)}个）...")
     for tag_name in sorted(all_tags):
         tag = KnowledgeTag(name=tag_name)
         db.add(tag)
         db.flush()
         tag_map[tag_name] = tag.id
-    
+
     # 3. 创建文章
     print(f"\n📄 创建知识文章（共{len(FIRST_AID_DATA['articles'])}篇）...")
     for article_data in FIRST_AID_DATA["articles"]:
@@ -2815,7 +2819,7 @@ def import_knowledge_data(db: Session):
         if not category_id:
             print(f"  ⚠️ 跳过文章（分类不存在）: {article_data['title']}")
             continue
-        
+
         # 创建文章
         article = KnowledgeArticle(
             title=article_data["title"],
@@ -2825,28 +2829,27 @@ def import_knowledge_data(db: Session):
             source="默沙东诊疗手册大众版",
             status="published",
             is_top=article_data["priority"] >= 95,
-            is_active=True
+            is_active=True,
         )
         db.add(article)
         db.flush()
-        
+
         # 关联标签
         for tag_name in article_data["tags"]:
             tag_id = tag_map.get(tag_name)
             if tag_id:
                 db.execute(
                     article_tag_association.insert().values(
-                        article_id=article.id,
-                        tag_id=tag_id
+                        article_id=article.id, tag_id=tag_id
                     )
                 )
-        
+
         featured_mark = "⭐" if article.is_top else "  "
         print(f"  {featured_mark} {article_data['title']}")
-    
+
     # 提交事务
     db.commit()
-    
+
     print("\n" + "=" * 60)
     print("✅ 急救知识库数据导入完成！")
     print(f"   - 分类数量: {len(category_map)}")
@@ -2860,12 +2863,12 @@ def main():
     """主函数"""
     print("🏥 起了吗App - 急救知识库数据导入工具")
     print("=" * 60)
-    
+
     # 创建数据库表
     print("\n📦 检查并创建数据库表...")
     Base.metadata.create_all(bind=engine)
     print("✓ 数据库表已就绪")
-    
+
     # 检查是否已有数据
     db = SessionLocal()
     try:
@@ -2873,7 +2876,7 @@ def main():
         if existing:
             print("\n⚠️ 警告: 知识库中已有数据！")
             response = input("是否清空现有数据并重新导入? (yes/no): ")
-            if response.lower() == 'yes':
+            if response.lower() == "yes":
                 print("\n🗑️ 清空现有数据...")
                 db.query(KnowledgeArticle).delete()
                 db.query(KnowledgeTag).delete()
@@ -2883,10 +2886,10 @@ def main():
             else:
                 print("操作已取消")
                 return
-        
+
         # 导入数据
         import_knowledge_data(db)
-        
+
     except Exception as e:
         print(f"\n❌ 导入失败: {e}")
         db.rollback()

@@ -4,12 +4,13 @@
 定义API统一响应格式和响应工具函数
 """
 
-from typing import Optional, Any, Generic, TypeVar
 from datetime import datetime
+from typing import Any, Generic, Optional, TypeVar
+
 from pydantic import BaseModel, Field
 
 # 泛型类型变量
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ApiResponse(BaseModel, Generic[T]):
@@ -23,21 +24,13 @@ class ApiResponse(BaseModel, Generic[T]):
         data: 响应数据（成功时包含）
         timestamp: Unix时间戳
     """
-    code: int = Field(
-        default=200,
-        description="响应码，200表示成功，其他值表示错误"
-    )
-    message: str = Field(
-        default="success",
-        description="响应消息"
-    )
-    data: Optional[T] = Field(
-        default=None,
-        description="响应数据，成功时包含"
-    )
+
+    code: int = Field(default=200, description="响应码，200表示成功，其他值表示错误")
+    message: str = Field(default="success", description="响应消息")
+    data: Optional[T] = Field(default=None, description="响应数据，成功时包含")
     timestamp: int = Field(
         default_factory=lambda: int(datetime.now().timestamp()),
-        description="Unix时间戳"
+        description="Unix时间戳",
     )
 
     class Config:
@@ -46,7 +39,7 @@ class ApiResponse(BaseModel, Generic[T]):
                 "code": 200,
                 "message": "success",
                 "data": {"id": 1, "name": "测试数据"},
-                "timestamp": 1706534400
+                "timestamp": 1706534400,
             }
         }
 
@@ -62,19 +55,13 @@ class ErrorResponse(BaseModel):
         detail: 详细错误信息（可选）
         timestamp: Unix时间戳
     """
-    code: int = Field(
-        description="错误码"
-    )
-    message: str = Field(
-        description="错误消息"
-    )
-    detail: Optional[str] = Field(
-        default=None,
-        description="详细错误信息"
-    )
+
+    code: int = Field(description="错误码")
+    message: str = Field(description="错误消息")
+    detail: Optional[str] = Field(default=None, description="详细错误信息")
     timestamp: int = Field(
         default_factory=lambda: int(datetime.now().timestamp()),
-        description="Unix时间戳"
+        description="Unix时间戳",
     )
 
     class Config:
@@ -83,7 +70,7 @@ class ErrorResponse(BaseModel):
                 "code": 1001,
                 "message": "该手机号已注册",
                 "detail": None,
-                "timestamp": 1706534400
+                "timestamp": 1706534400,
             }
         }
 
@@ -98,17 +85,12 @@ class SuccessResponse(BaseModel, Generic[T]):
         data: 响应数据（可选）
         timestamp: Unix时间戳
     """
-    message: str = Field(
-        default="success",
-        description="成功消息"
-    )
-    data: Optional[T] = Field(
-        default=None,
-        description="响应数据"
-    )
+
+    message: str = Field(default="success", description="成功消息")
+    data: Optional[T] = Field(default=None, description="响应数据")
     timestamp: int = Field(
         default_factory=lambda: int(datetime.now().timestamp()),
-        description="Unix时间戳"
+        description="Unix时间戳",
     )
 
     class Config:
@@ -116,7 +98,7 @@ class SuccessResponse(BaseModel, Generic[T]):
             "example": {
                 "message": "操作成功",
                 "data": {"id": 1, "name": "测试数据"},
-                "timestamp": 1706534400
+                "timestamp": 1706534400,
             }
         }
 
@@ -137,20 +119,18 @@ class PaginationResponse(BaseModel, Generic[T]):
             total_pages: 总页数
         timestamp: Unix时间戳
     """
+
     code: int = 200
     message: str = "success"
     data: dict
-    timestamp: int = Field(
-        default_factory=lambda: int(datetime.now().timestamp())
-    )
+    timestamp: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
 
 
 # ========== 响应构建工具函数 ==========
 
+
 def success_response(
-    data: Any = None,
-    message: str = "success",
-    code: int = 200
+    data: Any = None, message: str = "success", code: int = 200
 ) -> dict:
     """构建成功响应
 
@@ -166,16 +146,12 @@ def success_response(
         "code": code,
         "message": message,
         "data": data,
-        "timestamp": int(datetime.now().timestamp())
+        "timestamp": int(datetime.now().timestamp()),
     }
 
 
 def paginated_response(
-    items: list,
-    total: int,
-    page: int,
-    page_size: int,
-    message: str = "success"
+    items: list, total: int, page: int, page_size: int, message: str = "success"
 ) -> dict:
     """构建分页响应
 
@@ -199,17 +175,13 @@ def paginated_response(
             "total": total,
             "page": page,
             "page_size": page_size,
-            "total_pages": total_pages
+            "total_pages": total_pages,
         },
-        "timestamp": int(datetime.now().timestamp())
+        "timestamp": int(datetime.now().timestamp()),
     }
 
 
-def error_response(
-    code: int,
-    message: str,
-    detail: Any = None
-) -> dict:
+def error_response(code: int, message: str, detail: Any = None) -> dict:
     """构建错误响应
 
     Args:
@@ -224,5 +196,5 @@ def error_response(
         "code": code,
         "message": message,
         "detail": detail,
-        "timestamp": int(datetime.now().timestamp())
+        "timestamp": int(datetime.now().timestamp()),
     }

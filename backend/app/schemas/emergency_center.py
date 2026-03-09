@@ -5,17 +5,18 @@
 """
 
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field, field_validator
 from enum import Enum
+from typing import List, Optional
 
 from app.core.schemas import BaseSchema
-
+from pydantic import BaseModel, Field, field_validator
 
 # ========== 枚举定义 ==========
 
+
 class EmergencyCallStatus(str, Enum):
     """急救呼叫状态枚举"""
+
     DIALING = "dialing"
     CONNECTED = "connected"
     DISCONNECTED = "disconnected"
@@ -24,6 +25,7 @@ class EmergencyCallStatus(str, Enum):
 
 class AmbulanceStatus(str, Enum):
     """救护车状态枚举"""
+
     DISPATCHED = "dispatched"
     ON_ROUTE = "on_route"
     AT_SCENE = "at_scene"
@@ -34,8 +36,10 @@ class AmbulanceStatus(str, Enum):
 
 # ========== 急救中心配置相关 ==========
 
+
 class EmergencyCenterBase(BaseModel):
     """急救中心基础模型"""
+
     center_name: str = Field(..., min_length=1, max_length=200, description="急救中心名称")
     center_code: str = Field(..., min_length=1, max_length=50, description="急救中心代码")
     province: Optional[str] = Field(None, max_length=100, description="省份")
@@ -45,6 +49,7 @@ class EmergencyCenterBase(BaseModel):
 
 class EmergencyCenterCreate(EmergencyCenterBase):
     """创建急救中心"""
+
     phone: str = Field(..., min_length=1, description="联系电话")
     emergency_phone: Optional[str] = Field(None, description="急救专用电话")
     api_endpoint: Optional[str] = Field(None, description="API接口地址")
@@ -59,6 +64,7 @@ class EmergencyCenterCreate(EmergencyCenterBase):
 
 class EmergencyCenterUpdate(BaseModel):
     """更新急救中心"""
+
     center_name: Optional[str] = Field(None, min_length=1, max_length=200)
     phone: Optional[str] = Field(None, min_length=1)
     emergency_phone: Optional[str] = Field(None)
@@ -74,6 +80,7 @@ class EmergencyCenterUpdate(BaseModel):
 
 class EmergencyCenterResponse(EmergencyCenterBase):
     """急救中心响应"""
+
     id: int
     phone: str
     emergency_phone: Optional[str]
@@ -89,8 +96,10 @@ class EmergencyCenterResponse(EmergencyCenterBase):
 
 # ========== 120急救呼叫相关 ==========
 
+
 class EmergencyCallCreate(BaseModel):
     """创建120急救呼叫"""
+
     user_id: str = Field(..., description="用户ID")
     sos_request_id: Optional[int] = Field(None, description="关联的SOS请求ID")
     emergency_center_id: Optional[int] = Field(None, description="急救中心ID")
@@ -99,6 +108,7 @@ class EmergencyCallCreate(BaseModel):
 
 class EmergencyCallUpdate(BaseModel):
     """更新120急救呼叫"""
+
     call_status: Optional[EmergencyCallStatus] = Field(None, description="呼叫状态")
     connected_at: Optional[datetime] = Field(None, description="接通时间")
     ended_at: Optional[datetime] = Field(None, description="结束时间")
@@ -116,6 +126,7 @@ class EmergencyCallUpdate(BaseModel):
 
 class EmergencyCallResponse(BaseModel):
     """120急救呼叫响应"""
+
     id: int
     user_id: str
     sos_request_id: Optional[int]
@@ -144,8 +155,10 @@ class EmergencyCallResponse(BaseModel):
 
 # ========== 救护车相关 ==========
 
+
 class AmbulanceCreate(BaseModel):
     """创建救护车"""
+
     emergency_call_id: int = Field(..., description="急救呼叫记录ID")
     target_resource_id: Optional[int] = Field(None, description="目标医院ID")
     ambulance_number: Optional[str] = Field(None, max_length=50, description="救护车编号")
@@ -159,9 +172,12 @@ class AmbulanceCreate(BaseModel):
 
 class AmbulanceUpdate(BaseModel):
     """更新救护车"""
+
     status: Optional[AmbulanceStatus] = Field(None, description="救护车状态")
     current_latitude: Optional[float] = Field(None, ge=-90, le=90, description="当前纬度")
-    current_longitude: Optional[float] = Field(None, ge=-180, le=180, description="当前经度")
+    current_longitude: Optional[float] = Field(
+        None, ge=-180, le=180, description="当前经度"
+    )
     current_address: Optional[str] = Field(None, description="当前地址")
     location_updated_at: Optional[datetime] = Field(None, description="位置更新时间")
     arrived_at_scene_at: Optional[datetime] = Field(None, description="到达现场时间")
@@ -176,6 +192,7 @@ class AmbulanceUpdate(BaseModel):
 
 class AmbulanceResponse(BaseModel):
     """救护车响应"""
+
     id: int
     emergency_call_id: int
     target_resource_id: Optional[int]
@@ -204,6 +221,7 @@ class AmbulanceResponse(BaseModel):
 
 class AmbulanceLocation(BaseModel):
     """救护车位置信息"""
+
     ambulance_id: int
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
@@ -213,8 +231,10 @@ class AmbulanceLocation(BaseModel):
 
 # ========== 救援记录相关 ==========
 
+
 class RescueRecordCreate(BaseModel):
     """创建救援记录"""
+
     user_id: str = Field(..., description="用户ID")
     sos_request_id: Optional[int] = Field(None, description="关联的SOS请求ID")
     emergency_call_id: Optional[int] = Field(None, description="关联的急救呼叫ID")
@@ -229,6 +249,7 @@ class RescueRecordCreate(BaseModel):
 
 class RescueRecordUpdate(BaseModel):
     """更新救援记录"""
+
     dispatch_time: Optional[datetime] = Field(None, description="派出时间")
     arrival_time: Optional[datetime] = Field(None, description="到达现场时间")
     transport_time: Optional[datetime] = Field(None, description="运送时间")
@@ -244,6 +265,7 @@ class RescueRecordUpdate(BaseModel):
 
 class RescueRecordResponse(BaseModel):
     """救援记录响应"""
+
     id: int
     user_id: str
     sos_request_id: Optional[int]
@@ -276,8 +298,10 @@ class RescueRecordResponse(BaseModel):
 
 # ========== 120拨号请求 ==========
 
+
 class Call120Request(BaseModel):
     """120拨号请求"""
+
     user_id: str = Field(..., description="用户ID")
     sos_request_id: Optional[int] = Field(None, description="关联的SOS请求ID")
     caller_location: str = Field(..., description="拨打者位置(经度,纬度)")
@@ -286,6 +310,7 @@ class Call120Request(BaseModel):
 
 class Call120Response(BaseModel):
     """120拨号响应"""
+
     call_id: int
     call_status: str
     dialed_at: datetime
@@ -299,8 +324,10 @@ class Call120Response(BaseModel):
 
 # ========== 健康档案摘要 ==========
 
+
 class HealthSummary(BaseModel):
     """健康档案摘要"""
+
     user_id: str = Field(..., description="用户ID")
     user_name: Optional[str] = Field(None, description="用户姓名")
     age: Optional[int] = Field(None, description="年龄")
@@ -327,8 +354,10 @@ class HealthSummary(BaseModel):
 
 # ========== 救护车追踪 ==========
 
+
 class AmbulanceTracking(BaseModel):
     """救护车追踪信息"""
+
     ambulance_id: int
     ambulance_number: Optional[str]
     status: AmbulanceStatus
@@ -343,4 +372,5 @@ class AmbulanceTracking(BaseModel):
 
 class AmbulanceTrackingQuery(BaseModel):
     """救护车追踪查询"""
+
     emergency_call_id: int = Field(..., description="急救呼叫记录ID")

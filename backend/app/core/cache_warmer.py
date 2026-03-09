@@ -3,19 +3,20 @@
 
 用于在应用启动时预加载热点数据到缓存，提升系统响应速度。
 """
-import logging
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
 
-from app.core.redis import redis_manager
+import logging
+from datetime import datetime, timedelta
+from typing import List, Optional
+
 from app.core.database import SessionLocal
-from app.models.user import User
+from app.core.redis import redis_manager
 from app.models.alert import AlertSetting
 from app.models.emergency_contact import EmergencyContact
-from app.services.user_service import UserService
+from app.models.user import User
 from app.services.alert_service import AlertService
 from app.services.emergency_contact_service import EmergencyContactService
+from app.services.user_service import UserService
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class CacheWarmer:
                 "success": False,
                 "message": "Redis不可用",
                 "warmed_count": 0,
-                "duration_ms": 0
+                "duration_ms": 0,
             }
 
         close_db = False
@@ -72,7 +73,7 @@ class CacheWarmer:
                 "success": True,
                 "warmed_count": self.warmed_count,
                 "errors": self.errors,
-                "duration_ms": round(duration, 2)
+                "duration_ms": round(duration, 2),
             }
 
             logger.info(f"缓存预热完成: 预热了 {self.warmed_count} 条数据，耗时 {duration:.2f}ms")
@@ -84,7 +85,7 @@ class CacheWarmer:
                 "success": False,
                 "message": str(e),
                 "warmed_count": self.warmed_count,
-                "errors": self.errors
+                "errors": self.errors,
             }
         finally:
             if close_db:
@@ -99,9 +100,9 @@ class CacheWarmer:
         try:
             # 获取最近7天登录的用户
             since = datetime.utcnow() - timedelta(days=7)
-            active_users = db.query(User).filter(
-                User.last_sign_in >= since
-            ).limit(100).all()
+            active_users = (
+                db.query(User).filter(User.last_sign_in >= since).limit(100).all()
+            )
 
             count = 0
             for user in active_users:
@@ -129,9 +130,12 @@ class CacheWarmer:
         """
         try:
             # 获取启用了预警的配置
-            alert_settings = db.query(AlertSetting).filter(
-                AlertSetting.checkin_enabled == True
-            ).limit(100).all()
+            alert_settings = (
+                db.query(AlertSetting)
+                .filter(AlertSetting.checkin_enabled == True)
+                .limit(100)
+                .all()
+            )
 
             count = 0
             for setting in alert_settings:

@@ -4,21 +4,23 @@
 测试 HealthRecordResponse, MedicalHistoryResponse, MedicationResponse, AllergyResponse 的序列化逻辑
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
 from app.schemas.health_record import (
-    HealthRecordResponse,
-    MedicalHistoryResponse,
-    MedicationResponse,
     AllergyResponse,
     HealthRecordCreate,
+    HealthRecordResponse,
     HealthRecordUpdate,
+    MedicalHistoryResponse,
+    MedicationResponse,
 )
 
 
 # 模拟 ORM 对象
 class MockHealthRecord:
     """模拟 HealthRecord ORM 对象"""
+
     def __init__(self):
         self.id = 1
         self.user_id = "user123"
@@ -41,6 +43,7 @@ class MockHealthRecord:
 
 class MockMedicalHistory:
     """模拟 MedicalHistory ORM 对象"""
+
     def __init__(self):
         self.id = 1
         self.health_record_id = 1
@@ -55,6 +58,7 @@ class MockMedicalHistory:
 
 class MockMedication:
     """模拟 Medication ORM 对象"""
+
     def __init__(self):
         self.id = 1
         self.health_record_id = 1
@@ -71,6 +75,7 @@ class MockMedication:
 
 class MockAllergy:
     """模拟 Allergy ORM 对象"""
+
     def __init__(self):
         self.id = 1
         self.health_record_id = 1
@@ -109,6 +114,7 @@ class TestHealthRecordResponse:
 
     def test_serialize_with_optional_fields_null(self):
         """测试序列化时可选字段为 None"""
+
         class MockHealthRecordPartial:
             def __init__(self):
                 self.id = 1
@@ -211,7 +217,7 @@ class TestHealthRecordCreate:
             blood_type="A",
             height=175.0,
             weight=70.0,
-            age=30
+            age=30,
         )
         assert data.user_id == "user123"
         assert data.real_name == "张三"
@@ -221,9 +227,7 @@ class TestHealthRecordCreate:
         """测试性别验证 - 无效值"""
         with pytest.raises(ValueError) as exc_info:
             HealthRecordCreate(
-                user_id="user123",
-                real_name="张三",
-                gender="unknown"  # 无效值
+                user_id="user123", real_name="张三", gender="unknown"  # 无效值
             )
         assert "性别必须是男、女或其他" in str(exc_info.value)
 
@@ -234,7 +238,7 @@ class TestHealthRecordCreate:
                 user_id="user123",
                 real_name="张三",
                 gender="男",
-                blood_type="X"  # 无效值
+                blood_type="X",  # 无效值
             )
         assert "血型必须是A、B、O、AB或其他" in str(exc_info.value)
 
@@ -244,10 +248,7 @@ class TestHealthRecordUpdate:
 
     def test_partial_update(self):
         """测试部分更新"""
-        data = HealthRecordUpdate(
-            height=180.0,
-            weight=75.0
-        )
+        data = HealthRecordUpdate(height=180.0, weight=75.0)
         assert data.height == 180.0
         assert data.weight == 75.0
         assert data.real_name is None

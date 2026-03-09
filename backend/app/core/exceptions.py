@@ -4,7 +4,8 @@
 定义应用中的所有业务异常类，提供统一的错误处理机制
 """
 
-from typing import Optional, Any
+from typing import Any, Optional
+
 from fastapi import HTTPException, status
 
 
@@ -19,8 +20,13 @@ class BaseAppException(HTTPException):
         detail: 详细错误信息
     """
 
-    def __init__(self, code: int = 500, message: str = "Internal server error",
-                 detail: Optional[str] = None, status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR):
+    def __init__(
+        self,
+        code: int = 500,
+        message: str = "Internal server error",
+        detail: Optional[str] = None,
+        status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
+    ):
         """初始化基础异常
 
         Args:
@@ -36,6 +42,7 @@ class BaseAppException(HTTPException):
 
 # ========== 400 客户端错误 ==========
 
+
 class ValidationException(BaseAppException):
     """验证异常
 
@@ -47,7 +54,7 @@ class ValidationException(BaseAppException):
             code=400,
             message=message,
             detail=detail,
-            status_code=status.HTTP_400_BAD_REQUEST
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -88,6 +95,7 @@ class InvalidFormatException(ValidationException):
 
 # ========== 401 认证错误 ==========
 
+
 class UnauthorizedException(BaseAppException):
     """未授权异常
 
@@ -99,7 +107,7 @@ class UnauthorizedException(BaseAppException):
             code=401,
             message=message,
             detail=detail,
-            status_code=status.HTTP_401_UNAUTHORIZED
+            status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
 
@@ -135,6 +143,7 @@ class InvalidTokenException(UnauthorizedException):
 
 # ========== 403 禁止访问 ==========
 
+
 class ForbiddenException(BaseAppException):
     """禁止访问异常
 
@@ -146,11 +155,12 @@ class ForbiddenException(BaseAppException):
             code=403,
             message=message,
             detail=detail,
-            status_code=status.HTTP_403_FORBIDDEN
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
 
 # ========== 404 资源未找到 ==========
+
 
 class NotFoundException(BaseAppException):
     """资源未找到异常
@@ -165,7 +175,7 @@ class NotFoundException(BaseAppException):
             code=404,
             message=message,
             detail=detail or message,
-            status_code=status.HTTP_404_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
 
@@ -181,10 +191,7 @@ class UserNotFoundException(BaseAppException):
         else:
             message = "用户不存在"
         BaseAppException.__init__(
-            self,
-            code=404,
-            message=message,
-            status_code=status.HTTP_404_NOT_FOUND
+            self, code=404, message=message, status_code=status.HTTP_404_NOT_FOUND
         )
 
 
@@ -200,10 +207,7 @@ class DeviceNotFoundException(BaseAppException):
         else:
             message = "设备不存在"
         BaseAppException.__init__(
-            self,
-            code=404,
-            message=message,
-            status_code=status.HTTP_404_NOT_FOUND
+            self, code=404, message=message, status_code=status.HTTP_404_NOT_FOUND
         )
 
 
@@ -218,11 +222,12 @@ class ThresholdNotFoundException(BaseAppException):
             self,
             code=404,
             message="阈值配置不存在",
-            status_code=status.HTTP_404_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
 
 # ========== 429 请求过多 ==========
+
 
 class TooManyRequestsException(BaseAppException):
     """请求过多异常
@@ -232,13 +237,12 @@ class TooManyRequestsException(BaseAppException):
 
     def __init__(self, message: str = "请求过于频繁，请稍后再试"):
         super().__init__(
-            code=429,
-            message=message,
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            code=429, message=message, status_code=status.HTTP_429_TOO_MANY_REQUESTS
         )
 
 
 # ========== 500 服务器错误 ==========
+
 
 class InternalServerException(BaseAppException):
     """服务器内部错误异常
@@ -251,7 +255,7 @@ class InternalServerException(BaseAppException):
             code=500,
             message=message,
             detail=detail,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
@@ -288,6 +292,7 @@ class ExternalServiceException(InternalServerException):
 
 # ========== 自定义业务错误码 ==========
 
+
 # 1001-1099: 用户相关错误
 class UserAlreadyExistsException(BaseAppException):
     """用户已存在异常（错误码1001）"""
@@ -297,10 +302,7 @@ class UserAlreadyExistsException(BaseAppException):
         if phone:
             message = f"该手机号已注册: {phone}"
         BaseAppException.__init__(
-            self,
-            code=1001,
-            message=message,
-            status_code=status.HTTP_400_BAD_REQUEST
+            self, code=1001, message=message, status_code=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -310,10 +312,7 @@ class AlreadyCheckedInException(BaseAppException):
 
     def __init__(self, message: str = "今天已经签到过了"):
         BaseAppException.__init__(
-            self,
-            code=1003,
-            message=message,
-            status_code=status.HTTP_400_BAD_REQUEST
+            self, code=1003, message=message, status_code=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -326,10 +325,7 @@ class DeviceAlreadyBoundException(BaseAppException):
         if device_id:
             message = f"该设备已被绑定: {device_id}"
         BaseAppException.__init__(
-            self,
-            code=1101,
-            message=message,
-            status_code=status.HTTP_400_BAD_REQUEST
+            self, code=1101, message=message, status_code=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -342,7 +338,7 @@ class EmergencyContactNotFoundException(BaseAppException):
             self,
             code=1201,
             message="紧急联系人不存在",
-            status_code=status.HTTP_404_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
 
@@ -352,10 +348,7 @@ class MinimumContactRequiredException(BaseAppException):
     def __init__(self, min_count: int = 1):
         message = f"至少需要{min_count}个紧急联系人"
         BaseAppException.__init__(
-            self,
-            code=1202,
-            message=message,
-            status_code=status.HTTP_400_BAD_REQUEST
+            self, code=1202, message=message, status_code=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -368,7 +361,7 @@ class SOSAlreadyTriggeredException(BaseAppException):
             self,
             code=1301,
             message="SOS已触发，请勿重复操作",
-            status_code=status.HTTP_400_BAD_REQUEST
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -381,11 +374,12 @@ class AlertCooldownException(BaseAppException):
             self,
             code=1401,
             message="预警冷却中，请稍后再试",
-            status_code=status.HTTP_400_BAD_REQUEST
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
 
 # ========== 异常工具函数 ==========
+
 
 def handle_database_error(error: Exception) -> DatabaseException:
     """处理数据库错误

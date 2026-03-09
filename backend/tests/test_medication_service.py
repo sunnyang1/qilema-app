@@ -4,19 +4,27 @@
 测试药品管理、用药计划、服药记录等功能
 """
 
-import pytest
-from datetime import datetime, date, time, timedelta
-from sqlalchemy.orm import Session
+from datetime import date, datetime, time, timedelta
 
+import pytest
 from app.models.medication import (
-    MedicationReminderItem, MedicationReminderSchedule,
-    MedicationReminderNotification, MedicationReminderLog,
-    MedicationType, MedicationUnit, ScheduleFrequency, ReminderStatus, LogStatus
+    LogStatus,
+    MedicationReminderItem,
+    MedicationReminderLog,
+    MedicationReminderNotification,
+    MedicationReminderSchedule,
+    MedicationType,
+    MedicationUnit,
+    ReminderStatus,
+    ScheduleFrequency,
 )
 from app.services.medication_service import (
-    MedicationService, MedicationScheduleService,
-    MedicationReminderService, MedicationLogService
+    MedicationLogService,
+    MedicationReminderService,
+    MedicationScheduleService,
+    MedicationService,
 )
+from sqlalchemy.orm import Session
 
 
 class TestMedicationService:
@@ -35,7 +43,7 @@ class TestMedicationService:
             "strength": "100mg/片",
             "instructions": "每日一次，饭后服用",
             "total_quantity": 30,
-            "remaining_quantity": 30
+            "remaining_quantity": 30,
         }
 
         medication = service.create_medication(db, "user123", medication_data)
@@ -52,18 +60,18 @@ class TestMedicationService:
 
         # 创建多个药品
         for i in range(3):
-            service.create_medication(db, "user123", {
-                "name": f"药品{i}",
-                "dosage": 100,
-                "unit": MedicationUnit.MG
-            })
+            service.create_medication(
+                db,
+                "user123",
+                {"name": f"药品{i}", "dosage": 100, "unit": MedicationUnit.MG},
+            )
 
         # 为其他用户创建药品
-        service.create_medication(db, "other_user", {
-            "name": "其他药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        service.create_medication(
+            db,
+            "other_user",
+            {"name": "其他药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         medications = service.get_user_medications(db, "user123")
 
@@ -74,11 +82,9 @@ class TestMedicationService:
     def test_update_medication(self, db: Session):
         """测试更新药品"""
         service = MedicationService()
-        medication = service.create_medication(db, "user123", {
-            "name": "原名称",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = service.create_medication(
+            db, "user123", {"name": "原名称", "dosage": 100, "unit": MedicationUnit.MG}
+        )
 
         updated = service.update_medication(
             db, medication.id, "user123", {"name": "新名称", "dosage": 200}
@@ -90,11 +96,11 @@ class TestMedicationService:
     def test_delete_medication(self, db: Session):
         """测试删除药品（软删除）"""
         service = MedicationService()
-        medication = service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         success = service.delete_medication(db, medication.id, "user123")
 
@@ -106,12 +112,16 @@ class TestMedicationService:
     def test_update_remaining_quantity(self, db: Session):
         """测试更新剩余药量"""
         service = MedicationService()
-        medication = service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG,
-            "remaining_quantity": 30
-        })
+        medication = service.create_medication(
+            db,
+            "user123",
+            {
+                "name": "测试药品",
+                "dosage": 100,
+                "unit": MedicationUnit.MG,
+                "remaining_quantity": 30,
+            },
+        )
 
         updated = service.update_remaining_quantity(db, medication.id, "user123", 2)
 
@@ -125,11 +135,11 @@ class TestMedicationScheduleService:
         """测试创建用药计划"""
         # 先创建药品
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         schedule_service = MedicationScheduleService()
         schedule_data = {
@@ -139,7 +149,7 @@ class TestMedicationScheduleService:
             "times_of_day": "08:00,20:00",
             "start_date": date.today(),
             "reminder_enabled": True,
-            "reminder_minutes_before": 10
+            "reminder_minutes_before": 10,
         }
 
         schedule = schedule_service.create_schedule(db, "user123", schedule_data)
@@ -152,19 +162,23 @@ class TestMedicationScheduleService:
     def test_get_times_list(self, db: Session):
         """测试获取用药时间列表"""
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         schedule_service = MedicationScheduleService()
-        schedule = schedule_service.create_schedule(db, "user123", {
-            "medication_id": medication.id,
-            "frequency": ScheduleFrequency.DAILY,
-            "times_of_day": "08:00,12:00,18:00",
-            "start_date": date.today()
-        })
+        schedule = schedule_service.create_schedule(
+            db,
+            "user123",
+            {
+                "medication_id": medication.id,
+                "frequency": ScheduleFrequency.DAILY,
+                "times_of_day": "08:00,12:00,18:00",
+                "start_date": date.today(),
+            },
+        )
 
         times = schedule.get_times_list()
 
@@ -176,19 +190,23 @@ class TestMedicationScheduleService:
     def test_pause_and_resume_schedule(self, db: Session):
         """测试暂停和恢复用药计划"""
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         schedule_service = MedicationScheduleService()
-        schedule = schedule_service.create_schedule(db, "user123", {
-            "medication_id": medication.id,
-            "frequency": ScheduleFrequency.DAILY,
-            "times_of_day": "08:00",
-            "start_date": date.today()
-        })
+        schedule = schedule_service.create_schedule(
+            db,
+            "user123",
+            {
+                "medication_id": medication.id,
+                "frequency": ScheduleFrequency.DAILY,
+                "times_of_day": "08:00",
+                "start_date": date.today(),
+            },
+        )
 
         # 暂停
         paused = schedule_service.pause_schedule(db, schedule.id, "user123")
@@ -206,19 +224,23 @@ class TestMedicationReminderService:
         """测试创建提醒"""
         # 创建药品和计划
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         schedule_service = MedicationScheduleService()
-        schedule = schedule_service.create_schedule(db, "user123", {
-            "medication_id": medication.id,
-            "frequency": ScheduleFrequency.DAILY,
-            "times_of_day": "08:00",
-            "start_date": date.today()
-        })
+        schedule = schedule_service.create_schedule(
+            db,
+            "user123",
+            {
+                "medication_id": medication.id,
+                "frequency": ScheduleFrequency.DAILY,
+                "times_of_day": "08:00",
+                "start_date": date.today(),
+            },
+        )
 
         reminder_service = MedicationReminderService()
         scheduled_time = datetime.now() + timedelta(hours=1)
@@ -233,19 +255,23 @@ class TestMedicationReminderService:
     def test_mark_as_sent(self, db: Session):
         """测试标记提醒为已发送"""
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         schedule_service = MedicationScheduleService()
-        schedule = schedule_service.create_schedule(db, "user123", {
-            "medication_id": medication.id,
-            "frequency": ScheduleFrequency.DAILY,
-            "times_of_day": "08:00",
-            "start_date": date.today()
-        })
+        schedule = schedule_service.create_schedule(
+            db,
+            "user123",
+            {
+                "medication_id": medication.id,
+                "frequency": ScheduleFrequency.DAILY,
+                "times_of_day": "08:00",
+                "start_date": date.today(),
+            },
+        )
 
         reminder_service = MedicationReminderService()
         scheduled_time = datetime.now() + timedelta(hours=1)
@@ -268,12 +294,16 @@ class TestMedicationLogService:
         """测试记录已服药"""
         # 创建药品
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG,
-            "remaining_quantity": 30
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {
+                "name": "测试药品",
+                "dosage": 100,
+                "unit": MedicationUnit.MG,
+                "remaining_quantity": 30,
+            },
+        )
 
         log_service = MedicationLogService()
         log = log_service.record_taken(
@@ -291,16 +321,14 @@ class TestMedicationLogService:
     def test_record_skipped(self, db: Session):
         """测试记录跳过服药"""
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         log_service = MedicationLogService()
-        log = log_service.record_skipped(
-            db, "user123", medication.id, reason="感觉好转"
-        )
+        log = log_service.record_skipped(db, "user123", medication.id, reason="感觉好转")
 
         assert log.status == LogStatus.SKIPPED
         assert log.skipped_reason == "感觉好转"
@@ -308,11 +336,11 @@ class TestMedicationLogService:
     def test_get_adherence_stats(self, db: Session):
         """测试获取服药依从性统计"""
         med_service = MedicationService()
-        medication = med_service.create_medication(db, "user123", {
-            "name": "测试药品",
-            "dosage": 100,
-            "unit": MedicationUnit.MG
-        })
+        medication = med_service.create_medication(
+            db,
+            "user123",
+            {"name": "测试药品", "dosage": 100, "unit": MedicationUnit.MG},
+        )
 
         log_service = MedicationLogService()
 
@@ -340,7 +368,7 @@ class TestMedicationModels:
             name="阿司匹林",
             dosage=100,
             unit=MedicationUnit.MG,
-            medication_type=MedicationType.PRESCRIPTION
+            medication_type=MedicationType.PRESCRIPTION,
         )
         db.add(medication)
         db.commit()
@@ -356,10 +384,7 @@ class TestMedicationModels:
     def test_schedule_to_dict(self, db: Session):
         """测试用药计划模型序列化"""
         medication = MedicationReminderItem(
-            user_id="user123",
-            name="阿司匹林",
-            dosage=100,
-            unit=MedicationUnit.MG
+            user_id="user123", name="阿司匹林", dosage=100, unit=MedicationUnit.MG
         )
         db.add(medication)
         db.commit()
@@ -369,7 +394,7 @@ class TestMedicationModels:
             medication_item_id=medication.id,
             frequency=ScheduleFrequency.DAILY,
             times_of_day="08:00,20:00",
-            start_date=date.today()
+            start_date=date.today(),
         )
         db.add(schedule)
         db.commit()
@@ -384,10 +409,7 @@ class TestMedicationModels:
     def test_reminder_to_dict(self, db: Session):
         """测试提醒模型序列化"""
         medication = MedicationReminderItem(
-            user_id="user123",
-            name="阿司匹林",
-            dosage=100,
-            unit=MedicationUnit.MG
+            user_id="user123", name="阿司匹林", dosage=100, unit=MedicationUnit.MG
         )
         db.add(medication)
         db.commit()
@@ -397,7 +419,7 @@ class TestMedicationModels:
             medication_item_id=medication.id,
             frequency=ScheduleFrequency.DAILY,
             times_of_day="08:00",
-            start_date=date.today()
+            start_date=date.today(),
         )
         db.add(schedule)
         db.commit()
@@ -409,7 +431,7 @@ class TestMedicationModels:
             scheduled_time=datetime.now(),
             reminder_date=date.today(),
             reminder_time=time(8, 0),
-            status=ReminderStatus.PENDING
+            status=ReminderStatus.PENDING,
         )
         db.add(reminder)
         db.commit()
@@ -423,10 +445,7 @@ class TestMedicationModels:
     def test_log_to_dict(self, db: Session):
         """测试服药记录模型序列化"""
         medication = MedicationReminderItem(
-            user_id="user123",
-            name="阿司匹林",
-            dosage=100,
-            unit=MedicationUnit.MG
+            user_id="user123", name="阿司匹林", dosage=100, unit=MedicationUnit.MG
         )
         db.add(medication)
         db.commit()
@@ -435,7 +454,7 @@ class TestMedicationModels:
             user_id="user123",
             medication_item_id=medication.id,
             status=LogStatus.TAKEN,
-            dosage_taken=100
+            dosage_taken=100,
         )
         db.add(log)
         db.commit()

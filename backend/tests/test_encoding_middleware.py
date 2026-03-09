@@ -3,11 +3,11 @@
 
 验证所有响应都使用 UTF-8 编码，解决中文乱码问题
 """
+
 import pytest
+from app.core.middleware import EncodingMiddleware
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from app.core.middleware import EncodingMiddleware
 
 
 def test_encoding_middleware_adds_charset():
@@ -72,9 +72,9 @@ def test_encoding_middleware_preserves_existing_charset():
     @app.get("/test-custom-charset")
     def test_custom_charset():
         from fastapi import Response
+
         return Response(
-            content='{"message":"测试"}',
-            media_type="application/json; charset=UTF-8"
+            content='{"message":"测试"}', media_type="application/json; charset=UTF-8"
         )
 
     client = TestClient(app)
@@ -100,10 +100,7 @@ def test_chinese_characters_no_mojibake():
 
     @app.get("/test/{index}")
     def test_chinese(index: int):
-        return {
-            "message": test_messages[index],
-            "status": "success"
-        }
+        return {"message": test_messages[index], "status": "success"}
 
     client = TestClient(app)
 
@@ -119,7 +116,9 @@ def test_chinese_characters_no_mojibake():
 
         # 验证中文字符没有被编码为乱码
         actual_message = response.json()["message"]
-        assert actual_message == expected_message, f"期望: {expected_message}, 实际: {actual_message}"
+        assert (
+            actual_message == expected_message
+        ), f"期望: {expected_message}, 实际: {actual_message}"
 
         # 验证不包含乱码模式（原始乱码示例）
         assert "æ" not in actual_message
@@ -143,8 +142,8 @@ def test_json_response_with_chinese():
                 "message": "请求处理成功",
                 "data": {
                     "items": ["项目1", "项目2", "项目3"],
-                    "description": "这是一些测试数据"
-                }
+                    "description": "这是一些测试数据",
+                },
             }
         )
 

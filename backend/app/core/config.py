@@ -1,14 +1,16 @@
 """
 应用配置模块
 """
-import os
+
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
-from typing import List, Union, Optional
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from typing import List, Optional, Union
+
 from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -45,7 +47,14 @@ class Settings(BaseSettings):
         "http://localhost:8080",
         "http://localhost:5173",
     ]
-    CORS_ALLOW_METHODS: Union[str, List[str]] = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+    CORS_ALLOW_METHODS: Union[str, List[str]] = [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "PATCH",
+        "OPTIONS",
+    ]
     CORS_ALLOW_HEADERS: Union[str, List[str]] = [
         "Content-Type",
         "Authorization",
@@ -293,17 +302,18 @@ class Settings(BaseSettings):
         # 开发环境允许使用默认值，但发出警告
         if v == dev_default and environment == "development":
             import warnings
+
             warnings.warn(
                 "⚠️  警告：正在使用开发环境默认 SECRET_KEY。"
                 "生产环境部署前必须修改为强随机密钥！"
                 "运行命令生成密钥: python scripts/generate_secret_key.py",
-                UserWarning
+                UserWarning,
             )
             return v  # 直接返回，跳过所有后续检查
 
         # 检查最小长度（64字节）
         min_length = 64
-        key_bytes = v.encode('utf-8')
+        key_bytes = v.encode("utf-8")
         if len(key_bytes) < min_length:
             raise ValueError(
                 f"SECRET_KEY长度至少{min_length}字节，"
@@ -315,10 +325,11 @@ class Settings(BaseSettings):
         if environment == "production":
             # 确保密钥强度足够
             import re
-            has_upper = bool(re.search(r'[A-Z]', v))
-            has_lower = bool(re.search(r'[a-z]', v))
-            has_digit = bool(re.search(r'\d', v))
-            has_special = bool(re.search(r'[^A-Za-z0-9]', v))
+
+            has_upper = bool(re.search(r"[A-Z]", v))
+            has_lower = bool(re.search(r"[a-z]", v))
+            has_digit = bool(re.search(r"\d", v))
+            has_special = bool(re.search(r"[^A-Za-z0-9]", v))
 
             char_types = sum([has_upper, has_lower, has_digit, has_special])
             if char_types < 3:
@@ -340,17 +351,14 @@ class Settings(BaseSettings):
 
         # 验证DEBUG模式
         if self.ENVIRONMENT == "production" and self.DEBUG:
-            errors.append(
-                "生产环境不能开启DEBUG模式，这会导致敏感信息泄露。"
-                "请在配置文件中设置DEBUG=False"
-            )
+            errors.append("生产环境不能开启DEBUG模式，这会导致敏感信息泄露。" "请在配置文件中设置DEBUG=False")
 
         # 验证数据库URL格式
         if self.DATABASE_URL and not (
-            self.DATABASE_URL.startswith("sqlite:///") or
-            self.DATABASE_URL.startswith("postgresql://") or
-            self.DATABASE_URL.startswith("mysql://") or
-            self.DATABASE_URL.startswith("mongodb://")
+            self.DATABASE_URL.startswith("sqlite:///")
+            or self.DATABASE_URL.startswith("postgresql://")
+            or self.DATABASE_URL.startswith("mysql://")
+            or self.DATABASE_URL.startswith("mongodb://")
         ):
             errors.append(
                 f"DATABASE_URL格式无效: {self.DATABASE_URL}。"
@@ -361,22 +369,13 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT == "production":
             # 验证CORS配置
             if "*" in self.CORS_ORIGINS:
-                errors.append(
-                    "生产环境CORS_ORIGINS不能使用通配符'*'。"
-                    "请明确指定允许的域名列表。"
-                )
+                errors.append("生产环境CORS_ORIGINS不能使用通配符'*'。" "请明确指定允许的域名列表。")
 
             if "*" in self.CORS_ALLOW_METHODS:
-                errors.append(
-                    "生产环境CORS_ALLOW_METHODS不能使用通配符'*'。"
-                    "请明确指定允许的HTTP方法。"
-                )
+                errors.append("生产环境CORS_ALLOW_METHODS不能使用通配符'*'。" "请明确指定允许的HTTP方法。")
 
             if "*" in self.CORS_ALLOW_HEADERS:
-                errors.append(
-                    "生产环境CORS_ALLOW_HEADERS不能使用通配符'*'。"
-                    "请明确指定允许的HTTP头部。"
-                )
+                errors.append("生产环境CORS_ALLOW_HEADERS不能使用通配符'*'。" "请明确指定允许的HTTP头部。")
 
             # 注意：SECRET_KEY 的强度验证已在 validate_secret_key 验证器中完成，
             # 此处无需重复检查以避免重复错误消息
@@ -398,6 +397,7 @@ class Settings(BaseSettings):
 
 # ========== 日志配置 ==========
 
+
 class RequestIDFilter(logging.Filter):
     """请求ID过滤器
 
@@ -414,8 +414,8 @@ class RequestIDFilter(logging.Filter):
             bool: 总是返回True（不过滤）
         """
         # 从请求上下文中获取request_id和user_id
-        request_id = getattr(record, 'request_id', 'N/A')
-        user_id = getattr(record, 'user_id', 'N/A')
+        request_id = getattr(record, "request_id", "N/A")
+        user_id = getattr(record, "user_id", "N/A")
 
         # 添加到日志记录
         record.request_id = request_id
@@ -447,8 +447,7 @@ def setup_logging(settings_obj: Optional[Settings] = None) -> None:
 
     # 创建格式化器
     formatter = logging.Formatter(
-        fmt=settings_obj.LOG_FORMAT,
-        datefmt=settings_obj.LOG_DATE_FORMAT
+        fmt=settings_obj.LOG_FORMAT, datefmt=settings_obj.LOG_DATE_FORMAT
     )
 
     # 添加请求ID过滤器
@@ -470,7 +469,7 @@ def setup_logging(settings_obj: Optional[Settings] = None) -> None:
             filename=app_log_file,
             maxBytes=settings_obj.LOG_FILE_MAX_BYTES,
             backupCount=settings_obj.LOG_FILE_BACKUP_COUNT,
-            encoding='utf-8'
+            encoding="utf-8",
         )
         app_handler.setLevel(getattr(logging, settings_obj.LOG_LEVEL.upper()))
         app_handler.setFormatter(formatter)
@@ -483,7 +482,7 @@ def setup_logging(settings_obj: Optional[Settings] = None) -> None:
             filename=error_log_file,
             maxBytes=settings_obj.LOG_FILE_MAX_BYTES,
             backupCount=settings_obj.LOG_FILE_BACKUP_COUNT,
-            encoding='utf-8'
+            encoding="utf-8",
         )
         error_handler.setLevel(logging.ERROR)
         error_handler.setFormatter(formatter)
@@ -497,8 +496,10 @@ def setup_logging(settings_obj: Optional[Settings] = None) -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     # 记录日志系统启动
-    logging.info(f"日志系统已初始化 - 级别: {settings_obj.LOG_LEVEL}, "
-                f"控制台: {settings_obj.LOG_TO_CONSOLE}, 文件: {settings_obj.LOG_TO_FILE}")
+    logging.info(
+        f"日志系统已初始化 - 级别: {settings_obj.LOG_LEVEL}, "
+        f"控制台: {settings_obj.LOG_TO_CONSOLE}, 文件: {settings_obj.LOG_TO_FILE}"
+    )
 
 
 def get_logger(name: str) -> logging.Logger:

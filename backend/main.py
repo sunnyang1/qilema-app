@@ -1,18 +1,20 @@
 """
 FastAPI应用主入口
 """
+
 import logging
+
+from app.api import api_router
+from app.core.config import settings, setup_logging
+from app.core.database import init_db
+from app.core.error_handlers import register_exception_handlers
+from app.core.middleware import setup_middleware
+from app.core.prometheus_metrics import app_info, metrics
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from app.core.config import settings, setup_logging
-from app.core.database import init_db
-from app.core.middleware import setup_middleware
-from app.core.error_handlers import register_exception_handlers
-from app.core.prometheus_metrics import metrics, app_info
-from app.api import api_router
+from slowapi.util import get_remote_address
 
 # 创建速率限制器
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
@@ -63,11 +65,13 @@ async def startup_event():
     logger.info(f"启动{settings.APP_NAME} v{settings.APP_VERSION}")
 
     # 设置应用信息
-    app_info.info({
-        'name': settings.APP_NAME,
-        'version': settings.APP_VERSION,
-        'environment': settings.ENVIRONMENT
-    })
+    app_info.info(
+        {
+            "name": settings.APP_NAME,
+            "version": settings.APP_VERSION,
+            "environment": settings.ENVIRONMENT,
+        }
+    )
 
     # 验证配置
     config_errors = settings.validate_configuration()
@@ -87,7 +91,7 @@ async def root():
     return {
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "status": "running"
+        "status": "running",
     }
 
 
@@ -107,7 +111,7 @@ async def health_check():
     return {
         "status": "healthy" if all_healthy else "unhealthy",
         "database": "connected" if db_healthy else "disconnected",
-        "redis": "connected" if redis_healthy else "disconnected"
+        "redis": "connected" if redis_healthy else "disconnected",
     }
 
 
@@ -130,11 +134,12 @@ async def health_check_v1():
         "data": {
             "status": "healthy" if all_healthy else "unhealthy",
             "database": "connected" if db_healthy else "disconnected",
-            "redis": "connected" if redis_healthy else "disconnected"
-        }
+            "redis": "connected" if redis_healthy else "disconnected",
+        },
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

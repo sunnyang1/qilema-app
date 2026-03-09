@@ -4,125 +4,89 @@ Prometheus 监控指标
 提供 Prometheus 格式的监控指标端点
 """
 
-from prometheus_client import Counter, Histogram, Gauge, Info, generate_latest, CONTENT_TYPE_LATEST
+import time
+
 from fastapi import APIRouter
 from fastapi.responses import Response
-import time
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    generate_latest,
+)
 
 # 创建路由
 router = APIRouter()
 
 # HTTP 请求指标
 http_requests_total = Counter(
-    'http_requests_total',
-    'Total HTTP requests',
-    ['method', 'endpoint', 'status']
+    "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
 )
 
 http_request_duration_seconds = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request duration in seconds',
-    ['method', 'endpoint']
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
 )
 
 # 数据库连接指标
 db_connections_active = Gauge(
-    'db_connections_active',
-    'Number of active database connections'
+    "db_connections_active", "Number of active database connections"
 )
 
 db_connections_idle = Gauge(
-    'db_connections_idle',
-    'Number of idle database connections'
+    "db_connections_idle", "Number of idle database connections"
 )
 
 db_query_duration_seconds = Histogram(
-    'db_query_duration_seconds',
-    'Database query duration in seconds',
-    ['operation']
+    "db_query_duration_seconds", "Database query duration in seconds", ["operation"]
 )
 
 # Redis 连接指标
 redis_connections_active = Gauge(
-    'redis_connections_active',
-    'Number of active Redis connections'
+    "redis_connections_active", "Number of active Redis connections"
 )
 
 redis_cache_hits = Counter(
-    'redis_cache_hits',
-    'Total Redis cache hits',
-    ['key_pattern']
+    "redis_cache_hits", "Total Redis cache hits", ["key_pattern"]
 )
 
 redis_cache_misses = Counter(
-    'redis_cache_misses',
-    'Total Redis cache misses',
-    ['key_pattern']
+    "redis_cache_misses", "Total Redis cache misses", ["key_pattern"]
 )
 
 redis_cache_hit_ratio = Gauge(
-    'redis_cache_hit_ratio',
-    'Redis cache hit ratio',
-    ['key_pattern']
+    "redis_cache_hit_ratio", "Redis cache hit ratio", ["key_pattern"]
 )
 
 # 业务指标
 checkin_requests_total = Counter(
-    'checkin_requests_total',
-    'Total check-in requests',
-    ['status']
+    "checkin_requests_total", "Total check-in requests", ["status"]
 )
 
-sos_requests_total = Counter(
-    'sos_requests_total',
-    'Total SOS requests',
-    ['status']
-)
+sos_requests_total = Counter("sos_requests_total", "Total SOS requests", ["status"])
 
 user_registrations_total = Counter(
-    'user_registrations_total',
-    'Total user registrations',
-    ['status']
+    "user_registrations_total", "Total user registrations", ["status"]
 )
 
-active_users_total = Gauge(
-    'active_users_total',
-    'Number of active users'
-)
+active_users_total = Gauge("active_users_total", "Number of active users")
 
-healthcheck_status = Gauge(
-    'healthcheck_status',
-    'Health check status',
-    ['service']
-)
+healthcheck_status = Gauge("healthcheck_status", "Health check status", ["service"])
 
 # 系统资源指标
-cpu_usage_percent = Gauge(
-    'cpu_usage_percent',
-    'CPU usage percentage'
-)
+cpu_usage_percent = Gauge("cpu_usage_percent", "CPU usage percentage")
 
-memory_usage_bytes = Gauge(
-    'memory_usage_bytes',
-    'Memory usage in bytes'
-)
+memory_usage_bytes = Gauge("memory_usage_bytes", "Memory usage in bytes")
 
-memory_available_bytes = Gauge(
-    'memory_available_bytes',
-    'Available memory in bytes'
-)
+memory_available_bytes = Gauge("memory_available_bytes", "Available memory in bytes")
 
-disk_usage_bytes = Gauge(
-    'disk_usage_bytes',
-    'Disk usage in bytes',
-    ['mount_point']
-)
+disk_usage_bytes = Gauge("disk_usage_bytes", "Disk usage in bytes", ["mount_point"])
 
 # 应用信息
-app_info = Info(
-    'app_info',
-    'Application information'
-)
+app_info = Info("app_info", "Application information")
 
 
 async def metrics():
@@ -147,13 +111,10 @@ class HTTPRequestMetrics:
         """记录请求指标"""
         duration = time.time() - self.start_time
         http_requests_total.labels(
-            method=self.method,
-            endpoint=self.endpoint,
-            status=status
+            method=self.method, endpoint=self.endpoint, status=status
         ).inc()
         http_request_duration_seconds.labels(
-            method=self.method,
-            endpoint=self.endpoint
+            method=self.method, endpoint=self.endpoint
         ).observe(duration)
 
 

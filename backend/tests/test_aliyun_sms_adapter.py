@@ -4,12 +4,15 @@
 测试适配器的各项功能，包括模拟器模式和真实服务接口
 """
 
-import pytest
 import os
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
-from app.core.adapters.aliyun_sms_adapter import AliyunSMSAdapter, create_aliyun_sms_adapter
+import pytest
 from app.core.adapters.adapter_factory import AdapterFactory, get_adapter_config
+from app.core.adapters.aliyun_sms_adapter import (
+    AliyunSMSAdapter,
+    create_aliyun_sms_adapter,
+)
 
 
 class TestAliyunSMSAdapterSimulator:
@@ -24,7 +27,7 @@ class TestAliyunSMSAdapterSimulator:
             success_rate=100.0,
             access_key_id="test_key",
             access_key_secret="test_secret",
-            sign_name="起了吗"
+            sign_name="起了吗",
         )
 
     def test_init_default(self):
@@ -40,9 +43,9 @@ class TestAliyunSMSAdapterSimulator:
             phone_number="13800138000",
             content="您的验证码是123456",
             template_code="SMS_123456",
-            template_params={"code": "123456"}
+            template_params={"code": "123456"},
         )
-        
+
         assert result["status"] == "success"
         assert result["data"]["phone_number"] == "13800138000"
         assert result["data"]["template_code"] == "SMS_123456"
@@ -54,9 +57,9 @@ class TestAliyunSMSAdapterSimulator:
             phone_number="13800138000",
             content="尊敬的用户{{name}}，您的验证码是{{code}}",
             template_code="SMS_TEMPLATE_001",
-            template_params={"name": "张三", "code": "654321"}
+            template_params={"name": "张三", "code": "654321"},
         )
-        
+
         assert result["status"] == "success"
         # 模拟器会进行模板变量替换
         assert "654321" in result["data"]["content"]
@@ -64,11 +67,8 @@ class TestAliyunSMSAdapterSimulator:
     def test_send_sms_disabled(self):
         """测试禁用状态下发送短信"""
         disabled_adapter = AliyunSMSAdapter(enabled=False)
-        result = disabled_adapter.send(
-            phone_number="13800138000",
-            content="测试内容"
-        )
-        
+        result = disabled_adapter.send(phone_number="13800138000", content="测试内容")
+
         assert result["status"] == "disabled"
 
     def test_phone_number_masking(self):
@@ -79,7 +79,7 @@ class TestAliyunSMSAdapterSimulator:
     def test_check_quota_simulator(self):
         """测试模拟器模式下的额度查询"""
         quota = self.adapter.check_quota()
-        
+
         assert quota["status"] == "success"
         assert quota["data"]["remaining_quota"] == 999999
         assert quota["data"]["is_low"] is False
@@ -87,7 +87,7 @@ class TestAliyunSMSAdapterSimulator:
     def test_get_send_status_simulator(self):
         """测试模拟器模式下的状态查询"""
         status = self.adapter.get_send_status("msg_123456")
-        
+
         assert status["status"] == "success"
         assert status["data"]["send_status"] == "SUCCESS"
 
@@ -106,9 +106,9 @@ class TestAliyunSMSAdapterRealService:
         adapter = AliyunSMSAdapter(
             access_key_id="test_key",
             access_key_secret="test_secret",
-            sign_name="起了吗"
+            sign_name="起了吗",
         )
-        
+
         assert adapter.use_real_service is True
         assert adapter.access_key_id == "test_key"
         assert adapter.sign_name == "起了吗"
@@ -120,26 +120,33 @@ class TestAliyunSMSAdapterRealService:
         adapter = AliyunSMSAdapter(
             access_key_id="test_key",
             access_key_secret="test_secret",
-            sign_name="起了吗"
+            sign_name="起了吗",
         )
         adapter.use_real_service = True
-        
+
         # 不传递template_code应该失败
         result = adapter._send_real(
-            phone_number="13800138000",
-            template_code=None,
-            template_params=None
+            phone_number="13800138000", template_code=None, template_params=None
         )
-        
+
         assert result["status"] == "failed"
         assert result["error_code"] == "template_required"
 
     def test_error_code_mapping(self):
         """测试错误码映射"""
         # 测试已知的错误码映射
-        assert AliyunSMSAdapter._map_error_code("isv.BUSINESS_LIMIT_CONTROL") == "rate_limit_exceeded"
-        assert AliyunSMSAdapter._map_error_code("isv.MOBILE_NUMBER_ILLEGAL") == "invalid_phone"
-        assert AliyunSMSAdapter._map_error_code("isv.AMOUNT_NOT_ENOUGH") == "insufficient_balance"
+        assert (
+            AliyunSMSAdapter._map_error_code("isv.BUSINESS_LIMIT_CONTROL")
+            == "rate_limit_exceeded"
+        )
+        assert (
+            AliyunSMSAdapter._map_error_code("isv.MOBILE_NUMBER_ILLEGAL")
+            == "invalid_phone"
+        )
+        assert (
+            AliyunSMSAdapter._map_error_code("isv.AMOUNT_NOT_ENOUGH")
+            == "insufficient_balance"
+        )
         # 测试未知错误码
         assert AliyunSMSAdapter._map_error_code("UNKNOWN_ERROR") == "unknown_error"
 
@@ -150,48 +157,55 @@ class TestAdapterFactory:
     def test_create_sms_adapter_simulator(self):
         """测试创建短信模拟器"""
         os.environ["SMS_USE_REAL_SERVICE"] = "false"
-        
+
         adapter = AdapterFactory.create_sms_adapter()
-        
+
         # 模拟器模式下返回SMSNotificationSimulator
         from app.core.notification_simulators import SMSNotificationSimulator
+
         assert isinstance(adapter, SMSNotificationSimulator)
         # AliyunSMSAdapter在模拟器模式下也继承SMSNotificationSimulator
-        assert not hasattr(adapter, 'use_real_service') or adapter.use_real_service is False
+        assert (
+            not hasattr(adapter, "use_real_service")
+            or adapter.use_real_service is False
+        )
 
     def test_create_sms_adapter_real(self):
         """测试创建真实短信适配器"""
         os.environ["SMS_USE_REAL_SERVICE"] = "true"
-        
-        with patch.object(AliyunSMSAdapter, '_init_aliyun_client'):
+
+        with patch.object(AliyunSMSAdapter, "_init_aliyun_client"):
             adapter = AdapterFactory.create_sms_adapter()
             assert adapter.use_real_service is True
 
     def test_create_push_adapter(self):
         """测试创建推送适配器"""
         os.environ["PUSH_USE_REAL_SERVICE"] = "false"
-        
+
         from app.core.notification_simulators import PushNotificationSimulator
+
         adapter = AdapterFactory.create_push_adapter()
-        
+
         assert isinstance(adapter, PushNotificationSimulator)
 
     def test_create_phone_adapter(self):
         """测试创建电话适配器"""
         os.environ["PHONE_USE_REAL_SERVICE"] = "false"
-        
+
         from app.core.notification_simulators import PhoneNotificationSimulator
+
         adapter = AdapterFactory.create_phone_adapter()
-        
+
         assert isinstance(adapter, PhoneNotificationSimulator)
 
     def test_create_email_adapter(self):
         """测试创建邮件适配器"""
         os.environ["EMAIL_USE_REAL_SERVICE"] = "false"
-        
+
         from app.core.notification_simulators import EmailNotificationSimulator
+
         adapter = AdapterFactory.create_email_adapter()
-        
+
         assert isinstance(adapter, EmailNotificationSimulator)
 
 
@@ -204,9 +218,9 @@ class TestAdapterConfig:
         os.environ["NOTIFICATION_SMS_SUCCESS_RATE"] = "95.0"
         os.environ["ALIYUN_ACCESS_KEY_ID"] = "test_access_key"
         os.environ["ALIYUN_SMS_SIGN_NAME"] = "测试签名"
-        
+
         config = get_adapter_config("sms")
-        
+
         assert config["enabled"] is True
         assert config["success_rate"] == 95.0
         assert config["access_key_id"] == "test_access_key"
@@ -218,9 +232,9 @@ class TestAdapterConfig:
         for key in ["NOTIFICATION_EMAIL_ENABLED", "NOTIFICATION_EMAIL_MAX_RETRIES"]:
             if key in os.environ:
                 del os.environ[key]
-        
+
         config = get_adapter_config("email")
-        
+
         assert config["enabled"] is True  # 默认值
         assert config["success_rate"] == 100.0
         assert config["max_retries"] == 3
@@ -232,16 +246,16 @@ class TestCreateAdapterFunction:
     def test_create_aliyun_sms_adapter_with_config(self):
         """测试使用配置创建适配器"""
         os.environ["SMS_USE_REAL_SERVICE"] = "false"
-        
+
         config = {
             "enabled": True,
             "success_rate": 90.0,
             "access_key_id": "my_key",
-            "sign_name": "我的签名"
+            "sign_name": "我的签名",
         }
-        
+
         adapter = create_aliyun_sms_adapter(config)
-        
+
         assert adapter.success_rate == 90.0
         assert adapter.access_key_id == "my_key"
         assert adapter.sign_name == "我的签名"
@@ -249,8 +263,8 @@ class TestCreateAdapterFunction:
     def test_create_aliyun_sms_adapter_default(self):
         """测试使用默认配置创建适配器"""
         os.environ["SMS_USE_REAL_SERVICE"] = "false"
-        
+
         adapter = create_aliyun_sms_adapter()
-        
+
         assert adapter.enabled is True
         assert adapter.max_retries == 3

@@ -5,15 +5,14 @@
 用于开发、测试环境，不依赖真实第三方SDK
 """
 
-import time
-import random
 import logging
-from typing import Optional, Dict, Any, List
+import random
+import time
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional
 
-from app.schemas.notification import NotificationChannelEnum
 from app.core.config import settings
-
+from app.schemas.notification import NotificationChannelEnum
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class NotificationSimulator(ABC):
         success_rate: float = 100.0,
         delay_ms: int = 0,
         max_retries: int = 3,
-        retry_interval_ms: int = 1000
+        retry_interval_ms: int = 1000,
     ):
         """
         初始化模拟器
@@ -70,7 +69,7 @@ class NotificationSimulator(ABC):
             logger.warning(f"{self.__class__.__name__}服务未启用")
             return {
                 "status": "disabled",
-                "message": f"{self.__class__.__name__}服务未启用"
+                "message": f"{self.__class__.__name__}服务未启用",
             }
 
         # 模拟延迟
@@ -95,7 +94,9 @@ class NotificationSimulator(ABC):
                 time.sleep(self.retry_interval_ms / 1000.0)
                 last_result = result
             else:
-                logger.error(f"{self.__class__.__name__}发送失败（尝试{attempt}/{self.max_retries}）：{result.get('message')}")
+                logger.error(
+                    f"{self.__class__.__name__}发送失败（尝试{attempt}/{self.max_retries}）：{result.get('message')}"
+                )
                 return result
 
         return last_result
@@ -133,7 +134,7 @@ class PushNotificationSimulator(NotificationSimulator):
         delay_ms: int = 0,
         max_retries: int = 3,
         retry_interval_ms: int = 1000,
-        push_token: Optional[str] = None
+        push_token: Optional[str] = None,
     ):
         """
         初始化推送通知模拟器
@@ -141,7 +142,9 @@ class PushNotificationSimulator(NotificationSimulator):
         Args:
             push_token: 推送token（可选）
         """
-        super().__init__(enabled, success_rate, delay_ms, max_retries, retry_interval_ms)
+        super().__init__(
+            enabled, success_rate, delay_ms, max_retries, retry_interval_ms
+        )
         self.push_token = push_token
 
     def _send(
@@ -150,7 +153,7 @@ class PushNotificationSimulator(NotificationSimulator):
         title: str,
         content: str,
         data: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         发送推送通知
@@ -165,10 +168,7 @@ class PushNotificationSimulator(NotificationSimulator):
             dict: 发送结果
         """
         if self._simulate_success_failure():
-            logger.info(
-                f"推送通知成功 - 用户:{user_id}, 标题:{title}, "
-                f"内容:{content[:50]}..."
-            )
+            logger.info(f"推送通知成功 - 用户:{user_id}, 标题:{title}, " f"内容:{content[:50]}...")
             return {
                 "status": "success",
                 "message": "推送通知发送成功",
@@ -177,8 +177,8 @@ class PushNotificationSimulator(NotificationSimulator):
                     "title": title,
                     "content": content,
                     "push_token": self.push_token,
-                    "message_id": f"msg_{random.randint(100000, 999999)}"
-                }
+                    "message_id": f"msg_{random.randint(100000, 999999)}",
+                },
             }
         else:
             error_types = [
@@ -186,21 +186,15 @@ class PushNotificationSimulator(NotificationSimulator):
                 {"error_code": "rate_limit_exceeded", "message": "推送频率超限"},
                 {"error_code": "service_error", "message": "推送服务错误"},
                 {"error_code": "network_error", "message": "网络连接失败"},
-                {"error_code": "timeout", "message": "请求超时"}
+                {"error_code": "timeout", "message": "请求超时"},
             ]
             error = random.choice(error_types)
-            logger.error(
-                f"推送通知失败 - 用户:{user_id}, "
-                f"错误:{error['message']}"
-            )
+            logger.error(f"推送通知失败 - 用户:{user_id}, " f"错误:{error['message']}")
             return {
                 "status": "failed",
                 "message": error["message"],
                 "error_code": error["error_code"],
-                "data": {
-                    "user_id": user_id,
-                    "error_type": error["error_code"]
-                }
+                "data": {"user_id": user_id, "error_type": error["error_code"]},
             }
 
     def send_batch(
@@ -208,7 +202,7 @@ class PushNotificationSimulator(NotificationSimulator):
         user_ids: List[str],
         title: str,
         content: str,
-        data: Optional[Dict[str, Any]] = None
+        data: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         批量发送推送通知
@@ -239,7 +233,7 @@ class SMSNotificationSimulator(NotificationSimulator):
         delay_ms: int = 0,
         max_retries: int = 3,
         retry_interval_ms: int = 1000,
-        phone_number: Optional[str] = None
+        phone_number: Optional[str] = None,
     ):
         """
         初始化短信通知模拟器
@@ -247,7 +241,9 @@ class SMSNotificationSimulator(NotificationSimulator):
         Args:
             phone_number: 默认手机号（用于日志）
         """
-        super().__init__(enabled, success_rate, delay_ms, max_retries, retry_interval_ms)
+        super().__init__(
+            enabled, success_rate, delay_ms, max_retries, retry_interval_ms
+        )
         self.phone_number = phone_number
 
     def _send(
@@ -256,7 +252,7 @@ class SMSNotificationSimulator(NotificationSimulator):
         content: str,
         template_code: Optional[str] = None,
         template_params: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         发送短信通知
@@ -295,8 +291,8 @@ class SMSNotificationSimulator(NotificationSimulator):
                     "content": final_content,
                     "template_code": template_code,
                     "message_id": f"sms_{random.randint(100000, 999999)}",
-                    "cost": 0.05
-                }
+                    "cost": 0.05,
+                },
             }
         else:
             error_types = [
@@ -305,13 +301,10 @@ class SMSNotificationSimulator(NotificationSimulator):
                 {"error_code": "content_sensitive", "message": "短信内容包含敏感词"},
                 {"error_code": "rate_limit_exceeded", "message": "短信频率超限"},
                 {"error_code": "network_error", "message": "网络连接失败"},
-                {"error_code": "timeout", "message": "请求超时"}
+                {"error_code": "timeout", "message": "请求超时"},
             ]
             error = random.choice(error_types)
-            logger.error(
-                f"短信通知失败 - 手机:{masked_phone}, "
-                f"错误:{error['message']}"
-            )
+            logger.error(f"短信通知失败 - 手机:{masked_phone}, " f"错误:{error['message']}")
             return {
                 "status": "failed",
                 "message": error["message"],
@@ -319,8 +312,8 @@ class SMSNotificationSimulator(NotificationSimulator):
                 "data": {
                     "phone_number": phone_number,
                     "masked_phone": masked_phone,
-                    "error_type": error["error_code"]
-                }
+                    "error_type": error["error_code"],
+                },
             }
 
     @staticmethod
@@ -349,7 +342,7 @@ class PhoneNotificationSimulator(NotificationSimulator):
         delay_ms: int = 0,
         max_retries: int = 3,
         retry_interval_ms: int = 1000,
-        tts_voice: Optional[str] = None
+        tts_voice: Optional[str] = None,
     ):
         """
         初始化电话通知模拟器
@@ -357,15 +350,12 @@ class PhoneNotificationSimulator(NotificationSimulator):
         Args:
             tts_voice: TTS语音类型（可选）
         """
-        super().__init__(enabled, success_rate, delay_ms, max_retries, retry_interval_ms)
+        super().__init__(
+            enabled, success_rate, delay_ms, max_retries, retry_interval_ms
+        )
         self.tts_voice = tts_voice
 
-    def _send(
-        self,
-        phone_number: str,
-        content: str,
-        **kwargs
-    ) -> Dict[str, Any]:
+    def _send(self, phone_number: str, content: str, **kwargs) -> Dict[str, Any]:
         """
         发送电话通知
 
@@ -395,8 +385,8 @@ class PhoneNotificationSimulator(NotificationSimulator):
                     "content": content,
                     "call_duration": call_duration,
                     "call_id": f"call_{random.randint(100000, 999999)}",
-                    "cost": 0.15
-                }
+                    "cost": 0.15,
+                },
             }
         else:
             error_types = [
@@ -405,13 +395,10 @@ class PhoneNotificationSimulator(NotificationSimulator):
                 {"error_code": "invalid_phone", "message": "手机号无效"},
                 {"error_code": "call_rejected", "message": "拒接"},
                 {"error_code": "network_error", "message": "网络连接失败"},
-                {"error_code": "timeout", "message": "请求超时"}
+                {"error_code": "timeout", "message": "请求超时"},
             ]
             error = random.choice(error_types)
-            logger.error(
-                f"电话通知失败 - 手机:{masked_phone}, "
-                f"错误:{error['message']}"
-            )
+            logger.error(f"电话通知失败 - 手机:{masked_phone}, " f"错误:{error['message']}")
             return {
                 "status": "failed",
                 "message": error["message"],
@@ -419,8 +406,8 @@ class PhoneNotificationSimulator(NotificationSimulator):
                 "data": {
                     "phone_number": phone_number,
                     "masked_phone": masked_phone,
-                    "error_type": error["error_code"]
-                }
+                    "error_type": error["error_code"],
+                },
             }
 
     def call(self, phone_number: str, content: str, **kwargs) -> Dict[str, Any]:
@@ -447,7 +434,7 @@ class EmailNotificationSimulator(NotificationSimulator):
         delay_ms: int = 0,
         max_retries: int = 3,
         retry_interval_ms: int = 1000,
-        smtp_server: Optional[str] = None
+        smtp_server: Optional[str] = None,
     ):
         """
         初始化邮件通知模拟器
@@ -455,7 +442,9 @@ class EmailNotificationSimulator(NotificationSimulator):
         Args:
             smtp_server: SMTP服务器（可选）
         """
-        super().__init__(enabled, success_rate, delay_ms, max_retries, retry_interval_ms)
+        super().__init__(
+            enabled, success_rate, delay_ms, max_retries, retry_interval_ms
+        )
         self.smtp_server = smtp_server
 
     def _send(
@@ -465,7 +454,7 @@ class EmailNotificationSimulator(NotificationSimulator):
         content: str,
         html_content: Optional[str] = None,
         attachments: Optional[List[str]] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         发送邮件通知
@@ -503,8 +492,8 @@ class EmailNotificationSimulator(NotificationSimulator):
                     "has_html": html_content is not None,
                     "attachment_count": len(attachments or []),
                     "message_id": f"email_{random.randint(100000, 999999)}",
-                    "size_kb": random.randint(10, 500)
-                }
+                    "size_kb": random.randint(10, 500),
+                },
             }
         else:
             error_types = [
@@ -514,13 +503,10 @@ class EmailNotificationSimulator(NotificationSimulator):
                 {"error_code": "attachment_too_large", "message": "附件过大"},
                 {"error_code": "spam_rejected", "message": "邮件被标记为垃圾邮件"},
                 {"error_code": "network_error", "message": "网络连接失败"},
-                {"error_code": "timeout", "message": "请求超时"}
+                {"error_code": "timeout", "message": "请求超时"},
             ]
             error = random.choice(error_types)
-            logger.error(
-                f"邮件通知失败 - 收件人:{masked_email}, "
-                f"错误:{error['message']}"
-            )
+            logger.error(f"邮件通知失败 - 收件人:{masked_email}, " f"错误:{error['message']}")
             return {
                 "status": "failed",
                 "message": error["message"],
@@ -528,8 +514,8 @@ class EmailNotificationSimulator(NotificationSimulator):
                 "data": {
                     "to_email": to_email,
                     "masked_email": masked_email,
-                    "error_type": error["error_code"]
-                }
+                    "error_type": error["error_code"],
+                },
             }
 
     @staticmethod
@@ -574,7 +560,7 @@ class NotificationServiceConfig:
             "success_rate": self.settings.NOTIFICATION_PUSH_SUCCESS_RATE,
             "delay_ms": self.settings.NOTIFICATION_PUSH_DELAY_MS,
             "max_retries": self.settings.NOTIFICATION_PUSH_MAX_RETRIES,
-            "retry_interval_ms": self.settings.NOTIFICATION_PUSH_RETRY_INTERVAL_MS
+            "retry_interval_ms": self.settings.NOTIFICATION_PUSH_RETRY_INTERVAL_MS,
         }
 
     def get_sms_simulator_config(self) -> Dict[str, Any]:
@@ -589,7 +575,7 @@ class NotificationServiceConfig:
             "success_rate": self.settings.NOTIFICATION_SMS_SUCCESS_RATE,
             "delay_ms": self.settings.NOTIFICATION_SMS_DELAY_MS,
             "max_retries": self.settings.NOTIFICATION_SMS_MAX_RETRIES,
-            "retry_interval_ms": self.settings.NOTIFICATION_SMS_RETRY_INTERVAL_MS
+            "retry_interval_ms": self.settings.NOTIFICATION_SMS_RETRY_INTERVAL_MS,
         }
 
     def get_phone_simulator_config(self) -> Dict[str, Any]:
@@ -604,7 +590,7 @@ class NotificationServiceConfig:
             "success_rate": self.settings.NOTIFICATION_PHONE_SUCCESS_RATE,
             "delay_ms": self.settings.NOTIFICATION_PHONE_DELAY_MS,
             "max_retries": self.settings.NOTIFICATION_PHONE_MAX_RETRIES,
-            "retry_interval_ms": self.settings.NOTIFICATION_PHONE_RETRY_INTERVAL_MS
+            "retry_interval_ms": self.settings.NOTIFICATION_PHONE_RETRY_INTERVAL_MS,
         }
 
     def get_email_simulator_config(self) -> Dict[str, Any]:
@@ -619,7 +605,7 @@ class NotificationServiceConfig:
             "success_rate": self.settings.NOTIFICATION_EMAIL_SUCCESS_RATE,
             "delay_ms": self.settings.NOTIFICATION_EMAIL_DELAY_MS,
             "max_retries": self.settings.NOTIFICATION_EMAIL_MAX_RETRIES,
-            "retry_interval_ms": self.settings.NOTIFICATION_EMAIL_RETRY_INTERVAL_MS
+            "retry_interval_ms": self.settings.NOTIFICATION_EMAIL_RETRY_INTERVAL_MS,
         }
 
     def is_degradation_enabled(self) -> bool:
@@ -686,7 +672,9 @@ class NotificationServiceConfig:
         return self.settings.NOTIFICATION_CIRCUIT_BREAKER_PERSIST_ENABLED
 
 
-def create_push_simulator(config: Optional[NotificationServiceConfig] = None) -> PushNotificationSimulator:
+def create_push_simulator(
+    config: Optional[NotificationServiceConfig] = None,
+) -> PushNotificationSimulator:
     """
     创建推送通知模拟器
 
@@ -702,7 +690,9 @@ def create_push_simulator(config: Optional[NotificationServiceConfig] = None) ->
     return PushNotificationSimulator(**simulator_config)
 
 
-def create_sms_simulator(config: Optional[NotificationServiceConfig] = None) -> SMSNotificationSimulator:
+def create_sms_simulator(
+    config: Optional[NotificationServiceConfig] = None,
+) -> SMSNotificationSimulator:
     """
     创建短信通知模拟器
 
@@ -718,7 +708,9 @@ def create_sms_simulator(config: Optional[NotificationServiceConfig] = None) -> 
     return SMSNotificationSimulator(**simulator_config)
 
 
-def create_phone_simulator(config: Optional[NotificationServiceConfig] = None) -> PhoneNotificationSimulator:
+def create_phone_simulator(
+    config: Optional[NotificationServiceConfig] = None,
+) -> PhoneNotificationSimulator:
     """
     创建电话通知模拟器
 
@@ -734,7 +726,9 @@ def create_phone_simulator(config: Optional[NotificationServiceConfig] = None) -
     return PhoneNotificationSimulator(**simulator_config)
 
 
-def create_email_simulator(config: Optional[NotificationServiceConfig] = None) -> EmailNotificationSimulator:
+def create_email_simulator(
+    config: Optional[NotificationServiceConfig] = None,
+) -> EmailNotificationSimulator:
     """
     创建邮件通知模拟器
 
