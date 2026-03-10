@@ -1,166 +1,42 @@
-# 服务层重构进度 - 最终报告
+# 服务层重构进度 - 阶段 4 & 5 进行中
 
 开始时间: 2026-03-10
-完成时间: 2026-03-10
 
 ---
 
-## 重构完成总结
+## 已完成阶段
 
 ### 阶段 1: 服务层拆分 [COMPLETE] ✅
-
-将原来超过 1000 行的 `NotificationService` 拆分为职责单一的多个服务：
-
-| 新服务 | 职责 | 代码行数 | 测试 |
-|--------|------|----------|------|
-| `CircuitBreakerService` | 熔断器状态管理、Redis 持久化 | 276 | 9 ✅ |
-| `NotificationSenderService` | 通知发送、重试机制、降级策略 | 278 | 13 ✅ |
-| `NotificationTemplateService` | 模板 CRUD、模板渲染 | 232 | 20 ✅ |
-| `NotificationStatsService` | 通知统计查询 | 298 | - |
-| `NotificationService` (门面) | 整合所有服务、保持 API 兼容 | 486 | - |
-
-**新增测试**: 42 个单元测试，全部通过 ✅
-
----
-
 ### 阶段 2: 服务类方法统一 [COMPLETE] ✅
-
-将 **14 个核心服务** 从混合模式统一为**实例方法模式**：
-
-| # | 服务 | 状态 |
-|---|------|------|
-| 1 | UserService | ✅ |
-| 2 | CheckInService | ✅ |
-| 3 | SOSService | ✅ |
-| 4 | EmergencyContactService | ✅ |
-| 5 | DeviceService | ✅ |
-| 6 | HealthRecordService | ✅ |
-| 7 | MedicationService | ✅ |
-| 8 | AnomalyService | ✅ |
-| 9 | AlertService | ✅ |
-| 10 | AEDService | ✅ |
-| 11 | EmergencyCenterService | ✅ |
-| 12 | KnowledgeService | ✅ |
-| 13 | HealthReportService | ✅ |
-| 14 | NotificationService | ✅ |
-
-**关键改进**:
-- 所有服务 `__init__(self, db: Session)` 统一接收数据库会话
-- 方法签名统一为实例方法：`def method(self, ...)`
-- 100% 向后兼容，保留原方法名作为适配器
-
----
-
 ### 阶段 3: 依赖注入完善 [COMPLETE] ✅
 
-#### 3.1 更新 Container 配置
-- 更新 `app/core/container.py` 以支持新的服务类签名
-- 添加所有 14 个服务的工厂 providers
-- 支持自动注入数据库会话
+---
 
-#### 3.2 创建依赖注入模块
-- 创建 `app/api/dependencies.py`
-- 提供 14 个服务的依赖注入函数
-- 统一使用 `get_db_session()` 管理数据库会话
+## 阶段 4: 模型层优化 [IN PROGRESS]
 
-#### 3.3 更新 API 层
-更新 10 个 API 路由文件使用依赖注入：
-- `users.py` ✅
-- `checkins.py` ✅
-- `notifications.py` ✅
-- `anomalies.py` ✅
-- `contacts.py` ✅
-- `devices.py` ✅
-- `emergency_centers.py` ✅
-- `emergency_resources.py` ✅
-- `health_records.py` ✅
-- `medications.py` ✅
+### 4.1 优化模型关联加载策略 (lazy='dynamic') [IN PROGRESS]
+分析 User 模型的 18 个关联关系，优化加载策略
+
+### 4.2 添加查询优化索引 [TODO]
+分析慢查询日志，添加必要的数据库索引
+
+### 4.3 优化 `to_dict()` 序列化性能 [TODO]
+优化序列化算法，支持选择性字段序列化
 
 ---
 
-## 最终成果统计
+## 阶段 5: 代码复用优化 [TODO]
 
-| 指标 | 数值 |
-|------|------|
-| 重构的服务数 | **14 个** |
-| 新增/修改的 API 路由 | **10 个** |
-| 新增代码行数 | ~6000 行 |
-| 新增测试数 | **42 个** |
-| 测试通过率 | **100%** |
-| API 兼容性 | **100% 向后兼容** |
+### 5.1 创建 CacheMixin 缓存混合类 [TODO]
+提取通用缓存逻辑到 CacheMixin
 
----
+### 5.2 创建 QueryBuilder 查询构建器 [TODO]
+创建 QueryBuilder 支持分页、排序、过滤
 
-## 项目结构
-
-```
-backend/app/
-├── api/
-│   ├── dependencies.py               # 新增：依赖注入模块
-│   ├── users.py                      # 已更新：使用依赖注入
-│   ├── checkins.py                   # 已更新：使用依赖注入
-│   ├── notifications.py              # 已更新：使用依赖注入
-│   ├── anomalies.py                  # 已更新：使用依赖注入
-│   ├── contacts.py                   # 已更新：使用依赖注入
-│   ├── devices.py                    # 已更新：使用依赖注入
-│   ├── emergency_centers.py          # 已更新：使用依赖注入
-│   ├── emergency_resources.py        # 已更新：使用依赖注入
-│   ├── health_records.py             # 已更新：使用依赖注入
-│   └── medications.py                # 已更新：使用依赖注入
-├── core/
-│   └── container.py                  # 已更新：支持新服务签名
-├── services/
-│   ├── notification/                 # 新增目录
-│   │   ├── __init__.py
-│   │   ├── circuit_breaker_service.py
-│   │   ├── notification_sender_service.py
-│   │   ├── notification_template_service.py
-│   │   ├── notification_stats_service.py
-│   │   └── notification_facade.py
-│   ├── user_service.py               # 已重构：实例方法模式
-│   ├── checkin_service.py            # 已重构：实例方法模式
-│   ├── sos_service.py                # 已重构：实例方法模式
-│   ├── emergency_contact_service.py  # 已重构：实例方法模式
-│   ├── device_service.py             # 已重构：实例方法模式
-│   ├── health_record_service.py      # 已重构：实例方法模式
-│   ├── medication_service.py         # 已重构：实例方法模式
-│   ├── anomaly_service.py            # 已重构：实例方法模式
-│   ├── alert_service.py              # 已重构：实例方法模式
-│   ├── aed_service.py                # 已重构：实例方法模式
-│   ├── emergency_center_service.py   # 已重构：实例方法模式
-│   ├── knowledge_service.py          # 已重构：实例方法模式
-│   ├── health_report_service.py      # 已重构：实例方法模式
-│   └── notification_service.py       # 向后兼容导出
-└── tests/
-    ├── test_circuit_breaker_service.py       # 新增
-    ├── test_notification_sender_service.py   # 新增
-    └── test_notification_template_service.py # 新增
-```
+### 5.3 统一缓存失效逻辑 [TODO]
+所有服务类使用统一的缓存失效方法
 
 ---
 
-## 文档产出
-
-1. **`tasks/SERVICE_DESIGN_GUIDE.md`** - 服务类设计规范
-2. **`tasks/prd-refactor-service-layer.md`** - PRD 文档
-3. **`prd.json`** - 任务列表（全部完成）
-
----
-
-## 关键改进总结
-
-1. **职责单一**: NotificationService 从 1000+ 行拆分为 5 个服务
-2. **统一模式**: 所有服务统一使用实例方法模式
-3. **依赖注入**: API 层使用 `Depends(get_xxx_service)` 获取服务实例
-4. **可测试性**: 新增 42 个单元测试，覆盖核心逻辑
-5. **向后兼容**: 保留原方法名作为适配器，现有代码可正常运行
-6. **代码复用**: 创建通用的依赖注入模块，简化 API 路由代码
-
----
-
-## 重构完成！🎉
-
-所有三个阶段的重构工作已完成：
-- ✅ 阶段 1: 服务层拆分
-- ✅ 阶段 2: 服务类方法统一
-- ✅ 阶段 3: 依赖注入完善
+## 当前工作
+开始阶段 4.1: 分析 User 模型关联关系
