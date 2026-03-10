@@ -244,7 +244,7 @@ class TestQueryBuilder:
 
     def test_exists_true(self, builder, mock_query):
         """测试 exists 方法返回 True"""
-        mock_query.first.return_value = Mock()
+        mock_query.count.return_value = 1
 
         result = builder.exists()
 
@@ -252,7 +252,7 @@ class TestQueryBuilder:
 
     def test_exists_false(self, builder, mock_query):
         """测试 exists 方法返回 False"""
-        mock_query.first.return_value = None
+        mock_query.count.return_value = 0
 
         result = builder.exists()
 

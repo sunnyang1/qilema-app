@@ -80,6 +80,9 @@ class NotificationService(BaseService[Notification]):
         self._template_service = NotificationTemplateService()
         self._stats_service = NotificationStatsService()
 
+        # 暴露 config 以保持向后兼容
+        self.config = self._sender.config
+
     # ========== 通知发送 ==========
 
     def send_notification(

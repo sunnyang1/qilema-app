@@ -189,7 +189,15 @@ class QueryBuilder:
 
         Returns:
             QueryBuilder: 自身，支持链式调用
+
+        Raises:
+            ValueError: 当 page < 1 或 per_page <= 0 时
         """
+        if page < 1:
+            raise ValueError(f"page 必须 >= 1，当前值: {page}")
+        if per_page <= 0:
+            raise ValueError(f"per_page 必须 > 0，当前值: {per_page}")
+
         self._offset = (page - 1) * per_page
         self._limit = per_page
         self.query = self.query.offset(self._offset).limit(self._limit)
@@ -306,7 +314,8 @@ class QueryBuilder:
         Returns:
             bool: 是否有记录
         """
-        return self.query.first() is not None
+        # 使用 count() 更高效，避免获取完整记录
+        return self.query.count() > 0
 
     def scalar(self) -> Optional[Any]:
         """
@@ -339,6 +348,11 @@ class PaginationResult:
         page: int,
         per_page: int,
     ):
+        if per_page <= 0:
+            raise ValueError(f"per_page 必须 > 0，当前值: {per_page}")
+        if page < 1:
+            raise ValueError(f"page 必须 >= 1，当前值: {page}")
+
         self.items = items
         self.total = total
         self.page = page
@@ -380,7 +394,15 @@ def paginate(
 
     Returns:
         PaginationResult: 分页结果
+
+    Raises:
+        ValueError: 当 page < 1 或 per_page <= 0 时
     """
+    if page < 1:
+        raise ValueError(f"page 必须 >= 1，当前值: {page}")
+    if per_page <= 0:
+        raise ValueError(f"per_page 必须 > 0，当前值: {per_page}")
+
     total = query.count()
     items = query.offset((page - 1) * per_page).limit(per_page).all()
     return PaginationResult(items, total, page, per_page)

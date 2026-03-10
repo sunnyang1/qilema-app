@@ -49,6 +49,11 @@ class CacheMixin:
     cache_prefix: str = ""
     cache_ttl: int = 300  # 默认5分钟
 
+    def __init__(self):
+        """验证必要的属性"""
+        if not self.cache_prefix:
+            raise ValueError(f"{self.__class__.__name__} 必须设置 cache_prefix 属性")
+
     def _make_key(self, *parts: Any) -> str:
         """
         生成缓存键
@@ -214,8 +219,11 @@ class CacheMixin:
                 # 生成缓存键
                 try:
                     cache_key = key_template.format(**format_args)
-                except KeyError:
-                    # 如果格式化失败，使用原始模板
+                except KeyError as e:
+                    # 如果格式化失败，记录警告并使用原始模板
+                    logger.warning(
+                        f"缓存键模板格式化失败: {key_template}, " f"参数: {format_args}, 错误: {e}"
+                    )
                     cache_key = key_template
 
                 full_key = self._make_key(cache_key)

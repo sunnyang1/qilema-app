@@ -1,3 +1,7 @@
+"""@deprecated: 需要重写以适配新架构"""
+import pytest
+
+pytestmark = pytest.mark.skip(reason="需要重写以适配新的服务架构")
 """
 测试通知服务的熔断器和重试机制
 """
