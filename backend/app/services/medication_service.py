@@ -26,21 +26,22 @@ class MedicationService(BaseService[MedicationReminderItem]):
     model_class = MedicationReminderItem
     cache_prefix = "medication"
 
-    @classmethod
+    def __init__(self, db: Session):
+        self.db = db
+
     def get_user_medications(
-        cls, db: Session, user_id: str, only_active: bool = True
+        self, user_id: str, only_active: bool = True
     ) -> List[MedicationReminderItem]:
         """获取用户的药品列表"""
-        query = db.query(MedicationReminderItem).filter(
+        query = self.db.query(MedicationReminderItem).filter(
             MedicationReminderItem.user_id == user_id
         )
         if only_active:
             query = query.filter(MedicationReminderItem.is_active.is_(True))
         return query.order_by(MedicationReminderItem.created_at.desc()).all()
 
-    @classmethod
     def create_medication(
-        cls, db: Session, user_id: str, medication_data: Dict[str, Any]
+        self, user_id: str, medication_data: Dict[str, Any]
     ) -> MedicationReminderItem:
         """创建药品信息"""
         medication = MedicationReminderItem(
@@ -67,17 +68,16 @@ class MedicationService(BaseService[MedicationReminderItem]):
                 "remaining_quantity", medication_data.get("total_quantity")
             ),
         )
-        db.add(medication)
-        db.commit()
-        db.refresh(medication)
+        self.db.add(medication)
+        self.db.commit()
+        self.db.refresh(medication)
         return medication
 
-    @classmethod
     def update_medication(
-        cls, db: Session, medication_id: int, user_id: str, update_data: Dict[str, Any]
+        self, medication_id: int, user_id: str, update_data: Dict[str, Any]
     ) -> Optional[MedicationReminderItem]:
         """更新药品信息"""
-        medication = cls.get_by_id(db, medication_id)
+        medication = self.get_by_id(medication_id)
         if not medication or medication.user_id != user_id:
             return None
 
@@ -86,27 +86,25 @@ class MedicationService(BaseService[MedicationReminderItem]):
                 setattr(medication, key, value)
 
         medication.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(medication)
+        self.db.commit()
+        self.db.refresh(medication)
         return medication
 
-    @classmethod
-    def delete_medication(cls, db: Session, medication_id: int, user_id: str) -> bool:
+    def delete_medication(self, medication_id: int, user_id: str) -> bool:
         """删除药品（软删除）"""
-        medication = cls.get_by_id(db, medication_id)
+        medication = self.get_by_id(medication_id)
         if not medication or medication.user_id != user_id:
             return False
 
         medication.is_active = False
-        db.commit()
+        self.db.commit()
         return True
 
-    @classmethod
     def update_remaining_quantity(
-        cls, db: Session, medication_id: int, user_id: str, used_amount: float
+        self, medication_id: int, user_id: str, used_amount: float
     ) -> Optional[MedicationReminderItem]:
         """更新剩余药量"""
-        medication = cls.get_by_id(db, medication_id)
+        medication = self.get_by_id(medication_id)
         if not medication or medication.user_id != user_id:
             return None
 
@@ -114,8 +112,8 @@ class MedicationService(BaseService[MedicationReminderItem]):
             medication.remaining_quantity = max(
                 0, medication.remaining_quantity - used_amount
             )
-            db.commit()
-            db.refresh(medication)
+            self.db.commit()
+            self.db.refresh(medication)
         return medication
 
 
@@ -125,12 +123,14 @@ class MedicationScheduleService(BaseService[MedicationReminderSchedule]):
     model_class = MedicationReminderSchedule
     cache_prefix = "medication_schedule"
 
-    @classmethod
+    def __init__(self, db: Session):
+        self.db = db
+
     def get_user_schedules(
-        cls, db: Session, user_id: str, only_active: bool = True
+        self, user_id: str, only_active: bool = True
     ) -> List[MedicationReminderSchedule]:
         """获取用户的用药计划列表"""
-        query = db.query(MedicationReminderSchedule).filter(
+        query = self.db.query(MedicationReminderSchedule).filter(
             MedicationReminderSchedule.user_id == user_id
         )
         if only_active:
@@ -140,13 +140,12 @@ class MedicationScheduleService(BaseService[MedicationReminderSchedule]):
             )
         return query.order_by(MedicationReminderSchedule.created_at.desc()).all()
 
-    @classmethod
     def get_medication_schedules(
-        cls, db: Session, medication_id: int, user_id: str
+        self, medication_id: int, user_id: str
     ) -> List[MedicationReminderSchedule]:
         """获取某个药品的用药计划"""
         return (
-            db.query(MedicationReminderSchedule)
+            self.db.query(MedicationReminderSchedule)
             .filter(
                 MedicationReminderSchedule.medication_item_id == medication_id,
                 MedicationReminderSchedule.user_id == user_id,
@@ -155,9 +154,8 @@ class MedicationScheduleService(BaseService[MedicationReminderSchedule]):
             .all()
         )
 
-    @classmethod
     def create_schedule(
-        cls, db: Session, user_id: str, schedule_data: Dict[str, Any]
+        self, user_id: str, schedule_data: Dict[str, Any]
     ) -> MedicationReminderSchedule:
         """创建用药计划"""
         schedule = MedicationReminderSchedule(
@@ -176,17 +174,16 @@ class MedicationScheduleService(BaseService[MedicationReminderSchedule]):
             reminder_minutes_before=schedule_data.get("reminder_minutes_before", 0),
             timezone=schedule_data.get("timezone", "Asia/Shanghai"),
         )
-        db.add(schedule)
-        db.commit()
-        db.refresh(schedule)
+        self.db.add(schedule)
+        self.db.commit()
+        self.db.refresh(schedule)
         return schedule
 
-    @classmethod
     def update_schedule(
-        cls, db: Session, schedule_id: int, user_id: str, update_data: Dict[str, Any]
+        self, schedule_id: int, user_id: str, update_data: Dict[str, Any]
     ) -> Optional[MedicationReminderSchedule]:
         """更新用药计划"""
-        schedule = cls.get_by_id(db, schedule_id)
+        schedule = self.get_by_id(schedule_id)
         if not schedule or schedule.user_id != user_id:
             return None
 
@@ -195,53 +192,49 @@ class MedicationScheduleService(BaseService[MedicationReminderSchedule]):
                 setattr(schedule, key, value)
 
         schedule.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(schedule)
+        self.db.commit()
+        self.db.refresh(schedule)
         return schedule
 
-    @classmethod
     def pause_schedule(
-        cls,
-        db: Session,
+        self,
         schedule_id: int,
         user_id: str,
         pause_until: Optional[datetime] = None,
     ) -> Optional[MedicationReminderSchedule]:
         """暂停用药计划"""
-        schedule = cls.get_by_id(db, schedule_id)
+        schedule = self.get_by_id(schedule_id)
         if not schedule or schedule.user_id != user_id:
             return None
 
         schedule.is_paused = True
         schedule.pause_until = pause_until
-        db.commit()
-        db.refresh(schedule)
+        self.db.commit()
+        self.db.refresh(schedule)
         return schedule
 
-    @classmethod
     def resume_schedule(
-        cls, db: Session, schedule_id: int, user_id: str
+        self, schedule_id: int, user_id: str
     ) -> Optional[MedicationReminderSchedule]:
         """恢复用药计划"""
-        schedule = cls.get_by_id(db, schedule_id)
+        schedule = self.get_by_id(schedule_id)
         if not schedule or schedule.user_id != user_id:
             return None
 
         schedule.is_paused = False
         schedule.pause_until = None
-        db.commit()
-        db.refresh(schedule)
+        self.db.commit()
+        self.db.refresh(schedule)
         return schedule
 
-    @classmethod
-    def delete_schedule(cls, db: Session, schedule_id: int, user_id: str) -> bool:
+    def delete_schedule(self, schedule_id: int, user_id: str) -> bool:
         """删除用药计划"""
-        schedule = cls.get_by_id(db, schedule_id)
+        schedule = self.get_by_id(schedule_id)
         if not schedule or schedule.user_id != user_id:
             return False
 
         schedule.is_active = False
-        db.commit()
+        self.db.commit()
         return True
 
 
@@ -251,16 +244,17 @@ class MedicationReminderService(BaseService[MedicationReminderNotification]):
     model_class = MedicationReminderNotification
     cache_prefix = "medication_reminder"
 
-    @classmethod
+    def __init__(self, db: Session):
+        self.db = db
+
     def get_user_reminders(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         reminder_date: Optional[date] = None,
         status: Optional[ReminderStatus] = None,
     ) -> List[MedicationReminderNotification]:
         """获取用户的提醒列表"""
-        query = db.query(MedicationReminderNotification).filter(
+        query = self.db.query(MedicationReminderNotification).filter(
             MedicationReminderNotification.user_id == user_id
         )
 
@@ -274,10 +268,8 @@ class MedicationReminderService(BaseService[MedicationReminderNotification]):
 
         return query.order_by(MedicationReminderNotification.scheduled_time).all()
 
-    @classmethod
     def create_reminder(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         schedule_id: int,
         medication_id: int,
@@ -293,17 +285,16 @@ class MedicationReminderService(BaseService[MedicationReminderNotification]):
             reminder_time=scheduled_time.time(),
             status=ReminderStatus.PENDING,
         )
-        db.add(reminder)
-        db.commit()
-        db.refresh(reminder)
+        self.db.add(reminder)
+        self.db.commit()
+        self.db.refresh(reminder)
         return reminder
 
-    @classmethod
     def mark_as_sent(
-        cls, db: Session, reminder_id: int, notification_type: str
+        self, reminder_id: int, notification_type: str
     ) -> Optional[MedicationReminderNotification]:
         """标记提醒为已发送"""
-        reminder = cls.get_by_id(db, reminder_id)
+        reminder = self.get_by_id(reminder_id)
         if not reminder:
             return None
 
@@ -311,16 +302,15 @@ class MedicationReminderService(BaseService[MedicationReminderNotification]):
         reminder.sent_at = datetime.utcnow()
         reminder.notification_sent = True
         reminder.notification_type = notification_type
-        db.commit()
-        db.refresh(reminder)
+        self.db.commit()
+        self.db.refresh(reminder)
         return reminder
 
-    @classmethod
     def mark_as_responded(
-        cls, db: Session, reminder_id: int, action: str
+        self, reminder_id: int, action: str
     ) -> Optional[MedicationReminderNotification]:
         """标记用户已响应"""
-        reminder = cls.get_by_id(db, reminder_id)
+        reminder = self.get_by_id(reminder_id)
         if not reminder:
             return None
 
@@ -332,17 +322,14 @@ class MedicationReminderService(BaseService[MedicationReminderNotification]):
         elif action == "skipped":
             reminder.status = ReminderStatus.DISMISSED
 
-        db.commit()
-        db.refresh(reminder)
+        self.db.commit()
+        self.db.refresh(reminder)
         return reminder
 
-    @classmethod
-    def get_today_reminders(
-        cls, db: Session, user_id: str
-    ) -> List[MedicationReminderNotification]:
+    def get_today_reminders(self, user_id: str) -> List[MedicationReminderNotification]:
         """获取今日提醒"""
         today = date.today()
-        return cls.get_user_reminders(db, user_id, reminder_date=today)
+        return self.get_user_reminders(user_id, reminder_date=today)
 
 
 class MedicationLogService(BaseService[MedicationReminderLog]):
@@ -351,17 +338,18 @@ class MedicationLogService(BaseService[MedicationReminderLog]):
     model_class = MedicationReminderLog
     cache_prefix = "medication_log"
 
-    @classmethod
+    def __init__(self, db: Session):
+        self.db = db
+
     def get_user_logs(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         medication_id: Optional[int] = None,
     ) -> List[MedicationReminderLog]:
         """获取用户的服药记录"""
-        query = db.query(MedicationReminderLog).filter(
+        query = self.db.query(MedicationReminderLog).filter(
             MedicationReminderLog.user_id == user_id
         )
 
@@ -376,9 +364,8 @@ class MedicationLogService(BaseService[MedicationReminderLog]):
 
         return query.order_by(MedicationReminderLog.created_at.desc()).all()
 
-    @classmethod
     def create_log(
-        cls, db: Session, user_id: str, log_data: Dict[str, Any]
+        self, user_id: str, log_data: Dict[str, Any]
     ) -> MedicationReminderLog:
         """创建服药记录"""
         log = MedicationReminderLog(
@@ -398,15 +385,13 @@ class MedicationLogService(BaseService[MedicationReminderLog]):
             location=log_data.get("location"),
             device_id=log_data.get("device_id"),
         )
-        db.add(log)
-        db.commit()
-        db.refresh(log)
+        self.db.add(log)
+        self.db.commit()
+        self.db.refresh(log)
         return log
 
-    @classmethod
     def record_taken(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         medication_id: int,
         reminder_id: Optional[int] = None,
@@ -426,7 +411,7 @@ class MedicationLogService(BaseService[MedicationReminderLog]):
         # 如果有提醒，获取计划信息
         if reminder_id:
             reminder = (
-                db.query(MedicationReminderNotification)
+                self.db.query(MedicationReminderNotification)
                 .filter(MedicationReminderNotification.id == reminder_id)
                 .first()
             )
@@ -435,24 +420,24 @@ class MedicationLogService(BaseService[MedicationReminderLog]):
                 log_data["scheduled_date"] = reminder.reminder_date
                 log_data["scheduled_time"] = reminder.reminder_time
 
-        log = cls.create_log(db, user_id, log_data)
+        log = self.create_log(user_id, log_data)
 
         # 更新提醒状态
         if reminder_id:
-            MedicationReminderService.mark_as_responded(db, reminder_id, "taken")
+            reminder_service = MedicationReminderService(self.db)
+            reminder_service.mark_as_responded(reminder_id, "taken")
 
         # 更新药品剩余量
         if dosage_taken:
-            MedicationService.update_remaining_quantity(
-                db, medication_id, user_id, dosage_taken
+            medication_service = MedicationService(self.db)
+            medication_service.update_remaining_quantity(
+                medication_id, user_id, dosage_taken
             )
 
         return log
 
-    @classmethod
     def record_skipped(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         medication_id: int,
         reminder_id: Optional[int] = None,
@@ -468,7 +453,7 @@ class MedicationLogService(BaseService[MedicationReminderLog]):
 
         if reminder_id:
             reminder = (
-                db.query(MedicationReminderNotification)
+                self.db.query(MedicationReminderNotification)
                 .filter(MedicationReminderNotification.id == reminder_id)
                 .first()
             )
@@ -477,25 +462,24 @@ class MedicationLogService(BaseService[MedicationReminderLog]):
                 log_data["scheduled_date"] = reminder.reminder_date
                 log_data["scheduled_time"] = reminder.reminder_time
 
-        log = cls.create_log(db, user_id, log_data)
+        log = self.create_log(user_id, log_data)
 
         # 更新提醒状态
         if reminder_id:
-            MedicationReminderService.mark_as_responded(db, reminder_id, "skipped")
+            reminder_service = MedicationReminderService(self.db)
+            reminder_service.mark_as_responded(reminder_id, "skipped")
 
         return log
 
-    @classmethod
     def get_adherence_stats(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         medication_id: Optional[int] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> Dict[str, Any]:
         """获取服药依从性统计"""
-        query = db.query(MedicationReminderLog).filter(
+        query = self.db.query(MedicationReminderLog).filter(
             MedicationReminderLog.user_id == user_id
         )
 

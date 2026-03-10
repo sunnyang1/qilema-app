@@ -44,22 +44,21 @@ from sqlalchemy.orm import Session
 class EmergencyCenterService:
     """120急救中心对接服务"""
 
-    def __init__(self):
+    def __init__(self, db: Session):
+        self.db = db
         self.location_service = LocationService()
         self.health_record_service = HealthRecordService()
 
     # ========== 120一键拨打 ==========
 
-    def call_120(self, db: Session, request: Call120Request) -> Call120Response:
+    def call_120(self, request: Call120Request) -> Call120Response:
         """
         一键拨打120
 
         创建急救呼叫记录,拨打120电话,发送位置和健康档案
         """
         # 查找用户所在城市的急救中心
-        emergency_center = self._find_nearest_emergency_center(
-            db, request.caller_location
-        )
+        emergency_center = self._find_nearest_emergency_center(request.caller_location)
 
         # 创建急救呼叫记录
         call_data = EmergencyCallCreate(
@@ -70,25 +69,25 @@ class EmergencyCenterService:
         )
 
         call = EmergencyCall(**call_data.dict())
-        db.add(call)
-        db.commit()
-        db.refresh(call)
+        self.db.add(call)
+        self.db.commit()
+        self.db.refresh(call)
 
         # 发送位置信息
-        location_sent = self._send_location_to_120(db, call, emergency_center)
+        location_sent = self._send_location_to_120(call, emergency_center)
 
         # 发送健康档案摘要
         health_summary_sent = False
         if request.send_health_summary:
             health_summary_sent = self._send_health_summary_to_120(
-                db, call, request.user_id
+                call, request.user_id
             )
 
         # 模拟拨打120电话
-        self._dial_120_phone(db, call, emergency_center)
+        self._dial_120_phone(call, emergency_center)
 
-        db.commit()
-        db.refresh(call)
+        self.db.commit()
+        self.db.refresh(call)
 
         return Call120Response(
             call_id=call.id,
@@ -107,7 +106,7 @@ class EmergencyCenterService:
         )
 
     def _find_nearest_emergency_center(
-        self, db: Session, location: str
+        self, location: str
     ) -> Optional[EmergencyCenter]:
         """
         查找最近的急救中心
@@ -121,7 +120,7 @@ class EmergencyCenterService:
             return None
 
         # 查询所有启用的急救中心
-        centers = db.query(EmergencyCenter).filter(EmergencyCenter.is_active).all()
+        centers = self.db.query(EmergencyCenter).filter(EmergencyCenter.is_active).all()
 
         # 计算距离并找出最近的
         nearest_center = None
@@ -136,7 +135,6 @@ class EmergencyCenterService:
 
     def _dial_120_phone(
         self,
-        db: Session,
         call: EmergencyCall,
         emergency_center: Optional[EmergencyCenter],
     ) -> bool:
@@ -157,7 +155,6 @@ class EmergencyCenterService:
 
     def _send_location_to_120(
         self,
-        db: Session,
         call: EmergencyCall,
         emergency_center: Optional[EmergencyCenter],
     ) -> bool:
@@ -183,9 +180,7 @@ class EmergencyCenterService:
         except Exception:
             return False
 
-    def _send_health_summary_to_120(
-        self, db: Session, call: EmergencyCall, user_id: str
-    ) -> bool:
+    def _send_health_summary_to_120(self, call: EmergencyCall, user_id: str) -> bool:
         """
         发送健康档案摘要到120
 
@@ -193,7 +188,7 @@ class EmergencyCenterService:
         """
         try:
             # 生成健康档案摘要
-            health_summary = self.generate_health_summary(db, user_id)
+            health_summary = self.generate_health_summary(user_id)
 
             # 更新呼叫记录
             call.health_summary_sent = 1
@@ -213,14 +208,14 @@ class EmergencyCenterService:
             traceback.print_exc()
             return False
 
-    def generate_health_summary(self, db: Session, user_id: str) -> HealthSummary:
+    def generate_health_summary(self, user_id: str) -> HealthSummary:
         """
         生成健康档案摘要
 
         汇总用户基本信息、健康档案、设备数据、异常记录等
         """
         # 获取用户信息
-        user = db.query(User).filter(User.user_id == user_id).first()
+        user = self.db.query(User).filter(User.user_id == user_id).first()
         if not user:
             raise ValueError("用户不存在")
 
@@ -231,17 +226,19 @@ class EmergencyCenterService:
 
         # 获取健康档案
         health_record = (
-            db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
+            self.db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
         )
 
         # 获取紧急联系人
         emergency_contacts = (
-            db.query(EmergencyContact).filter(EmergencyContact.user_id == user_id).all()
+            self.db.query(EmergencyContact)
+            .filter(EmergencyContact.user_id == user_id)
+            .all()
         )
 
         # 获取最新的设备数据
         latest_device_data = (
-            db.query(DeviceData)
+            self.db.query(DeviceData)
             .join(Device)
             .filter(Device.user_id == user_id)
             .order_by(DeviceData.data_timestamp.desc())
@@ -250,7 +247,7 @@ class EmergencyCenterService:
 
         # 获取最近的异常记录
         recent_anomalies = (
-            db.query(Anomaly)
+            self.db.query(Anomaly)
             .filter(
                 Anomaly.user_id == user_id,
                 Anomaly.detected_at >= datetime.utcnow() - timedelta(days=7),
@@ -301,14 +298,14 @@ class EmergencyCenterService:
 
     # ========== 救护车管理 ==========
 
-    def dispatch_ambulance(self, db: Session, emergency_call_id: int) -> Ambulance:
+    def dispatch_ambulance(self, emergency_call_id: int) -> Ambulance:
         """
         派出救护车
 
         创建救护车记录并标记为已派出
         """
         call = (
-            db.query(EmergencyCall)
+            self.db.query(EmergencyCall)
             .filter(EmergencyCall.id == emergency_call_id)
             .first()
         )
@@ -327,22 +324,20 @@ class EmergencyCenterService:
         ambulance.dispatched_at = datetime.utcnow()
         ambulance.eta_minutes = 15  # 默认15分钟
 
-        db.add(ambulance)
-        db.commit()
-        db.refresh(ambulance)
+        self.db.add(ambulance)
+        self.db.commit()
+        self.db.refresh(ambulance)
 
         return ambulance
 
-    def update_ambulance_location(
-        self, db: Session, location_data: AmbulanceLocation
-    ) -> Ambulance:
+    def update_ambulance_location(self, location_data: AmbulanceLocation) -> Ambulance:
         """
         更新救护车位置
 
         接收救护车位置更新并保存
         """
         ambulance = (
-            db.query(Ambulance)
+            self.db.query(Ambulance)
             .filter(Ambulance.id == location_data.ambulance_id)
             .first()
         )
@@ -355,19 +350,19 @@ class EmergencyCenterService:
         ambulance.current_address = location_data.address
         ambulance.location_updated_at = location_data.timestamp
 
-        db.commit()
-        db.refresh(ambulance)
+        self.db.commit()
+        self.db.refresh(ambulance)
 
         return ambulance
 
-    def track_ambulance(self, db: Session, emergency_call_id: int) -> AmbulanceTracking:
+    def track_ambulance(self, emergency_call_id: int) -> AmbulanceTracking:
         """
         追踪救护车
 
         获取救护车的实时位置和状态
         """
         ambulance = (
-            db.query(Ambulance)
+            self.db.query(Ambulance)
             .filter(Ambulance.emergency_call_id == emergency_call_id)
             .first()
         )
@@ -394,21 +389,21 @@ class EmergencyCenterService:
 
     # ========== 救援记录管理 ==========
 
-    def create_rescue_record(
-        self, db: Session, record_data: RescueRecordCreate
-    ) -> RescueRecord:
+    def create_rescue_record(self, record_data: RescueRecordCreate) -> RescueRecord:
         """创建救援记录"""
         record = RescueRecord(**record_data.dict())
-        db.add(record)
-        db.commit()
-        db.refresh(record)
+        self.db.add(record)
+        self.db.commit()
+        self.db.refresh(record)
         return record
 
     def update_rescue_record(
-        self, db: Session, record_id: int, update_data: RescueRecordUpdate
+        self, record_id: int, update_data: RescueRecordUpdate
     ) -> Optional[RescueRecord]:
         """更新救援记录"""
-        record = db.query(RescueRecord).filter(RescueRecord.id == record_id).first()
+        record = (
+            self.db.query(RescueRecord).filter(RescueRecord.id == record_id).first()
+        )
         if not record:
             return None
 
@@ -428,43 +423,41 @@ class EmergencyCenterService:
                 / 60
             )
 
-        db.commit()
-        db.refresh(record)
+        self.db.commit()
+        self.db.refresh(record)
         return record
 
     # ========== 急救中心管理 ==========
 
     def create_emergency_center(
-        self, db: Session, center_data: EmergencyCenterCreate
+        self, center_data: EmergencyCenterCreate
     ) -> EmergencyCenter:
         """创建急救中心"""
         center = EmergencyCenter(**center_data.dict())
-        db.add(center)
-        db.commit()
-        db.refresh(center)
+        self.db.add(center)
+        self.db.commit()
+        self.db.refresh(center)
         return center
 
-    def get_emergency_centers(
-        self, db: Session, active_only: bool = True
-    ) -> List[EmergencyCenter]:
+    def get_emergency_centers(self, active_only: bool = True) -> List[EmergencyCenter]:
         """获取急救中心列表"""
-        query = db.query(EmergencyCenter)
+        query = self.db.query(EmergencyCenter)
 
         if active_only:
             query = query.filter(EmergencyCenter.is_active)
 
         return query.order_by(EmergencyCenter.created_at.desc()).all()
 
-    def get_emergency_call(self, db: Session, call_id: int) -> Optional[EmergencyCall]:
+    def get_emergency_call(self, call_id: int) -> Optional[EmergencyCall]:
         """获取急救呼叫记录"""
-        return db.query(EmergencyCall).filter(EmergencyCall.id == call_id).first()
+        return self.db.query(EmergencyCall).filter(EmergencyCall.id == call_id).first()
 
     def get_user_emergency_calls(
-        self, db: Session, user_id: str, limit: int = 10
+        self, user_id: str, limit: int = 10
     ) -> List[EmergencyCall]:
         """获取用户的急救呼叫记录"""
         return (
-            db.query(EmergencyCall)
+            self.db.query(EmergencyCall)
             .filter(EmergencyCall.user_id == user_id)
             .order_by(desc(EmergencyCall.dialed_at))
             .limit(limit)

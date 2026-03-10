@@ -4,7 +4,7 @@
 使用 dependency-injector 管理应用的所有服务和资源
 """
 
-from app.core.database import get_engine
+from app.core.database import get_db, get_engine
 from app.core.redis import redis_manager
 from dependency_injector import containers, providers
 
@@ -37,6 +37,10 @@ class Container(containers.DeclarativeContainer):
         pool_recycle=config.database.pool_recycle,
     )
 
+    # 数据库会话provider - 使用Factory模式，每次请求获取新会话
+    # 注意：实际会话管理由 get_db() 处理，这里提供工厂以便DI使用
+    db_session = providers.Factory(get_db)
+
     # Redis provider - 使用工厂函数返回单例实例
     # 注意：RedisManager自身已经是单例模式（通过__new__方法实现）
     def get_redis():
@@ -45,57 +49,119 @@ class Container(containers.DeclarativeContainer):
 
     redis = providers.Factory(get_redis)
 
-    # 业务服务provider（Factory模式，每次获取新实例）
-    # 注意：当前服务类主要使用类方法，这里提供工厂注册以便未来使用实例方法
+    # ========== 业务服务providers ==========
+    # 使用Factory模式，每次获取新实例，自动注入db_session
     # 为避免循环导入，使用延迟导入
-    def get_checkin_service():
-        from app.services.checkin_service import CheckInService
 
-        return CheckInService
-
-    def get_user_service():
+    def _create_user_service(db):
+        """创建用户服务实例"""
         from app.services.user_service import UserService
 
-        return UserService
+        return UserService(db)
 
-    def get_sos_service():
-        from app.services.sos_service import SosService
+    def _create_checkin_service(db):
+        """创建签到服务实例"""
+        from app.services.checkin_service import CheckInService
 
-        return SosService
+        return CheckInService(db)
 
-    def get_emergency_contact_service():
+    def _create_sos_service(db):
+        """创建SOS服务实例"""
+        from app.services.sos_service import SOSService
+
+        return SOSService(db)
+
+    def _create_emergency_contact_service(db):
+        """创建紧急联系人服务实例"""
         from app.services.emergency_contact_service import EmergencyContactService
 
-        return EmergencyContactService
+        return EmergencyContactService(db)
 
-    def get_health_record_service():
+    def _create_health_record_service(db):
+        """创建健康档案服务实例"""
         from app.services.health_record_service import HealthRecordService
 
-        return HealthRecordService
+        return HealthRecordService(db)
 
-    def get_notification_service():
-        from app.services.notification_service import NotificationService
-
-        return NotificationService
-
-    def get_device_service():
+    def _create_device_service(db):
+        """创建设备服务实例"""
         from app.services.device_service import DeviceService
 
-        return DeviceService
+        return DeviceService(db)
 
-    def get_alert_service():
+    def _create_alert_service(db):
+        """创建预警服务实例"""
         from app.services.alert_service import AlertService
 
-        return AlertService
+        return AlertService(db)
 
-    checkin_service = providers.Factory(get_checkin_service)
-    user_service = providers.Factory(get_user_service)
-    sos_service = providers.Factory(get_sos_service)
-    emergency_contact_service = providers.Factory(get_emergency_contact_service)
-    health_record_service = providers.Factory(get_health_record_service)
-    notification_service = providers.Factory(get_notification_service)
-    device_service = providers.Factory(get_device_service)
-    alert_service = providers.Factory(get_alert_service)
+    def _create_medication_service(db):
+        """创建用药服务实例"""
+        from app.services.medication_service import MedicationService
+
+        return MedicationService(db)
+
+    def _create_anomaly_service(db):
+        """创建异常检测服务实例"""
+        from app.services.anomaly_service import AnomalyService
+
+        return AnomalyService(db)
+
+    def _create_aed_service(db):
+        """创建AED服务实例"""
+        from app.services.aed_service import AEDService
+
+        return AEDService(db)
+
+    def _create_emergency_center_service(db):
+        """创建急救中心服务实例"""
+        from app.services.emergency_center_service import EmergencyCenterService
+
+        return EmergencyCenterService(db)
+
+    def _create_knowledge_service(db):
+        """创建知识库服务实例"""
+        from app.services.knowledge_service import KnowledgeBaseService
+
+        return KnowledgeBaseService(db)
+
+    def _create_health_report_service(db):
+        """创建健康报告服务实例"""
+        from app.services.health_report_service import HealthReportService
+
+        return HealthReportService(db)
+
+    def _create_notification_service(db):
+        """创建通知服务实例"""
+        from app.services.notification import NotificationService
+
+        return NotificationService(db)
+
+    # 服务工厂providers - 自动注入数据库会话
+    user_service = providers.Factory(_create_user_service, db=db_session)
+    checkin_service = providers.Factory(_create_checkin_service, db=db_session)
+    sos_service = providers.Factory(_create_sos_service, db=db_session)
+    emergency_contact_service = providers.Factory(
+        _create_emergency_contact_service, db=db_session
+    )
+    health_record_service = providers.Factory(
+        _create_health_record_service, db=db_session
+    )
+    device_service = providers.Factory(_create_device_service, db=db_session)
+    alert_service = providers.Factory(_create_alert_service, db=db_session)
+    medication_service = providers.Factory(_create_medication_service, db=db_session)
+    anomaly_service = providers.Factory(_create_anomaly_service, db=db_session)
+    aed_service = providers.Factory(_create_aed_service, db=db_session)
+    emergency_center_service = providers.Factory(
+        _create_emergency_center_service, db=db_session
+    )
+    knowledge_service = providers.Factory(_create_knowledge_service, db=db_session)
+    health_report_service = providers.Factory(
+        _create_health_report_service, db=db_session
+    )
+    notification_service = providers.Factory(
+        _create_notification_service, db=db_session
+    )
 
 
 # 全局容器实例（延迟初始化）
@@ -154,3 +220,16 @@ def reset_container():
     """
     global _global_container
     _global_container = None
+
+
+# ========== 便捷的依赖注入函数 ==========
+
+
+def get_container() -> Container:
+    """
+    获取容器实例的便捷函数
+
+    Returns:
+        Container: 容器实例
+    """
+    return get_global_container()

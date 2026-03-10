@@ -115,8 +115,16 @@ async def login(
     )
 
 
+def get_user_service(db: Session = Depends(get_db)) -> UserService:
+    """获取用户服务实例"""
+    return UserService(db)
+
+
 @router.post("/register", summary="用户注册")
-async def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
+async def register(
+    user_data: UserRegisterRequest,
+    service: UserService = Depends(get_user_service),
+):
     """用户注册"""
     # UserRegisterRequest 已经通过 Pydantic 进行了字段验证
     # 包括：phone 格式、密码长度、name 必填等
@@ -126,7 +134,7 @@ async def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)
 
     # 使用 UserService 创建用户
     try:
-        user = UserService.create_user(db, user_dict)
+        user = service.create(user_dict)
         return ApiResponseBuilder.success(
             data={"user_id": user.user_id}, message="注册成功"
         )

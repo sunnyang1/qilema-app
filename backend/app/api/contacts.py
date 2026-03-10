@@ -4,7 +4,7 @@
 使用 ApiResponseBuilder 统一构建响应
 """
 
-from app.core.database import get_db
+from app.api.dependencies import get_emergency_contact_service
 from app.core.exceptions import NotFoundException
 from app.core.response_builder import ApiResponseBuilder
 from app.core.security import get_current_user
@@ -12,7 +12,6 @@ from app.models.user import User
 from app.schemas.emergency_contact import EmergencyContactCreate, EmergencyContactUpdate
 from app.services.emergency_contact_service import EmergencyContactService
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["紧急联系人"])
 
@@ -21,7 +20,7 @@ router = APIRouter(tags=["紧急联系人"])
 async def create_emergency_contact(
     contact_data: EmergencyContactCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
 ):
     """
     创建紧急联系人
@@ -40,10 +39,7 @@ async def create_emergency_contact(
         )
 
     try:
-        service = EmergencyContactService()
-        contact = service.create_emergency_contact(
-            db, contact_data, current_user.user_id
-        )
+        contact = service.create_emergency_contact(contact_data, current_user.user_id)
 
         return ApiResponseBuilder.success(
             data={
@@ -69,11 +65,11 @@ async def create_emergency_contact(
 
 @router.get("/", summary="获取紧急联系人列表")
 async def get_emergency_contacts(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
 ):
     """获取当前用户的紧急联系人列表"""
-    service = EmergencyContactService()
-    contacts = service.get_emergency_contacts(db, current_user.user_id)
+    contacts = service.get_emergency_contacts(current_user.user_id)
 
     contact_list = [
         {
@@ -101,11 +97,10 @@ async def get_emergency_contacts(
 async def get_emergency_contact(
     contact_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
 ):
     """获取紧急联系人详情"""
-    service = EmergencyContactService()
-    contact = service.get_emergency_contact(db, contact_id, current_user.user_id)
+    contact = service.get_emergency_contact(contact_id, current_user.user_id)
 
     if not contact:
         raise NotFoundException("紧急联系人不存在")
@@ -135,7 +130,7 @@ async def update_emergency_contact(
     contact_id: int,
     update_data: EmergencyContactUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
 ):
     """
     更新紧急联系人
@@ -147,9 +142,8 @@ async def update_emergency_contact(
     - **priority**: 优先级
     - **notes**: 备注
     """
-    service = EmergencyContactService()
     contact = service.update_emergency_contact(
-        db, contact_id, update_data, current_user.user_id
+        contact_id, update_data, current_user.user_id
     )
 
     if not contact:
@@ -173,11 +167,10 @@ async def update_emergency_contact(
 async def delete_emergency_contact(
     contact_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
 ):
     """删除紧急联系人"""
-    service = EmergencyContactService()
-    success = service.delete_emergency_contact(db, contact_id, current_user.user_id)
+    success = service.delete_emergency_contact(contact_id, current_user.user_id)
 
     if not success:
         raise NotFoundException("紧急联系人不存在")
@@ -189,11 +182,10 @@ async def delete_emergency_contact(
 async def set_primary_contact(
     contact_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: EmergencyContactService = Depends(get_emergency_contact_service),
 ):
     """设置指定联系人为主要紧急联系人"""
-    service = EmergencyContactService()
-    contact = service.set_primary_contact(db, contact_id, current_user.user_id)
+    contact = service.set_primary_contact(contact_id, current_user.user_id)
 
     if not contact:
         raise NotFoundException("紧急联系人不存在")

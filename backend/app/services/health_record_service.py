@@ -73,17 +73,20 @@ class HealthRecordService(BaseService[HealthRecord]):
     cache_prefix = "health"
     cache_ttl = 600
 
-    def __init__(self):
+    def __init__(self, db: Session):
         super().__init__()
+        self.db = db
         self.encryption_service = EncryptionService()
 
     def create_health_record(
-        self, db: Session, data: HealthRecordCreate, encrypt: bool = True
+        self, data: HealthRecordCreate, encrypt: bool = True
     ) -> HealthRecord:
         """创建健康档案"""
         # 检查用户是否已有健康档案
         existing = (
-            db.query(HealthRecord).filter(HealthRecord.user_id == data.user_id).first()
+            self.db.query(HealthRecord)
+            .filter(HealthRecord.user_id == data.user_id)
+            .first()
         )
         if existing:
             raise ValueError("该用户已存在健康档案")
@@ -107,13 +110,13 @@ class HealthRecordService(BaseService[HealthRecord]):
             is_encrypted=1 if encrypt else 0,
         )
 
-        db.add(health_record)
-        db.commit()
-        db.refresh(health_record)
+        self.db.add(health_record)
+        self.db.commit()
+        self.db.refresh(health_record)
 
         return self._decrypt_record(health_record, encrypt)
 
-    def get_health_record(self, db: Session, user_id: str) -> Optional[HealthRecord]:
+    def get_health_record(self, user_id: str) -> Optional[HealthRecord]:
         """
         获取健康档案
 
@@ -121,7 +124,7 @@ class HealthRecordService(BaseService[HealthRecord]):
         因此在 API 层需要使用 .all() 方法获取所有关联数据。
         """
         health_record = (
-            db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
+            self.db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
         )
         if not health_record:
             return None
@@ -129,11 +132,11 @@ class HealthRecordService(BaseService[HealthRecord]):
         return self._decrypt_record(health_record, health_record.is_encrypted == 1)
 
     def update_health_record(
-        self, db: Session, user_id: str, data: HealthRecordUpdate
+        self, user_id: str, data: HealthRecordUpdate
     ) -> HealthRecord:
         """更新健康档案"""
         health_record = (
-            db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
+            self.db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
         )
         if not health_record:
             raise ValueError("健康档案不存在")
@@ -165,17 +168,19 @@ class HealthRecordService(BaseService[HealthRecord]):
             health_record.emergency_contact_relation = data.emergency_contact_relation
 
         health_record.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(health_record)
+        self.db.commit()
+        self.db.refresh(health_record)
 
         return self._decrypt_record(health_record, is_encrypted)
 
     def add_medical_history(
-        self, db: Session, health_record_id: int, data: MedicalHistoryCreate
+        self, health_record_id: int, data: MedicalHistoryCreate
     ) -> MedicalHistory:
         """添加病史记录"""
         health_record = (
-            db.query(HealthRecord).filter(HealthRecord.id == health_record_id).first()
+            self.db.query(HealthRecord)
+            .filter(HealthRecord.id == health_record_id)
+            .first()
         )
         if not health_record:
             raise ValueError("健康档案不存在")
@@ -189,29 +194,29 @@ class HealthRecordService(BaseService[HealthRecord]):
             is_chronic=data.is_chronic or 0,
         )
 
-        db.add(medical_history)
-        db.commit()
-        db.refresh(medical_history)
+        self.db.add(medical_history)
+        self.db.commit()
+        self.db.refresh(medical_history)
 
         return medical_history
 
-    def get_medical_histories(
-        self, db: Session, health_record_id: int
-    ) -> List[MedicalHistory]:
+    def get_medical_histories(self, health_record_id: int) -> List[MedicalHistory]:
         """获取病史记录列表"""
         return (
-            db.query(MedicalHistory)
+            self.db.query(MedicalHistory)
             .filter(MedicalHistory.health_record_id == health_record_id)
             .order_by(MedicalHistory.diagnosis_date.desc())
             .all()
         )
 
     def update_medical_history(
-        self, db: Session, history_id: int, data: MedicalHistoryUpdate
+        self, history_id: int, data: MedicalHistoryUpdate
     ) -> MedicalHistory:
         """更新病史记录"""
         medical_history = (
-            db.query(MedicalHistory).filter(MedicalHistory.id == history_id).first()
+            self.db.query(MedicalHistory)
+            .filter(MedicalHistory.id == history_id)
+            .first()
         )
         if not medical_history:
             raise ValueError("病史记录不存在")
@@ -228,29 +233,33 @@ class HealthRecordService(BaseService[HealthRecord]):
             medical_history.is_chronic = data.is_chronic
 
         medical_history.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(medical_history)
+        self.db.commit()
+        self.db.refresh(medical_history)
 
         return medical_history
 
-    def delete_medical_history(self, db: Session, history_id: int) -> bool:
+    def delete_medical_history(self, history_id: int) -> bool:
         """删除病史记录"""
         medical_history = (
-            db.query(MedicalHistory).filter(MedicalHistory.id == history_id).first()
+            self.db.query(MedicalHistory)
+            .filter(MedicalHistory.id == history_id)
+            .first()
         )
         if not medical_history:
             raise ValueError("病史记录不存在")
 
-        db.delete(medical_history)
-        db.commit()
+        self.db.delete(medical_history)
+        self.db.commit()
         return True
 
     def add_medication(
-        self, db: Session, health_record_id: int, data: MedicationCreate
+        self, health_record_id: int, data: MedicationCreate
     ) -> Medication:
         """添加用药信息"""
         health_record = (
-            db.query(HealthRecord).filter(HealthRecord.id == health_record_id).first()
+            self.db.query(HealthRecord)
+            .filter(HealthRecord.id == health_record_id)
+            .first()
         )
         if not health_record:
             raise ValueError("健康档案不存在")
@@ -266,17 +275,17 @@ class HealthRecordService(BaseService[HealthRecord]):
             notes=data.notes,
         )
 
-        db.add(medication)
-        db.commit()
-        db.refresh(medication)
+        self.db.add(medication)
+        self.db.commit()
+        self.db.refresh(medication)
 
         return medication
 
     def get_medications(
-        self, db: Session, health_record_id: int, current_only: bool = False
+        self, health_record_id: int, current_only: bool = False
     ) -> List[Medication]:
         """获取用药信息列表"""
-        query = db.query(Medication).filter(
+        query = self.db.query(Medication).filter(
             Medication.health_record_id == health_record_id
         )
 
@@ -293,10 +302,12 @@ class HealthRecordService(BaseService[HealthRecord]):
         return medications
 
     def update_medication(
-        self, db: Session, medication_id: int, data: MedicationUpdate
+        self, medication_id: int, data: MedicationUpdate
     ) -> Medication:
         """更新用药信息"""
-        medication = db.query(Medication).filter(Medication.id == medication_id).first()
+        medication = (
+            self.db.query(Medication).filter(Medication.id == medication_id).first()
+        )
         if not medication:
             raise ValueError("用药信息不存在")
 
@@ -316,27 +327,29 @@ class HealthRecordService(BaseService[HealthRecord]):
             medication.notes = data.notes
 
         medication.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(medication)
+        self.db.commit()
+        self.db.refresh(medication)
 
         return medication
 
-    def delete_medication(self, db: Session, medication_id: int) -> bool:
+    def delete_medication(self, medication_id: int) -> bool:
         """删除用药信息"""
-        medication = db.query(Medication).filter(Medication.id == medication_id).first()
+        medication = (
+            self.db.query(Medication).filter(Medication.id == medication_id).first()
+        )
         if not medication:
             raise ValueError("用药信息不存在")
 
-        db.delete(medication)
-        db.commit()
+        self.db.delete(medication)
+        self.db.commit()
         return True
 
-    def add_allergy(
-        self, db: Session, health_record_id: int, data: AllergyCreate
-    ) -> Allergy:
+    def add_allergy(self, health_record_id: int, data: AllergyCreate) -> Allergy:
         """添加过敏史"""
         health_record = (
-            db.query(HealthRecord).filter(HealthRecord.id == health_record_id).first()
+            self.db.query(HealthRecord)
+            .filter(HealthRecord.id == health_record_id)
+            .first()
         )
         if not health_record:
             raise ValueError("健康档案不存在")
@@ -350,26 +363,24 @@ class HealthRecordService(BaseService[HealthRecord]):
             notes=data.notes,
         )
 
-        db.add(allergy)
-        db.commit()
-        db.refresh(allergy)
+        self.db.add(allergy)
+        self.db.commit()
+        self.db.refresh(allergy)
 
         return allergy
 
-    def get_allergies(self, db: Session, health_record_id: int) -> List[Allergy]:
+    def get_allergies(self, health_record_id: int) -> List[Allergy]:
         """获取过敏史列表"""
         return (
-            db.query(Allergy)
+            self.db.query(Allergy)
             .filter(Allergy.health_record_id == health_record_id)
             .order_by(Allergy.discovered_date.desc())
             .all()
         )
 
-    def update_allergy(
-        self, db: Session, allergy_id: int, data: AllergyUpdate
-    ) -> Allergy:
+    def update_allergy(self, allergy_id: int, data: AllergyUpdate) -> Allergy:
         """更新过敏史"""
-        allergy = db.query(Allergy).filter(Allergy.id == allergy_id).first()
+        allergy = self.db.query(Allergy).filter(Allergy.id == allergy_id).first()
         if not allergy:
             raise ValueError("过敏史不存在")
 
@@ -385,24 +396,24 @@ class HealthRecordService(BaseService[HealthRecord]):
             allergy.notes = data.notes
 
         allergy.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(allergy)
+        self.db.commit()
+        self.db.refresh(allergy)
 
         return allergy
 
-    def delete_allergy(self, db: Session, allergy_id: int) -> bool:
+    def delete_allergy(self, allergy_id: int) -> bool:
         """删除过敏史"""
-        allergy = db.query(Allergy).filter(Allergy.id == allergy_id).first()
+        allergy = self.db.query(Allergy).filter(Allergy.id == allergy_id).first()
         if not allergy:
             raise ValueError("过敏史不存在")
 
-        db.delete(allergy)
-        db.commit()
+        self.db.delete(allergy)
+        self.db.commit()
         return True
 
-    def generate_summary(self, db: Session, user_id: str) -> HealthRecordSummary:
+    def generate_summary(self, user_id: str) -> HealthRecordSummary:
         """生成健康档案摘要"""
-        health_record = self.get_health_record(db, user_id)
+        health_record = self.get_health_record(user_id)
         if not health_record:
             raise ValueError("健康档案不存在")
 

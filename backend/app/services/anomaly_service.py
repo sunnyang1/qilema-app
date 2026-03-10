@@ -37,7 +37,8 @@ from sqlalchemy.orm import Session
 class AnomalyService:
     """异常监测服务"""
 
-    def __init__(self):
+    def __init__(self, db: Session):
+        self.db = db
         self.sos_service = SOSService()
         self.notification_service = NotificationService()
 
@@ -45,7 +46,6 @@ class AnomalyService:
 
     def detect_heart_rate_anomaly(
         self,
-        db: Session,
         device_data: DeviceData,
         config: Optional[AnomalyDetectionConfig] = None,
     ) -> Optional[Anomaly]:
@@ -72,15 +72,15 @@ class AnomalyService:
         # 检测各种心率异常
         anomalies.extend(self._check_heart_rate_low(device_data, current_hr, hr_min))
         anomalies.extend(self._check_heart_rate_high(device_data, current_hr, hr_max))
-        anomalies.extend(self._check_heart_rate_stop(db, device_data, current_hr))
+        anomalies.extend(self._check_heart_rate_stop(device_data, current_hr))
         anomalies.extend(
             self._check_heart_rate_sudden_change(
-                db, device_data, current_hr, sudden_change_threshold, anomalies
+                device_data, current_hr, sudden_change_threshold, anomalies
             )
         )
 
         # 保存异常并返回第一个
-        return self._save_and_trigger_alerts(db, anomalies)
+        return self._save_and_trigger_alerts(anomalies)
 
     def _get_heart_rate_thresholds(
         self, config: Optional[AnomalyDetectionConfig]
@@ -150,7 +150,7 @@ class AnomalyService:
         ]
 
     def _check_heart_rate_stop(
-        self, db: Session, device_data: DeviceData, current_hr: float
+        self, device_data: DeviceData, current_hr: float
     ) -> list:
         """检测心率骤停异常"""
         if current_hr != 0:
@@ -158,7 +158,7 @@ class AnomalyService:
 
         # 检查最近的数据,确认是否为骤停
         recent_data = (
-            db.query(DeviceData)
+            self.db.query(DeviceData)
             .filter(
                 DeviceData.device_id == device_data.device_id,
                 DeviceData.data_timestamp
@@ -198,7 +198,6 @@ class AnomalyService:
 
     def _check_heart_rate_sudden_change(
         self,
-        db: Session,
         device_data: DeviceData,
         current_hr: float,
         threshold: float,
@@ -210,7 +209,7 @@ class AnomalyService:
 
         # 获取最近的心率数据
         recent_data = (
-            db.query(DeviceData)
+            self.db.query(DeviceData)
             .filter(
                 DeviceData.device_id == device_data.device_id,
                 DeviceData.data_timestamp
@@ -261,29 +260,26 @@ class AnomalyService:
             )
         ]
 
-    def _save_and_trigger_alerts(
-        self, db: Session, anomalies: list
-    ) -> Optional[Anomaly]:
+    def _save_and_trigger_alerts(self, anomalies: list) -> Optional[Anomaly]:
         """保存异常并触发危急警报"""
         if not anomalies:
             return None
 
         # 保存所有异常
         for anomaly in anomalies:
-            db.add(anomaly)
+            self.db.add(anomaly)
 
-        db.commit()
+        self.db.commit()
 
         # 触发危机异常的SOS
         for anomaly in anomalies:
             if anomaly.severity == SeverityLevel.CRITICAL:
-                self._trigger_critical_anomaly_alert(db, anomaly)
+                self._trigger_critical_anomaly_alert(anomaly)
 
         return anomalies[0]
 
     def detect_blood_pressure_anomaly(
         self,
-        db: Session,
         device_data: DeviceData,
         config: Optional[AnomalyDetectionConfig] = None,
     ) -> Optional[Anomaly]:
@@ -298,10 +294,10 @@ class AnomalyService:
         thresholds = self._get_bp_thresholds(config)
 
         if anomaly := self._check_systolic_anomaly(device_data, thresholds):
-            return self._save_anomaly(db, anomaly)
+            return self._save_anomaly(anomaly)
 
         if anomaly := self._check_diastolic_anomaly(device_data, thresholds):
-            return self._save_anomaly(db, anomaly)
+            return self._save_anomaly(anomaly)
 
         return None
 
@@ -402,15 +398,14 @@ class AnomalyService:
             trigger_condition=f"{threshold_name} {condition_operator} {threshold}",
         )
 
-    def _save_anomaly(self, db: Session, anomaly: Anomaly) -> Anomaly:
+    def _save_anomaly(self, anomaly: Anomaly) -> Anomaly:
         """保存异常记录"""
-        db.add(anomaly)
-        db.commit()
+        self.db.add(anomaly)
+        self.db.commit()
         return anomaly
 
     def detect_no_activity_anomaly(
         self,
-        db: Session,
         user_id: str,
         device_id: int,
         config: Optional[AnomalyDetectionConfig] = None,
@@ -425,7 +420,7 @@ class AnomalyService:
         # 检查最近的活动数据
         cutoff_time = datetime.utcnow() - timedelta(hours=threshold_hours)
         recent_data = (
-            db.query(DeviceData)
+            self.db.query(DeviceData)
             .filter(
                 DeviceData.device_id == device_id,
                 DeviceData.data_timestamp >= cutoff_time,
@@ -440,7 +435,7 @@ class AnomalyService:
 
         if not recent_data:
             # 确认设备存在
-            device = db.query(Device).filter(Device.device_id == device_id).first()
+            device = self.db.query(Device).filter(Device.device_id == device_id).first()
             if not device:
                 return None
 
@@ -465,14 +460,14 @@ class AnomalyService:
                     }
                 ),
             )
-            db.add(anomaly)
-            db.commit()
+            self.db.add(anomaly)
+            self.db.commit()
             return anomaly
 
         return None
 
     def analyze_health_trend(
-        self, db: Session, request: TrendAnalysisRequest
+        self, request: TrendAnalysisRequest
     ) -> Optional[HealthTrendResponse]:
         """
         分析健康数据趋势
@@ -481,7 +476,7 @@ class AnomalyService:
         """
         date_range = self._determine_date_range(request.start_date, request.end_date)
         metric_field = self._validate_metric_field(request.metric_type)
-        device_data = self._query_device_data(db, request, date_range, metric_field)
+        device_data = self._query_device_data(request, date_range, metric_field)
 
         if not device_data:
             return None
@@ -493,7 +488,6 @@ class AnomalyService:
         statistics_data = self._calculate_statistics(values)
         trend = self._analyze_trend(values)
         trend_record = self._save_or_update_trend(
-            db,
             request,
             date_range,
             statistics_data,
@@ -523,7 +517,6 @@ class AnomalyService:
 
     def _query_device_data(
         self,
-        db: Session,
         request: TrendAnalysisRequest,
         date_range: Tuple[datetime, datetime],
         metric_field,
@@ -541,7 +534,7 @@ class AnomalyService:
             query_conditions.append(DeviceData.device_id == request.device_id)
 
         return (
-            db.query(DeviceData)
+            self.db.query(DeviceData)
             .join(Device)
             .filter(Device.user_id == request.user_id, *query_conditions)
             .order_by(DeviceData.data_timestamp)
@@ -589,7 +582,6 @@ class AnomalyService:
 
     def _save_or_update_trend(
         self,
-        db: Session,
         request: TrendAnalysisRequest,
         date_range: Tuple[datetime, datetime],
         statistics_data: Dict,
@@ -601,7 +593,7 @@ class AnomalyService:
         start_date, end_date = date_range
 
         existing_trend = (
-            db.query(HealthTrend)
+            self.db.query(HealthTrend)
             .filter(
                 HealthTrend.user_id == request.user_id,
                 HealthTrend.metric_type == request.metric_type,
@@ -619,7 +611,6 @@ class AnomalyService:
             return existing_trend
         else:
             return self._create_trend_record(
-                db,
                 request,
                 date_range,
                 statistics_data,
@@ -650,7 +641,6 @@ class AnomalyService:
 
     def _create_trend_record(
         self,
-        db: Session,
         request: TrendAnalysisRequest,
         date_range: Tuple[datetime, datetime],
         statistics_data: Dict,
@@ -678,23 +668,23 @@ class AnomalyService:
             missing_count=total_count - valid_count,
             quality_score=self._calculate_quality_score(valid_count, total_count),
         )
-        db.add(trend_record)
-        db.commit()
+        self.db.add(trend_record)
+        self.db.commit()
         return trend_record
 
     # ========== 异常记录管理 ==========
 
-    def create_anomaly(self, db: Session, anomaly_data: AnomalyCreate) -> Anomaly:
+    def create_anomaly(self, anomaly_data: AnomalyCreate) -> Anomaly:
         """创建异常记录"""
         anomaly = Anomaly(**anomaly_data.dict())
-        db.add(anomaly)
-        db.commit()
-        db.refresh(anomaly)
+        self.db.add(anomaly)
+        self.db.commit()
+        self.db.refresh(anomaly)
         return anomaly
 
-    def get_anomalies(self, db: Session, query_params: AnomalyQuery) -> List[Anomaly]:
+    def get_anomalies(self, query_params: AnomalyQuery) -> List[Anomaly]:
         """查询异常记录"""
-        query = db.query(Anomaly).filter(Anomaly.user_id == query_params.user_id)
+        query = self.db.query(Anomaly).filter(Anomaly.user_id == query_params.user_id)
 
         if query_params.anomaly_type:
             query = query.filter(Anomaly.anomaly_type == query_params.anomaly_type)
@@ -722,26 +712,26 @@ class AnomalyService:
         )
 
     def update_anomaly(
-        self, db: Session, anomaly_id: int, update_data: AnomalyUpdate
+        self, anomaly_id: int, update_data: AnomalyUpdate
     ) -> Optional[Anomaly]:
         """更新异常记录"""
-        anomaly = db.query(Anomaly).filter(Anomaly.id == anomaly_id).first()
+        anomaly = self.db.query(Anomaly).filter(Anomaly.id == anomaly_id).first()
         if not anomaly:
             return None
 
         for field, value in update_data.dict(exclude_unset=True).items():
             setattr(anomaly, field, value)
 
-        db.commit()
-        db.refresh(anomaly)
+        self.db.commit()
+        self.db.refresh(anomaly)
         return anomaly
 
     def get_anomaly_statistics(
-        self, db: Session, user_id: str, start_date: datetime, end_date: datetime
+        self, user_id: str, start_date: datetime, end_date: datetime
     ) -> AnomalyStatistics:
         """获取异常统计数据"""
         anomalies = (
-            db.query(Anomaly)
+            self.db.query(Anomaly)
             .filter(
                 Anomaly.user_id == user_id,
                 Anomaly.detected_at >= start_date,
@@ -791,14 +781,14 @@ class AnomalyService:
     # ========== 心脏健康分析 ==========
 
     def analyze_heart_health(
-        self, db: Session, user_id: str, device_id: Optional[int] = None
+        self, user_id: str, device_id: Optional[int] = None
     ) -> HeartHealthAnalysis:
         """
         心脏健康分析
 
         基于心率数据进行心脏健康评估,包括静息心率、心率变异性、心律不齐检测等
         """
-        heart_rate_data = self._get_heart_rate_data(db, user_id, device_id)
+        heart_rate_data = self._get_heart_rate_data(user_id, device_id)
         heart_rates = heart_rate_data["rates"]
         device_data = heart_rate_data["device_data"]
 
@@ -824,13 +814,13 @@ class AnomalyService:
         )
 
     def _get_heart_rate_data(
-        self, db: Session, user_id: str, device_id: Optional[int] = None
+        self, user_id: str, device_id: Optional[int] = None
     ) -> Dict:
         """获取最近7天的心率数据"""
         cutoff_time = datetime.utcnow() - timedelta(days=7)
 
         query = (
-            db.query(DeviceData)
+            self.db.query(DeviceData)
             .join(Device)
             .filter(
                 Device.user_id == user_id,
@@ -997,11 +987,11 @@ class AnomalyService:
 
     # ========== 辅助方法 ==========
 
-    def _trigger_critical_anomaly_alert(self, db: Session, anomaly: Anomaly):
+    def _trigger_critical_anomaly_alert(self, anomaly: Anomaly):
         """触发危急异常警报"""
         # 发送通知
         self.notification_service.send_critical_anomaly_alert(
-            db, anomaly.user_id, anomaly.anomaly_type.value, anomaly.description
+            self.db, anomaly.user_id, anomaly.anomaly_type.value, anomaly.description
         )
 
         # 自动触发SOS
@@ -1022,12 +1012,12 @@ class AnomalyService:
 
             # 使用修复后的 API（user_id 参数从认证获取，不可篡改）
             sos_request = self.sos_service.create_sos_request(
-                db, anomaly.user_id, sos_data  # 用户 ID 从认证获取  # SOS 数据
+                self.db, anomaly.user_id, sos_data  # 用户 ID 从认证获取  # SOS 数据
             )
 
             anomaly.sos_triggered = sos_request.id
             anomaly.action_taken = f"自动触发SOS #{sos_request.id}"
-            db.commit()
+            self.db.commit()
 
     def _get_metric_field(self, metric_type: str):
         """根据指标类型获取数据库字段"""

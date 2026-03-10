@@ -31,41 +31,40 @@ class DeviceService(BaseService[Device]):
     cache_prefix = "device"
     cache_ttl = 300
 
-    def __init__(self):
-        """初始化设备服务"""
+    def __init__(self, db: Session):
+        """初始化设备服务
+
+        Args:
+            db: 数据库会话
+        """
+        self.db = db
         self.alert_cooldown_cache = {}  # 预警冷却缓存
 
     # ========== 私有辅助方法 ==========
 
-    @staticmethod
     def _get_active_device(
-        db: Session, device_id: str, user_id: str = None
+        self, device_id: str, user_id: str = None
     ) -> Optional[Device]:
         """获取活跃设备（通用查询方法）
 
         Args:
-            db: 数据库会话
             device_id: 设备ID
             user_id: 用户ID（可选）
 
         Returns:
             Device: 设备对象，不存在则返回None
         """
-        query = db.query(Device).filter(
+        query = self.db.query(Device).filter(
             Device.device_id == device_id, Device.is_active.is_(True)
         )
         if user_id:
             query = query.filter(Device.user_id == user_id)
         return query.first()
 
-    @staticmethod
-    def _get_device_by_id(
-        db: Session, device_id, user_id: str = None
-    ) -> Optional[Device]:
+    def _get_device_by_id(self, device_id, user_id: str = None) -> Optional[Device]:
         """根据设备ID获取设备（通用查询方法）
 
         Args:
-            db: 数据库会话
             device_id: 设备ID（字符串或整数，自动判断）
             user_id: 用户ID（可选）
 
@@ -75,40 +74,37 @@ class DeviceService(BaseService[Device]):
         # 根据 device_id 类型决定查询方式
         if isinstance(device_id, int):
             # 传入的是整数主键ID
-            query = db.query(Device).filter(Device.id == device_id)
+            query = self.db.query(Device).filter(Device.id == device_id)
         else:
             # 传入的是字符串 device_id
-            query = db.query(Device).filter(Device.device_id == device_id)
+            query = self.db.query(Device).filter(Device.device_id == device_id)
 
         if user_id:
             query = query.filter(Device.user_id == user_id)
         return query.first()
 
-    @staticmethod
-    def _get_device_threshold(db: Session, device: Device) -> Optional[DeviceThreshold]:
+    def _get_device_threshold(self, device: Device) -> Optional[DeviceThreshold]:
         """获取设备阈值（通用查询方法）
 
         Args:
-            db: 数据库会话
             device: 设备对象
 
         Returns:
             DeviceThreshold: 阈值对象，不存在则返回None
         """
         threshold = (
-            db.query(DeviceThreshold)
+            self.db.query(DeviceThreshold)
             .filter(DeviceThreshold.device_id == device.device_id)
             .first()
         )
 
         # 添加 alert_enabled 属性
         if threshold:
-            DeviceService._set_alert_enabled(threshold)
+            self._set_alert_enabled(threshold)
 
         return threshold
 
-    @staticmethod
-    def _set_alert_enabled(threshold: DeviceThreshold):
+    def _set_alert_enabled(self, threshold: DeviceThreshold):
         """设置阈值的alert_enabled属性
 
         Args:
@@ -116,8 +112,8 @@ class DeviceService(BaseService[Device]):
         """
         threshold.alert_enabled = threshold.enabled == 1
 
-    @staticmethod
     def _create_value_alert(
+        self,
         device: Device,
         alert_type: str,
         alert_message: str,
@@ -145,9 +141,8 @@ class DeviceService(BaseService[Device]):
             threshold_value=threshold_value,
         )
 
-    @staticmethod
     def _check_value_range(
-        value: Any, min_val: Any = None, max_val: Any = None
+        self, value: Any, min_val: Any = None, max_val: Any = None
     ) -> Optional[tuple]:
         """检查值是否在范围内，返回异常类型和值
 
@@ -171,10 +166,10 @@ class DeviceService(BaseService[Device]):
 
     # ========== 设备绑定管理 ==========
 
-    def bind_device(self, db: Session, user_id: str, device_data: DeviceBind) -> Device:
+    def bind_device(self, user_id: str, device_data: DeviceBind) -> Device:
         """绑定设备"""
         # 检查设备是否已被绑定
-        existing_device = self._get_active_device(db, device_data.device_id)
+        existing_device = self._get_active_device(device_data.device_id)
 
         if existing_device:
             if existing_device.user_id == user_id:
@@ -199,17 +194,17 @@ class DeviceService(BaseService[Device]):
             bound_at=datetime.utcnow(),
         )
 
-        db.add(device)
-        db.commit()
-        db.refresh(device)
+        self.db.add(device)
+        self.db.commit()
+        self.db.refresh(device)
 
         # 不自动创建默认阈值，让用户手动创建
 
         return device
 
-    def unbind_device(self, db: Session, device_id: int, user_id: str) -> bool:
+    def unbind_device(self, device_id: int, user_id: str) -> bool:
         """解绑设备"""
-        device = self._get_device_by_id(db, device_id, user_id)
+        device = self._get_device_by_id(device_id, user_id)
 
         if not device or not device.is_active:
             raise ValueError("设备不存在或未绑定")
@@ -218,14 +213,14 @@ class DeviceService(BaseService[Device]):
         device.is_active = False
         device.unbound_at = datetime.utcnow()
 
-        db.commit()
+        self.db.commit()
         return True
 
     def get_user_devices(
-        self, db: Session, user_id: str, include_inactive: bool = False
+        self, user_id: str, include_inactive: bool = False
     ) -> List[Device]:
         """获取用户设备列表"""
-        query = db.query(Device).filter(Device.user_id == user_id)
+        query = self.db.query(Device).filter(Device.user_id == user_id)
 
         if not include_inactive:
             query = query.filter(Device.is_active)
@@ -233,15 +228,15 @@ class DeviceService(BaseService[Device]):
         devices = query.order_by(desc(Device.bound_at)).all()
         return devices
 
-    def get_device(self, db: Session, device_id: int, user_id: str) -> Optional[Device]:
+    def get_device(self, device_id: int, user_id: str) -> Optional[Device]:
         """获取设备详情"""
-        return self._get_device_by_id(db, device_id, user_id)
+        return self._get_device_by_id(device_id, user_id)
 
     def update_device(
-        self, db: Session, device_id: int, user_id: str, device_data: DeviceUpdate
+        self, device_id: int, user_id: str, device_data: DeviceUpdate
     ) -> Device:
         """更新设备信息"""
-        device = self._get_device_by_id(db, device_id, user_id)
+        device = self._get_device_by_id(device_id, user_id)
 
         if not device:
             raise ValueError("设备不存在")
@@ -253,19 +248,17 @@ class DeviceService(BaseService[Device]):
             device.notes = device_data.notes
 
         device.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(device)
+        self.db.commit()
+        self.db.refresh(device)
 
         return device
 
     # ========== 设备数据管理 ==========
 
-    def upload_device_data(
-        self, db: Session, user_id: str, data: DeviceDataUpload
-    ) -> DeviceData:
+    def upload_device_data(self, user_id: str, data: DeviceDataUpload) -> DeviceData:
         """上传设备数据"""
         # 查找设备
-        device = self._get_active_device(db, data.device_id, user_id)
+        device = self._get_active_device(data.device_id, user_id)
 
         if not device:
             raise ValueError("设备不存在或未绑定")
@@ -302,18 +295,18 @@ class DeviceService(BaseService[Device]):
             data_timestamp=data.data_timestamp,
         )
 
-        db.add(device_data)
+        self.db.add(device_data)
 
         # 更新设备最后同步时间
         device.last_sync_time = datetime.utcnow()
 
-        db.commit()
-        db.refresh(device_data)
+        self.db.commit()
+        self.db.refresh(device_data)
 
         # 检查异常并触发预警
-        alerts = self._check_abnormal_data(db, device, device_data)
+        alerts = self._check_abnormal_data(device, device_data)
         if alerts:
-            self._send_alerts(db, alerts)
+            self._send_alerts(alerts)
 
         return device_data
 
@@ -387,16 +380,16 @@ class DeviceService(BaseService[Device]):
         return "other"
 
     def get_device_data(
-        self, db: Session, user_id: str, query_params: DeviceDataQuery
+        self, user_id: str, query_params: DeviceDataQuery
     ) -> List[DeviceData]:
         """获取设备数据"""
         # 构建基础查询
-        query = db.query(DeviceData).filter(DeviceData.user_id == user_id)
+        query = self.db.query(DeviceData).filter(DeviceData.user_id == user_id)
 
         # 设备过滤
         if query_params.device_id:
             device = (
-                db.query(Device)
+                self.db.query(Device)
                 .filter(
                     Device.device_id == query_params.device_id,
                     Device.user_id == user_id,
@@ -424,7 +417,6 @@ class DeviceService(BaseService[Device]):
 
     def get_device_statistics(
         self,
-        db: Session,
         device_id: str,
         data_type: str,
         start_time: datetime,
@@ -432,12 +424,12 @@ class DeviceService(BaseService[Device]):
     ) -> Dict[str, Any]:
         """获取设备数据统计"""
         # 获取设备
-        device = db.query(Device).filter(Device.device_id == device_id).first()
+        device = self.db.query(Device).filter(Device.device_id == device_id).first()
         if not device:
             raise ValueError("设备不存在")
 
         # 构建统计查询 - 从 JSON 数据中提取
-        query = db.query(DeviceData).filter(
+        query = self.db.query(DeviceData).filter(
             DeviceData.device_id == device.device_id,
             DeviceData.data_type == data_type,
             DeviceData.upload_time >= start_time,
@@ -476,10 +468,10 @@ class DeviceService(BaseService[Device]):
     # ========== 设备状态管理 ==========
 
     def update_device_status(
-        self, db: Session, device_id: int, user_id: str, status_data: DeviceStatusUpdate
+        self, device_id: int, user_id: str, status_data: DeviceStatusUpdate
     ) -> Device:
         """更新设备状态"""
-        device = self._get_device_by_id(db, device_id, user_id)
+        device = self._get_device_by_id(device_id, user_id)
 
         if not device:
             raise ValueError("设备不存在")
@@ -493,13 +485,13 @@ class DeviceService(BaseService[Device]):
             device.battery_level = status_data.battery_level
 
         device.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(device)
+        self.db.commit()
+        self.db.refresh(device)
 
         return device
 
     def check_offline_devices(
-        self, db: Session, offline_threshold_minutes: int = 60
+        self, offline_threshold_minutes: int = 60
     ) -> List[Device]:
         """检查离线设备"""
         threshold_time = datetime.utcnow() - timedelta(
@@ -507,7 +499,7 @@ class DeviceService(BaseService[Device]):
         )
 
         offline_devices = (
-            db.query(Device)
+            self.db.query(Device)
             .filter(
                 Device.is_active.is_(True),
                 Device.is_online.is_(True),
@@ -523,13 +515,13 @@ class DeviceService(BaseService[Device]):
             device.is_online = False
             device.updated_at = datetime.utcnow()
 
-        db.commit()
+        self.db.commit()
         return offline_devices
 
     # ========== 阈值管理 ==========
 
     def create_threshold(
-        self, db: Session, threshold_data: DeviceThresholdCreate
+        self, threshold_data: DeviceThresholdCreate
     ) -> DeviceThreshold:
         """创建设备阈值"""
         # 将输入的 device_id 转换为整数
@@ -540,13 +532,13 @@ class DeviceService(BaseService[Device]):
         )
 
         # 检查设备是否存在
-        device = self._get_device_by_id(db, device_id_int)
+        device = self._get_device_by_id(device_id_int)
         if not device:
             raise ValueError("设备不存在")
 
         # 检查是否已存在阈值配置
         existing = (
-            db.query(DeviceThreshold)
+            self.db.query(DeviceThreshold)
             .filter(DeviceThreshold.device_id == device.device_id)
             .first()
         )
@@ -573,9 +565,9 @@ class DeviceService(BaseService[Device]):
             ),
         )
 
-        db.add(threshold)
-        db.commit()
-        db.refresh(threshold)
+        self.db.add(threshold)
+        self.db.commit()
+        self.db.refresh(threshold)
 
         # 添加 alert_enabled 属性（从 enabled 推导）
         self._set_alert_enabled(threshold)
@@ -590,23 +582,23 @@ class DeviceService(BaseService[Device]):
 
         return threshold
 
-    def get_threshold(self, db: Session, device_id: str) -> Optional[DeviceThreshold]:
+    def get_threshold(self, device_id: str) -> Optional[DeviceThreshold]:
         """获取设备阈值"""
-        device = self._get_device_by_id(db, device_id)
+        device = self._get_device_by_id(device_id)
         if not device:
             return None
 
-        return self._get_device_threshold(db, device)
+        return self._get_device_threshold(device)
 
     def update_threshold(
-        self, db: Session, device_id: int, threshold_data: DeviceThresholdUpdate
+        self, device_id: int, threshold_data: DeviceThresholdUpdate
     ) -> DeviceThreshold:
         """更新设备阈值"""
-        device = self._get_device_by_id(db, device_id)
+        device = self._get_device_by_id(device_id)
         if not device:
             raise ValueError("设备不存在")
 
-        threshold = self._get_device_threshold(db, device)
+        threshold = self._get_device_threshold(device)
 
         if not threshold:
             raise ValueError("阈值配置不存在")
@@ -633,8 +625,8 @@ class DeviceService(BaseService[Device]):
             threshold.enabled = 1 if threshold_data.alert_enabled else 0
 
         threshold.updated_at = datetime.utcnow()
-        db.commit()
-        db.refresh(threshold)
+        self.db.commit()
+        self.db.refresh(threshold)
 
         # 添加 alert_enabled 属性
         self._set_alert_enabled(threshold)
@@ -644,13 +636,13 @@ class DeviceService(BaseService[Device]):
     # ========== 异常检测 ==========
 
     def _check_abnormal_data(
-        self, db: Session, device: Device, device_data: DeviceData
+        self, device: Device, device_data: DeviceData
     ) -> List[DeviceAlert]:
         """检查异常数据"""
         alerts = []
 
         # 获取阈值配置
-        threshold = self.get_threshold(db, device.device_id)
+        threshold = self.get_threshold(device.device_id)
         if not threshold or not threshold.alert_enabled:
             return alerts
 
@@ -804,7 +796,7 @@ class DeviceService(BaseService[Device]):
                 )
             )
 
-    def _send_alerts(self, db: Session, alerts: List[DeviceAlert]) -> bool:
+    def _send_alerts(self, alerts: List[DeviceAlert]) -> bool:
         """发送预警通知"""
         # 这里可以集成短信、推送、邮件等通知服务
         # 目前仅记录到日志
@@ -815,7 +807,6 @@ class DeviceService(BaseService[Device]):
 
     def _calculate_trend(
         self,
-        db: Session,
         device_id: int,
         data_field,
         current_start: datetime,
@@ -823,7 +814,7 @@ class DeviceService(BaseService[Device]):
     ) -> str:
         """计算数据趋势"""
         # 当前时间段
-        current_query = db.query(func.avg(data_field)).filter(
+        current_query = self.db.query(func.avg(data_field)).filter(
             DeviceData.device_id == device_id,
             DeviceData.data_timestamp >= current_start,
             DeviceData.data_timestamp <= current_end,
@@ -838,7 +829,7 @@ class DeviceService(BaseService[Device]):
         prev_start = current_start - time_diff
         prev_end = current_start
 
-        prev_query = db.query(func.avg(data_field)).filter(
+        prev_query = self.db.query(func.avg(data_field)).filter(
             DeviceData.device_id == device_id,
             DeviceData.data_timestamp >= prev_start,
             DeviceData.data_timestamp <= prev_end,
@@ -859,7 +850,7 @@ class DeviceService(BaseService[Device]):
             return "down"
 
     def _create_default_threshold(
-        self, db: Session, device_id: str, user_id: str
+        self, device_id: str, user_id: str
     ) -> DeviceThreshold:
         """创建默认阈值配置"""
         threshold = DeviceThreshold(
@@ -876,8 +867,8 @@ class DeviceService(BaseService[Device]):
             enabled=1,
         )
 
-        db.add(threshold)
-        db.commit()
-        db.refresh(threshold)
+        self.db.add(threshold)
+        self.db.commit()
+        self.db.refresh(threshold)
 
         return threshold
