@@ -267,7 +267,7 @@ class AEDService(BaseService[EmergencyResource]):
         Returns:
             更新后的AED设备
         """
-        aed = self.get_by_id(aed_id)
+        aed = self.__class__.get_by_id(self.db, aed_id)
         if not aed or aed.resource_type != "aed":
             return None
 

@@ -67,7 +67,7 @@ class TestUserService:
             nickname="测试用户",
         )
 
-        user = UserService.create_user(db, register_data.model_dump())
+        user = UserService(db).create_user(register_data.model_dump())
 
         assert user.phone == "13800138000"
         assert user.nickname == "测试用户"
@@ -85,11 +85,11 @@ class TestUserService:
         )
 
         # 第一次注册成功
-        UserService.create_user(db, register_data.model_dump())
+        UserService(db).create_user(register_data.model_dump())
 
         # 第二次注册应该失败
         with pytest.raises(ValueError, match="手机号已注册"):
-            UserService.create_user(db, register_data.model_dump())
+            UserService(db).create_user(register_data.model_dump())
 
     def test_register_user_invalid_code(self, db, mock_redis):
         """测试注册时验证码错误"""
@@ -102,7 +102,7 @@ class TestUserService:
         )
 
         with pytest.raises(ValueError, match="验证码错误或已过期"):
-            UserService.create_user(db, register_data.model_dump())
+            UserService(db).create_user(register_data.model_dump())
 
     def test_login_user_success(self, db, mock_redis):
         """测试用户登录成功"""
@@ -114,7 +114,7 @@ class TestUserService:
         register_data = UserRegister(
             phone="13800138003", password="123456", verify_code="123456"
         )
-        created_user = UserService.create_user(db, register_data.model_dump())
+        created_user = UserService(db).create_user(register_data.model_dump())
         print(f"Created user: {created_user.phone}, id: {created_user.user_id}")
 
         # 提交并刷新会话
@@ -122,7 +122,7 @@ class TestUserService:
         db.expire_all()
 
         # 登录
-        user = UserService.login_user(db, phone="13800138003", password="123456")
+        user = UserService(db).login_user(phone="13800138003", password="123456")
 
         assert user.phone == "13800138003"
         assert user.last_sign_in is not None
@@ -137,16 +137,16 @@ class TestUserService:
         register_data = UserRegister(
             phone="13800138004", password="123456", verify_code="123456"
         )
-        UserService.create_user(db, register_data.model_dump())
+        UserService(db).create_user(register_data.model_dump())
 
         # 使用错误密码登录
         with pytest.raises(ValueError, match="密码错误"):
-            UserService.login_user(db, phone="13800138004", password="wrongpw")
+            UserService(db).login_user(phone="13800138004", password="wrongpw")
 
     def test_login_user_not_exist(self, db, mock_redis):
         """测试登录用户不存在"""
         with pytest.raises(ValueError, match="用户不存在"):
-            UserService.login_user(db, phone="13800138005", password="123456")
+            UserService(db).login_user(phone="13800138005", password="123456")
 
     def test_generate_verify_code(self, mock_redis):
         """测试生成验证码"""

@@ -26,9 +26,9 @@ def db_session(test_db):
 
 
 @pytest.fixture(scope="function")
-def device_service():
+def device_service(db_session):
     """设备服务实例"""
-    return DeviceService()
+    return DeviceService(db_session)
 
 
 @pytest.fixture(scope="function")
@@ -56,7 +56,7 @@ def test_device(db_session, test_user, device_service):
         device_brand="小米",
         device_model="Band 6",
     )
-    device = device_service.bind_device(db_session, test_user.user_id, device_data)
+    device = device_service.bind_device(test_user.user_id, device_data)
     return device
 
 
@@ -75,7 +75,7 @@ class TestDeviceService:
             device_model="Band 6",
         )
 
-        device = device_service.bind_device(db_session, test_user.user_id, device_data)
+        device = device_service.bind_device(test_user.user_id, device_data)
 
         assert device.id is not None
         assert device.device_id == "band_test_001"
@@ -92,11 +92,11 @@ class TestDeviceService:
         )
 
         # 第一次绑定
-        device_service.bind_device(db_session, test_user.user_id, device_data)
+        device_service.bind_device(test_user.user_id, device_data)
 
         # 第二次绑定应该失败
         with pytest.raises(ValueError, match="该设备已绑定"):
-            device_service.bind_device(db_session, test_user.user_id, device_data)
+            device_service.bind_device(test_user.user_id, device_data)
 
     def test_unbind_device_success(
         self, db_session, test_user, test_device, device_service
@@ -116,7 +116,7 @@ class TestDeviceService:
     def test_unbind_device_not_found(self, db_session, test_user, device_service):
         """测试解绑不存在的设备"""
         with pytest.raises(ValueError, match="设备不存在"):
-            device_service.unbind_device(db_session, 99999, test_user.user_id)
+            device_service.unbind_device(99999, test_user.user_id)
 
     def test_get_user_devices(self, db_session, test_user, device_service):
         """测试获取用户设备列表"""
@@ -125,7 +125,7 @@ class TestDeviceService:
             device_data = DeviceBind(
                 device_id=f"device_{i}", device_name=f"设备{i}", device_type="smartband"
             )
-            device_service.bind_device(db_session, test_user.user_id, device_data)
+            device_service.bind_device(test_user.user_id, device_data)
 
         devices = device_service.get_user_devices(db_session, test_user.user_id)
 
@@ -137,7 +137,7 @@ class TestDeviceService:
     ):
         """测试获取包含已解绑设备的列表"""
         # 解绑一个设备
-        device_service.unbind_device(db_session, test_device.id, test_user.user_id)
+        device_service.unbind_device(test_device.id, test_user.user_id)
 
         # 不包含已解绑设备
         active_devices = device_service.get_user_devices(
@@ -339,7 +339,7 @@ class TestDeviceService:
         threshold_data = DeviceThresholdCreate(device_id=test_device.id)
         device_service.create_threshold(db_session, threshold_data)
 
-        threshold = device_service.get_threshold(db_session, test_device.id)
+        threshold = device_service.get_threshold(test_device.id)
 
         assert threshold is not None
         assert threshold.device_id == test_device.id
@@ -366,7 +366,7 @@ class TestDeviceService:
         update_data = DeviceThresholdUpdate(heart_rate_min=50)
 
         with pytest.raises(ValueError, match="阈值配置不存在"):
-            device_service.update_threshold(db_session, test_device.id, update_data)
+            device_service.update_threshold(test_device.id, update_data)
 
     # ========== 异常检测测试 ==========
 

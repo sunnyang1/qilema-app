@@ -55,7 +55,7 @@ def emergency_center_service():
     test_key = Fernet.generate_key().decode()
     os.environ["ENCRYPTION_KEY"] = test_key
     try:
-        yield EmergencyCenterService()
+        yield EmergencyCenterService(db)
     finally:
         # 清理环境变量
         if "ENCRYPTION_KEY" in os.environ:
@@ -242,7 +242,7 @@ def test_call_120_success(
         send_health_summary=True,
     )
 
-    response = emergency_center_service.call_120(db, request)
+    response = emergency_center_service.call_120(request)
 
     assert response.call_id is not None
     assert response.call_status in [
@@ -265,7 +265,7 @@ def test_call_120_without_health_summary(
         send_health_summary=False,
     )
 
-    response = emergency_center_service.call_120(db, request)
+    response = emergency_center_service.call_120(request)
 
     assert response.health_summary_sent is False
 
@@ -281,7 +281,7 @@ def test_call_120_invalid_location(
         send_health_summary=True,
     )
 
-    response = emergency_center_service.call_120(db, request)
+    response = emergency_center_service.call_120(request)
 
     # 应该仍然成功拨打,但位置发送失败
     assert response.call_id is not None
@@ -299,7 +299,7 @@ def test_call_120_with_sos_request(
         send_health_summary=True,
     )
 
-    response = emergency_center_service.call_120(db, request)
+    response = emergency_center_service.call_120(request)
 
     call = db.query(EmergencyCall).filter(EmergencyCall.id == response.call_id).first()
     assert call.sos_request_id == str(test_sos_request.id)
@@ -314,7 +314,7 @@ def test_call_120_no_emergency_center(db, emergency_center_service, test_user):
         send_health_summary=True,
     )
 
-    response = emergency_center_service.call_120(db, request)
+    response = emergency_center_service.call_120(request)
 
     # 应该仍然成功拨打,使用默认120
     assert response.call_id is not None
@@ -333,7 +333,7 @@ def test_generate_health_summary(
     test_device_data,
 ):
     """测试生成健康档案摘要"""
-    summary = emergency_center_service.generate_health_summary(db, test_user.user_id)
+    summary = emergency_center_service.generate_health_summary(test_user.user_id)
 
     assert summary.user_id == test_user.user_id
     assert summary.user_name == test_user.nickname
@@ -352,7 +352,7 @@ def test_generate_health_summary_with_anomalies(
     test_anomaly,
 ):
     """测试生成健康档案摘要包含异常记录"""
-    summary = emergency_center_service.generate_health_summary(db, test_user.user_id)
+    summary = emergency_center_service.generate_health_summary(test_user.user_id)
 
     assert len(summary.recent_anomalies) >= 1
     assert (
@@ -363,14 +363,14 @@ def test_generate_health_summary_with_anomalies(
 def test_generate_health_summary_user_not_found(db, emergency_center_service):
     """测试用户不存在"""
     with pytest.raises(ValueError, match="用户不存在"):
-        emergency_center_service.generate_health_summary(db, "invalid_user_id")
+        emergency_center_service.generate_health_summary("invalid_user_id")
 
 
 def test_generate_health_summary_no_health_record(
     db, emergency_center_service, test_user, test_emergency_contact, test_device_data
 ):
     """测试没有健康档案时生成摘要"""
-    summary = emergency_center_service.generate_health_summary(db, test_user.user_id)
+    summary = emergency_center_service.generate_health_summary(test_user.user_id)
 
     assert summary.user_id == test_user.user_id
     assert summary.chronic_diseases is None
@@ -391,10 +391,10 @@ def test_dispatch_ambulance(
         caller_location="116.4074,39.9042",
         send_health_summary=True,
     )
-    call_response = emergency_center_service.call_120(db, request)
+    call_response = emergency_center_service.call_120(request)
 
     # 派出救护车
-    ambulance = emergency_center_service.dispatch_ambulance(db, call_response.call_id)
+    ambulance = emergency_center_service.dispatch_ambulance(call_response.call_id)
 
     assert ambulance.id is not None
     assert ambulance.emergency_call_id == call_response.call_id
@@ -415,8 +415,8 @@ def test_update_ambulance_location(
         caller_location="116.4074,39.9042",
         send_health_summary=True,
     )
-    call_response = emergency_center_service.call_120(db, request)
-    ambulance = emergency_center_service.dispatch_ambulance(db, call_response.call_id)
+    call_response = emergency_center_service.call_120(request)
+    ambulance = emergency_center_service.dispatch_ambulance(call_response.call_id)
 
     # 更新位置
     location_data = AmbulanceLocation(
@@ -448,8 +448,8 @@ def test_track_ambulance(
         caller_location="116.4074,39.9042",
         send_health_summary=True,
     )
-    call_response = emergency_center_service.call_120(db, request)
-    ambulance = emergency_center_service.dispatch_ambulance(db, call_response.call_id)
+    call_response = emergency_center_service.call_120(request)
+    ambulance = emergency_center_service.dispatch_ambulance(call_response.call_id)
 
     # 更新位置
     location_data = AmbulanceLocation(
@@ -459,10 +459,10 @@ def test_track_ambulance(
         address="北京市朝阳区",
         timestamp=datetime.utcnow(),
     )
-    emergency_center_service.update_ambulance_location(db, location_data)
+    emergency_center_service.update_ambulance_location(location_data)
 
     # 追踪救护车
-    tracking = emergency_center_service.track_ambulance(db, call_response.call_id)
+    tracking = emergency_center_service.track_ambulance(call_response.call_id)
 
     assert tracking.ambulance_id == ambulance.id
     assert tracking.ambulance_number == ambulance.ambulance_number
@@ -475,7 +475,7 @@ def test_track_ambulance(
 def test_track_ambulance_not_found(db, emergency_center_service):
     """测试追踪不存在的救护车"""
     with pytest.raises(ValueError, match="救护车不存在"):
-        emergency_center_service.track_ambulance(db, 99999)
+        emergency_center_service.track_ambulance(99999)
 
 
 # ========== 救援记录管理测试 ==========
@@ -497,7 +497,7 @@ def test_create_rescue_record(
         incident_address="北京市朝阳区",
     )
 
-    record = emergency_center_service.create_rescue_record(db, record_data)
+    record = emergency_center_service.create_rescue_record(record_data)
 
     assert record.id is not None
     assert record.user_id == test_user.user_id
@@ -524,7 +524,7 @@ def test_update_rescue_record(
         incident_location="116.4074,39.9042",
         incident_address="北京市朝阳区",
     )
-    record = emergency_center_service.create_rescue_record(db, record_data)
+    record = emergency_center_service.create_rescue_record(record_data)
 
     # 更新救援记录
     arrival_time = datetime.utcnow()
@@ -564,7 +564,7 @@ def test_update_rescue_record_not_found(db, emergency_center_service):
 
     update_data = RescueRecordUpdate(outcome="测试")
 
-    result = emergency_center_service.update_rescue_record(db, 99999, update_data)
+    result = emergency_center_service.update_rescue_record(99999, update_data)
     assert result is None
 
 
@@ -587,7 +587,7 @@ def test_create_emergency_center(db, emergency_center_service):
         is_24h=1,
     )
 
-    center = emergency_center_service.create_emergency_center(db, center_data)
+    center = emergency_center_service.create_emergency_center(center_data)
 
     assert center.id is not None
     assert center.center_name == "上海市急救中心"
@@ -598,7 +598,7 @@ def test_create_emergency_center(db, emergency_center_service):
 
 def test_get_emergency_centers(db, emergency_center_service, test_emergency_center):
     """测试获取急救中心列表"""
-    centers = emergency_center_service.get_emergency_centers(db, active_only=True)
+    centers = emergency_center_service.get_emergency_centers(active_only=True)
 
     assert len(centers) >= 1
     assert any(c.id == test_emergency_center.id for c in centers)
@@ -618,7 +618,7 @@ def test_get_emergency_centers_include_inactive(
         phone="120",
         is_active=False,
     )
-    emergency_center_service.create_emergency_center(db, inactive_center_data)
+    emergency_center_service.create_emergency_center(inactive_center_data)
 
     # 只获取启用的
     active_centers = emergency_center_service.get_emergency_centers(
@@ -627,7 +627,7 @@ def test_get_emergency_centers_include_inactive(
     assert not any(c.center_code == "TEST120" for c in active_centers)
 
     # 获取所有
-    all_centers = emergency_center_service.get_emergency_centers(db, active_only=False)
+    all_centers = emergency_center_service.get_emergency_centers(active_only=False)
     assert any(c.center_code == "TEST120" for c in all_centers)
 
 
@@ -651,14 +651,14 @@ def test_full_emergency_call_flow(
         caller_location="116.4074,39.9042",
         send_health_summary=True,
     )
-    call_response = emergency_center_service.call_120(db, request)
+    call_response = emergency_center_service.call_120(request)
 
     assert call_response.call_id is not None
     assert call_response.location_sent is True
     assert call_response.health_summary_sent is True
 
     # 2. 派出救护车
-    ambulance = emergency_center_service.dispatch_ambulance(db, call_response.call_id)
+    ambulance = emergency_center_service.dispatch_ambulance(call_response.call_id)
     assert ambulance.id is not None
 
     # 3. 更新救护车位置
@@ -669,10 +669,10 @@ def test_full_emergency_call_flow(
         address="北京市朝阳区",
         timestamp=datetime.utcnow(),
     )
-    emergency_center_service.update_ambulance_location(db, location_data)
+    emergency_center_service.update_ambulance_location(location_data)
 
     # 4. 追踪救护车
-    tracking = emergency_center_service.track_ambulance(db, call_response.call_id)
+    tracking = emergency_center_service.track_ambulance(call_response.call_id)
     assert tracking.ambulance_id == ambulance.id
     assert tracking.current_location["latitude"] == 39.9100
 
@@ -688,7 +688,7 @@ def test_full_emergency_call_flow(
         incident_location="116.4074,39.9042",
         incident_address="北京市朝阳区",
     )
-    record = emergency_center_service.create_rescue_record(db, record_data)
+    record = emergency_center_service.create_rescue_record(record_data)
     assert record.id is not None
 
     # 6. 更新救援记录

@@ -12,8 +12,8 @@ class TestEmergencyContactCacheInvalidation:
     """测试紧急联系人缓存失效逻辑"""
 
     @pytest.fixture
-    def service(self):
-        return EmergencyContactService()
+    def service(self, mock_db):
+        return EmergencyContactService(mock_db)
 
     @pytest.fixture
     def mock_db(self):
@@ -39,7 +39,7 @@ class TestEmergencyContactCacheInvalidation:
         )
 
         # When
-        service.create_emergency_contact(mock_db, data, sample_user_id)
+        service.create_emergency_contact(data, sample_user_id)
 
         # Then
         mock_invalidate.assert_called_with(f"emergency:contacts:{sample_user_id}")
@@ -62,9 +62,7 @@ class TestEmergencyContactCacheInvalidation:
             update_data = EmergencyContactUpdate(contact_name="李四")
 
             # When
-            service.update_emergency_contact(
-                mock_db, contact_id, update_data, sample_user_id
-            )
+            service.update_emergency_contact(contact_id, update_data, sample_user_id)
 
         # Then
         calls = mock_invalidate.call_args_list
@@ -92,7 +90,7 @@ class TestEmergencyContactCacheInvalidation:
             service, "get_emergency_contact", return_value=sample_contact
         ):
             # When
-            service.delete_emergency_contact(mock_db, contact_id, sample_user_id)
+            service.delete_emergency_contact(contact_id, sample_user_id)
 
         # Then
         calls = mock_invalidate.call_args_list
@@ -125,7 +123,7 @@ class TestEmergencyContactCacheInvalidation:
             service, "get_emergency_contact", return_value=sample_contact
         ):
             # When
-            service.set_primary_contact(mock_db, contact_id, sample_user_id)
+            service.set_primary_contact(contact_id, sample_user_id)
 
         # Then
         mock_invalidate.assert_called_with(f"emergency:contacts:{sample_user_id}")

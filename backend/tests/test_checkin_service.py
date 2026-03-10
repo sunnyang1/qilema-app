@@ -86,7 +86,7 @@ class TestCheckInService:
             notes="早安",
         )
 
-        checkin = CheckInService.create_checkin(db, test_user.user_id, checkin_data)
+        checkin = CheckInService(db).create_checkin(test_user.user_id, checkin_data)
 
         assert checkin is not None
         assert checkin.user_id == test_user.user_id
@@ -102,17 +102,17 @@ class TestCheckInService:
         checkin_data = CheckInCreate()
 
         # 第一次签到
-        CheckInService.create_checkin(db, test_user.user_id, checkin_data)
+        CheckInService(db).create_checkin(test_user.user_id, checkin_data)
 
         # 第二次签到应该失败
         with pytest.raises(ValueError, match="今天已经签到过了"):
-            CheckInService.create_checkin(db, test_user.user_id, checkin_data)
+            CheckInService(db).create_checkin(test_user.user_id, checkin_data)
 
     def test_create_checkin_without_location(self, db, test_user):
         """测试不带位置的签到"""
         checkin_data = CheckInCreate(checkin_method="manual")
 
-        checkin = CheckInService.create_checkin(db, test_user.user_id, checkin_data)
+        checkin = CheckInService(db).create_checkin(test_user.user_id, checkin_data)
 
         assert checkin is not None
         assert checkin.latitude is None
@@ -133,7 +133,7 @@ class TestCheckInService:
         db.commit()
 
         # 获取签到历史
-        checkins = CheckInService.get_user_checkins(db, test_user.user_id, days=10)
+        checkins = CheckInService(db).get_user_checkins(test_user.user_id, days=10)
 
         assert len(checkins) == 5
         # 检查是否按日期降序排列
@@ -155,7 +155,7 @@ class TestCheckInService:
         db.commit()
 
         # 获取统计信息
-        stats = CheckInService.get_checkin_stats(db, test_user.user_id, days=10)
+        stats = CheckInService(db).get_checkin_stats(test_user.user_id, days=10)
 
         assert stats.total_checkins == 3
         assert stats.current_streak == 3
@@ -164,7 +164,7 @@ class TestCheckInService:
 
     def test_get_checkin_stats_no_checkins(self, db, test_user):
         """测试无签到记录时的统计"""
-        stats = CheckInService.get_checkin_stats(db, test_user.user_id, days=10)
+        stats = CheckInService(db).get_checkin_stats(test_user.user_id, days=10)
 
         assert stats.total_checkins == 0
         assert stats.current_streak == 0
@@ -184,7 +184,7 @@ class TestCheckInService:
         db.commit()
 
         # 查询今天状态
-        status = CheckInService.get_checkin_status(db, test_user.user_id)
+        status = CheckInService(db).get_checkin_status(test_user.user_id)
 
         assert status.is_checked_in is True
         assert status.checkin_time is not None
@@ -192,7 +192,7 @@ class TestCheckInService:
     def test_get_checkin_status_today_unchecked(self, db, test_user):
         """测试今天的签到状态(未签到)"""
         # 查询今天状态(未签到)
-        status = CheckInService.get_checkin_status(db, test_user.user_id)
+        status = CheckInService(db).get_checkin_status(test_user.user_id)
 
         assert status.is_checked_in is False
         assert status.checkin_time is None
@@ -211,8 +211,8 @@ class TestCheckInService:
         db.commit()
 
         # 查询昨天状态
-        status = CheckInService.get_checkin_status(
-            db, test_user.user_id, date.today() - timedelta(days=1)
+        status = CheckInService(db).get_checkin_status(
+            test_user.user_id, date.today() - timedelta(days=1)
         )
 
         assert status.is_checked_in is True
@@ -222,8 +222,8 @@ class TestCheckInService:
         self, db, test_user, test_contacts
     ):
         """测试获取紧急联系人(用于通知)"""
-        contacts = CheckInService.get_emergency_contacts_for_notification(
-            db, test_user.user_id
+        contacts = CheckInService(db).get_emergency_contacts_for_notification(
+            test_user.user_id
         )
 
         assert len(contacts) == 2
@@ -246,7 +246,7 @@ class TestCheckInService:
         db.commit()
 
         # 计算连续签到天数
-        streak = CheckInService._calculate_streak(db, test_user.user_id, date.today())
+        streak = CheckInService(db)._calculate_streak(test_user.user_id, date.today())
 
         assert streak == 7
 
@@ -265,7 +265,7 @@ class TestCheckInService:
         db.commit()
 
         # 计算连续签到天数
-        streak = CheckInService._calculate_streak(db, test_user.user_id, date.today())
+        streak = CheckInService(db)._calculate_streak(test_user.user_id, date.today())
 
         assert streak == 2
 
@@ -286,8 +286,8 @@ class TestCheckInService:
         db.commit()
 
         # 计算最长连续签到
-        longest = CheckInService._calculate_longest_streak(
-            db, test_user.user_id, days=10
+        longest = CheckInService(db)._calculate_longest_streak(
+            test_user.user_id, days=10
         )
 
         assert longest == 4  # 最长连续4天

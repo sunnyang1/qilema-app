@@ -50,7 +50,7 @@ def health_service():
     test_key = Fernet.generate_key().decode()
     os.environ["ENCRYPTION_KEY"] = test_key
     try:
-        yield HealthRecordService()
+        yield HealthRecordService(db)
     finally:
         # 清理环境变量
         if "ENCRYPTION_KEY" in os.environ:

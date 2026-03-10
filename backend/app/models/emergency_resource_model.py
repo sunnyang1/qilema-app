@@ -131,25 +131,27 @@ class EmergencyResource(Base, BaseModelMixin):
             if field in data and data[field] is not None:
                 data[field] = bool(data[field])
 
-        # AED专用字段处理（如果资源类型是AED且没有指定include）
+        # AED专用字段处理
+        aed_fields = [
+            "aed_status",
+            "last_maintenance",
+            "aed_brand",
+            "aed_model",
+            "aed_sn",
+            "aed_location_desc",
+            "aed_access_instructions",
+            "aed_installation_date",
+            "aed_battery_expiry",
+            "aed_pad_expiry",
+            "aed_last_inspection",
+            "aed_manager_name",
+            "aed_manager_phone",
+            "aed_image_url",
+            "aed_photos",
+        ]
+
         if self.resource_type == "aed" and include is None:
-            aed_fields = [
-                "aed_status",
-                "last_maintenance",
-                "aed_brand",
-                "aed_model",
-                "aed_sn",
-                "aed_location_desc",
-                "aed_access_instructions",
-                "aed_installation_date",
-                "aed_battery_expiry",
-                "aed_pad_expiry",
-                "aed_last_inspection",
-                "aed_manager_name",
-                "aed_manager_phone",
-                "aed_image_url",
-                "aed_photos",
-            ]
+            # 对于AED资源，添加AED字段（如果未指定include）
             for field in aed_fields:
                 if hasattr(self, field):
                     value = getattr(self, field)
@@ -158,6 +160,10 @@ class EmergencyResource(Base, BaseModelMixin):
                         data[field] = value.isoformat()
                     else:
                         data[field] = value
+        elif include is None:
+            # 对于非AED资源，移除AED字段
+            for field in aed_fields:
+                data.pop(field, None)
 
         return data
 

@@ -47,7 +47,7 @@ class EmergencyCenterService:
     def __init__(self, db: Session):
         self.db = db
         self.location_service = LocationService()
-        self.health_record_service = HealthRecordService()
+        self.health_record_service = HealthRecordService(db)
 
     # ========== 120一键拨打 ==========
 
