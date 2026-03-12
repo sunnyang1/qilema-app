@@ -1,0 +1,72 @@
+{
+  "projectName": "GitHub CI/CD 修复",
+  "branchName": "fix/cicd-pipelines",
+  "complexity": "medium",
+  "userStories": [
+    {
+      "id": "1.1",
+      "title": "修复 ci.yml - pre-commit 和前端配置",
+      "description": "修复 ci.yml 中 pre-commit 重复运行问题，优化前端缓存配置",
+      "acceptanceCriteria": [
+        "pre-commit 只在单个 Python 版本中运行",
+        "前端缓存配置正确",
+        "添加并发控制和超时设置"
+      ],
+      "priority": "high",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "1.2",
+      "title": "修复 test.yml - 升级 action 版本",
+      "description": "升级 test.yml 中所有已弃用的 action 版本",
+      "acceptanceCriteria": [
+        "actions/cache@v3 → v4",
+        "codecov/codecov-action@v3 → v4",
+        "actions/upload-artifact@v3 → v4",
+        "添加并发控制和超时设置"
+      ],
+      "priority": "high",
+      "estimatedMinutes": 15,
+      "passes": true
+    },
+    {
+      "id": "1.3",
+      "title": "修复 build.yml - 安全扫描配置",
+      "description": "升级 build.yml 中的 action 版本并完善 Trivy 配置",
+      "acceptanceCriteria": [
+        "github/codeql-action/upload-sarif@v2 → v3",
+        "完善 Trivy 扫描配置",
+        "添加并发控制和超时设置"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 15,
+      "passes": true
+    },
+    {
+      "id": "1.4",
+      "title": "修复 deploy.yml - 部署配置",
+      "description": "修复 deploy.yml 中的通知和部署配置",
+      "acceptanceCriteria": [
+        "修复 Slack 通知条件",
+        "添加并发控制和超时设置",
+        "添加环境保护规则检查"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 15,
+      "passes": true
+    },
+    {
+      "id": "1.5",
+      "title": "添加新 workflow 增强",
+      "description": "添加 PR 标题检查和依赖审查 workflow",
+      "acceptanceCriteria": [
+        "创建 pr-title-check.yml",
+        "创建 dependency-review.yml"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 20,
+      "passes": true
+    }
+  ]
+}
