@@ -28,6 +28,9 @@ pytest-asyncio==0.21.1
 pytest-cov==4.1.0
 httpx==0.25.2
 
+# HTTP 请求
+requests==2.31.0
+
 # 其他
 python-dotenv==1.0.0
 
