@@ -6,9 +6,15 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# 并发控制：防止多个 workflow 同时运行
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # 超时设置
 
     services:
       postgres:
@@ -45,7 +51,7 @@ jobs:
         python-version: '3.12'
 
     - name: Cache pip packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4  # 升级: v3 -> v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -64,14 +70,17 @@ jobs:
         cd backend
         pip install black flake8 mypy
         black --check .
+        # 严格检查致命错误
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # 宽松检查其他问题，不阻止构建
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Run type checking
       run: |
         cd backend
         pip install mypy
-        mypy app/ --ignore-missing-imports --no-error-summary || true
+        # 类型检查不阻止构建，仅记录问题
+        mypy app/ --ignore-missing-imports --no-error-summary --show-error-codes || echo "Type checking completed with warnings"
 
     - name: Run tests with coverage
       env:
@@ -83,14 +92,17 @@ jobs:
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing --cov-report=html
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4  # 升级: v3 -> v4
       with:
         files: ./backend/coverage.xml
         flags: unittests
         name: codecov-umbrella
+        fail_ci_if_error: false  # 上传失败不阻止构建
+        verbose: true
 
     - name: Upload coverage artifacts
       uses: actions/upload-artifact@v7
       with:
         name: coverage-report
         path: backend/htmlcov/
+        retention-days: 7  # 保留 7 天
