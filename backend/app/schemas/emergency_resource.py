@@ -8,7 +8,6 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from app.core.schemas import BaseSchema
 from pydantic import BaseModel, Field, validator
 
 # ========== 枚举定义 ==========

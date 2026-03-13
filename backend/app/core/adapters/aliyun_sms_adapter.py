@@ -105,7 +105,7 @@ class AliyunSMSAdapter(SMSNotificationSimulator):
                 access_key_id=self.access_key_id,
                 access_key_secret=self.access_key_secret,
             )
-            config.endpoint = f"dysmsapi.aliyuncs.com"
+            config.endpoint = "dysmsapi.aliyuncs.com"
 
             self._client = Client(config)
             self._dysmsapi_models = dysmsapi_models

@@ -8,12 +8,12 @@ AED设备地图API路由
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import NotFoundException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_active_user, get_current_user
+from app.core.security import get_current_active_user
 from app.models.user import User
 from app.services.aed_service import AEDService
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -326,7 +326,6 @@ def get_aeds_in_bounds(
     用于地图展示，根据视口范围查询AED设备
     """
     from app.models.emergency_resource_model import EmergencyResource
-    from sqlalchemy import and_
 
     query = db.query(EmergencyResource).filter(
         EmergencyResource.resource_type == "aed",
@@ -344,7 +343,7 @@ def get_aeds_in_bounds(
         query = query.filter(
             or_(
                 EmergencyResource.aed_status == AEDStatus.ACTIVE.value,
-                EmergencyResource.aed_status == None,
+                EmergencyResource.aed_status.is_(None),
             )
         )
 

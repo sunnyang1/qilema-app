@@ -101,7 +101,7 @@ class AliyunVoiceAdapter(PhoneNotificationSimulator):
                 access_key_id=self.access_key_id,
                 access_key_secret=self.access_key_secret,
             )
-            config.endpoint = f"dyvmsapi.aliyuncs.com"
+            config.endpoint = "dyvmsapi.aliyuncs.com"
 
             self._client = Client(config)
             self._dyvmsapi_models = dyvmsapi_models
@@ -332,8 +332,8 @@ class AliyunVoiceAdapter(PhoneNotificationSimulator):
                 query_call_detail_by_call_id_request
             )
 
-            if response.body.code == "OK" and response_body.call_detail_list:
-                detail = response_body.call_detail_list[0]
+            if response.body.code == "OK" and response.body.call_detail_list:
+                detail = response.body.call_detail_list[0]
 
                 return {
                     "status": "success",

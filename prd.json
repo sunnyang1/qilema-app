@@ -1,0 +1,342 @@
+{
+  "projectName": "服务层重构",
+  "branchName": "refactor/service-layer",
+  "complexity": "medium",
+  "userStories": [
+    {
+      "id": "1.1",
+      "title": "创建 CircuitBreakerService 熔断器服务",
+      "description": "将熔断器逻辑从 NotificationService 中提取，创建独立的 CircuitBreakerService 类，支持 Redis 持久化和线程安全",
+      "acceptanceCriteria": [
+        "创建 CircuitBreakerService 类",
+        "包含熔断器状态检查、失败记录、成功重置方法",
+        "支持 Redis 持久化",
+        "线程安全"
+      ],
+      "priority": "high",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "1.2",
+      "title": "创建 NotificationSenderService 发送服务",
+      "description": "将通知发送逻辑独立为服务，包含重试机制、降级策略，支持多种通知渠道",
+      "acceptanceCriteria": [
+        "创建 NotificationSenderService 类",
+        "包含重试机制、降级策略",
+        "支持 PUSH、SMS、PHONE、EMAIL 渠道",
+        "使用 CircuitBreakerService"
+      ],
+      "priority": "high",
+      "estimatedMinutes": 40,
+      "passes": true
+    },
+    {
+      "id": "1.3",
+      "title": "创建 NotificationTemplateService 模板服务",
+      "description": "将通知模板管理独立为服务，包含模板 CRUD、模板渲染功能",
+      "acceptanceCriteria": [
+        "创建 NotificationTemplateService 类",
+        "包含模板 CRUD、模板渲染功能",
+        "为未来迁移到数据库做准备"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "1.4",
+      "title": "创建 NotificationStatsService 统计服务",
+      "description": "将通知统计功能独立为服务，包含各类统计查询方法",
+      "acceptanceCriteria": [
+        "创建 NotificationStatsService 类",
+        "包含各类统计查询方法",
+        "支持日期范围筛选"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "1.5",
+      "title": "重构 NotificationService 为门面模式",
+      "description": "将 NotificationService 重构为门面模式，委托具体任务给子服务，保持 API 向后兼容",
+      "acceptanceCriteria": [
+        "重构后的 NotificationService 只保留协调逻辑",
+        "委托具体任务给子服务",
+        "保持 API 向后兼容"
+      ],
+      "priority": "high",
+      "estimatedMinutes": 40,
+      "passes": true
+    },
+    {
+      "id": "1.6",
+      "title": "更新 API 层使用新的服务结构",
+      "description": "更新 notifications API 路由使用新的服务结构，使用依赖注入获取服务",
+      "acceptanceCriteria": [
+        "所有 API 路由正常工作",
+        "使用依赖注入获取服务",
+        "所有测试通过"
+      ],
+      "priority": "high",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "1.7",
+      "title": "为重构后的服务编写单元测试",
+      "description": "为 CircuitBreakerService、NotificationSenderService 等新服务编写单元测试",
+      "acceptanceCriteria": [
+        "每个新服务都有对应的测试文件",
+        "测试覆盖率 > 80%",
+        "包含熔断器、重试、降级等边界情况测试"
+      ],
+      "priority": "high",
+      "estimatedMinutes": 40,
+      "passes": true
+    },
+    {
+      "id": "2.1",
+      "title": "制定服务类设计规范文档",
+      "description": "创建 SERVICE_DESIGN_GUIDE.md，明确实例方法模式规范和依赖注入使用指南",
+      "acceptanceCriteria": [
+        "创建 SERVICE_DESIGN_GUIDE.md",
+        "明确实例方法模式规范",
+        "包含依赖注入使用指南"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "2.2",
+      "title": "重构 UserService 为实例方法模式",
+      "description": "将 UserService 所有方法改为实例方法，构造函数接收 db: Session",
+      "acceptanceCriteria": [
+        "所有方法改为实例方法",
+        "构造函数接收 db: Session",
+        "更新所有调用方"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "2.3",
+      "title": "重构 CheckInService 为实例方法模式",
+      "description": "将 CheckInService 所有方法改为实例方法，更新所有调用方",
+      "acceptanceCriteria": [
+        "所有方法改为实例方法",
+        "更新所有调用方",
+        "测试通过"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 25,
+      "passes": true
+    },
+    {
+      "id": "2.4",
+      "title": "重构 SosService 为实例方法模式",
+      "description": "将 SosService 所有方法改为实例方法，更新所有调用方",
+      "acceptanceCriteria": [
+        "所有方法改为实例方法",
+        "更新所有调用方",
+        "测试通过"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 25,
+      "passes": true
+    },
+    {
+      "id": "2.5",
+      "title": "重构其他服务类为实例方法模式",
+      "description": "重构所有剩余服务类为实例方法模式，更新所有调用方",
+      "acceptanceCriteria": [
+        "重构所有剩余服务类",
+        "更新所有调用方",
+        "测试通过"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 40,
+      "passes": true
+    },
+    {
+      "id": "2.6",
+      "title": "更新 API 层调用方式",
+      "description": "更新所有 API 路由使用新的服务调用方式，使用依赖注入获取服务实例",
+      "acceptanceCriteria": [
+        "所有 API 路由使用新的服务调用方式",
+        "使用依赖注入获取服务实例",
+        "所有测试通过"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "3.1",
+      "title": "服务类构造函数接收依赖",
+      "description": "重构服务类通过构造函数接收 db、其他服务依赖，支持测试时的依赖替换",
+      "acceptanceCriteria": [
+        "服务类通过构造函数接收依赖",
+        "支持测试时的依赖替换"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "3.2",
+      "title": "更新 Container provider 配置",
+      "description": "更新 Container 配置使用新的服务类签名，支持单例和工厂模式",
+      "acceptanceCriteria": [
+        "Container 配置使用新的服务类签名",
+        "支持单例和工厂模式"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "3.3",
+      "title": "创建 get_service() 依赖注入函数",
+      "description": "创建通用的依赖注入函数，在 API 路由中使用",
+      "acceptanceCriteria": [
+        "创建通用的依赖注入函数",
+        "在 API 路由中使用"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "3.4",
+      "title": "更新 API 路由使用 DI",
+      "description": "所有 API 路由使用依赖注入，移除直接实例化服务的代码",
+      "acceptanceCriteria": [
+        "所有 API 路由使用依赖注入",
+        "移除直接实例化服务的代码"
+      ],
+      "priority": "medium",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "3.5",
+      "title": "移除全局状态",
+      "description": "所有全局状态改为 DI 管理，确保线程安全",
+      "acceptanceCriteria": [
+        "所有全局状态改为 DI 管理",
+        "确保线程安全"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "4.1",
+      "title": "优化模型关联加载策略",
+      "description": "优化模型关联加载策略，高频关联使用 lazy='dynamic'",
+      "acceptanceCriteria": [
+        "高频关联使用 lazy='dynamic'",
+        "低频关联使用 lazy='select'",
+        "添加文档说明"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "4.2",
+      "title": "添加查询优化索引",
+      "description": "分析慢查询日志，添加必要的数据库索引",
+      "acceptanceCriteria": [
+        "分析慢查询日志",
+        "添加必要的数据库索引",
+        "验证查询性能提升"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "4.3",
+      "title": "优化 to_dict() 序列化性能",
+      "description": "优化序列化算法，支持选择性字段序列化",
+      "acceptanceCriteria": [
+        "优化序列化算法",
+        "支持选择性字段序列化",
+        "基准测试验证性能"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "4.4",
+      "title": "添加选择性关联加载方法",
+      "description": "添加 eager_load() 方法，支持按需加载关联",
+      "acceptanceCriteria": [
+        "添加 eager_load() 方法",
+        "支持按需加载关联",
+        "文档和示例"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "5.1",
+      "title": "创建 CacheMixin 缓存混合类",
+      "description": "提取通用缓存逻辑到 CacheMixin，服务类可以混入使用",
+      "acceptanceCriteria": [
+        "提取通用缓存逻辑到 CacheMixin",
+        "服务类可以混入使用",
+        "统一缓存键生成逻辑"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "5.2",
+      "title": "创建 QueryBuilder 查询构建器",
+      "description": "创建 QueryBuilder 支持分页、排序、过滤，支持动态条件构建",
+      "acceptanceCriteria": [
+        "支持分页、排序、过滤",
+        "支持动态条件构建",
+        "类型安全"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 30,
+      "passes": true
+    },
+    {
+      "id": "5.3",
+      "title": "统一缓存失效逻辑",
+      "description": "所有服务类使用统一的缓存失效方法，移除重复代码",
+      "acceptanceCriteria": [
+        "所有服务类使用统一的缓存失效方法",
+        "移除重复代码",
+        "测试通过"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 20,
+      "passes": true
+    },
+    {
+      "id": "5.4",
+      "title": "重构重复查询模式",
+      "description": "识别并提取重复查询模式，使用 QueryBuilder 重构",
+      "acceptanceCriteria": [
+        "识别并提取重复查询模式",
+        "使用 QueryBuilder 重构",
+        "测试通过"
+      ],
+      "priority": "low",
+      "estimatedMinutes": 20,
+      "passes": true
+    }
+  ]
+}

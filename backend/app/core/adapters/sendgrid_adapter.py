@@ -159,7 +159,6 @@ class SendGridAdapter(EmailNotificationSimulator):
 
             from sendgrid.helpers.mail import (
                 Attachment,
-                Content,
                 Disposition,
                 Email,
                 FileContent,

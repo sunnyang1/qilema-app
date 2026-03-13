@@ -2,11 +2,9 @@
 测试SECRET_KEY安全性
 """
 
-import os
 from pathlib import Path
 
-import pytest
-from app.core.config import Settings, settings
+from app.core.config import Settings
 
 
 class TestSecretKeySecurity:

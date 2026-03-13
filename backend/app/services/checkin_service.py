@@ -5,43 +5,54 @@
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
-from app.core.cache import cache_result, get_cached, invalidate_cache
+from app.core.cache import cache_result, get_cached
 from app.core.cache_config import CacheConfig
 from app.core.interfaces import ICheckInService
 from app.models.checkin import CheckIn
 from app.models.emergency_contact import EmergencyContact
-from app.models.user import User
 from app.schemas.checkin import (
     CheckInCreate,
-    CheckInResponse,
     CheckInStatsResponse,
     CheckInStatusResponse,
 )
 from app.services.base_service import BaseService
-from sqlalchemy import and_, desc, func
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 
 class CheckInService(BaseService[CheckIn], ICheckInService):
-    """签到服务类 - 继承BaseService和实现ICheckInService接口
+    """
+    签到服务类 - 实例方法模式
 
     提供签到记录的创建、查询、统计等功能
-    统一使用类方法，便于利用 BaseService 的缓存机制
+
+    Attributes:
+        db: 数据库会话
+        model_class: 签到模型类
+        cache_prefix: 缓存前缀
+        cache_ttl: 缓存过期时间（秒）
     """
 
     model_class = CheckIn
     cache_prefix = CacheConfig.PREFIX_CHECKIN
     cache_ttl = CacheConfig.TTL_CHECKIN_LIST
 
-    @classmethod
-    def create_checkin(
-        cls, db: Session, user_id: str, checkin_data: CheckInCreate
-    ) -> CheckIn:
+    def __init__(self, db: Session):
+        """
+        初始化签到服务
+
+        Args:
+            db: 数据库会话
+        """
+        self.db = db
+
+    # ========== 创建方法 ==========
+
+    def create(self, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
         """
         创建签到记录
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             checkin_data: 签到数据
 
@@ -66,17 +77,17 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
                 notes=checkin_data.notes,
             )
 
-            db.add(db_checkin)
-            db.commit()
-            db.refresh(db_checkin)
+            self.db.add(db_checkin)
+            self.db.commit()
+            self.db.refresh(db_checkin)
 
             # 失效相关缓存
-            cls.invalidate_list_cache(f"{user_id}:*")
+            self.invalidate_list_cache(f"{user_id}:*")
 
             return db_checkin
 
         except Exception as e:
-            db.rollback()
+            self.db.rollback()
 
             # 捕获唯一约束违反错误
             error_msg = str(e).lower()
@@ -86,10 +97,10 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
             # 重新抛出其他错误
             raise
 
-    @classmethod
+    # ========== 查询方法 ==========
+
     def get_user_checkins(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         days: int = 30,
         start_date: Optional[date] = None,
@@ -99,7 +110,6 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
         获取用户签到历史记录
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             days: 查询天数(默认30天)
             start_date: 开始日期
@@ -114,19 +124,64 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
             end_date = date.today()
 
         # 使用 BaseService 的列表查询方法
-        return cls.list_records(
-            db, user_id=user_id, order_by="checkin_date", order_desc=True
+        return self.list_records(
+            self.db, user_id=user_id, order_by="checkin_date", order_desc=True
         )
 
-    @classmethod
-    def get_checkin_stats(
-        cls, db: Session, user_id: str, days: int = 30
-    ) -> CheckInStatsResponse:
+    def get_checkin_status(
+        self, user_id: str, target_date: Optional[date] = None
+    ) -> CheckInStatusResponse:
+        """
+        查询指定日期的签到状态
+
+        Args:
+            user_id: 用户ID
+            target_date: 目标日期(默认今天)
+
+        Returns:
+            签到状态
+        """
+        if target_date is None:
+            target_date = date.today()
+
+        date_str = target_date.strftime("%Y-%m-%d")
+
+        checkin = (
+            self.db.query(CheckIn)
+            .filter(and_(CheckIn.user_id == user_id, CheckIn.checkin_date == date_str))
+            .first()
+        )
+
+        return CheckInStatusResponse(
+            is_checked_in=bool(checkin),
+            checkin_time=checkin.checkin_time if checkin else None,
+        )
+
+    def check_today_checked_in(self, user_id: str) -> bool:
+        """
+        检查今天是否已签到
+
+        Args:
+            user_id: 用户ID
+
+        Returns:
+            bool: 是否已签到
+        """
+        today = date.today().strftime("%Y-%m-%d")
+        checkin = (
+            self.db.query(CheckIn)
+            .filter(and_(CheckIn.user_id == user_id, CheckIn.checkin_date == today))
+            .first()
+        )
+        return bool(checkin)
+
+    # ========== 统计方法 ==========
+
+    def get_checkin_stats(self, user_id: str, days: int = 30) -> CheckInStatsResponse:
         """
         获取用户签到统计信息
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             days: 统计天数(默认30天)
 
@@ -143,7 +198,7 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
 
         # 计算总签到次数
         total_checkins = (
-            db.query(func.count(CheckIn.id))
+            self.db.query(func.count(CheckIn.id))
             .filter(
                 and_(
                     CheckIn.user_id == user_id,
@@ -155,12 +210,10 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
         )
 
         # 计算当前连续签到天数
-        current_streak = CheckInService._calculate_streak(
-            db, user_id, from_date=date.today()
-        )
+        current_streak = self._calculate_streak(user_id, from_date=date.today())
 
         # 计算最长连续签到天数
-        longest_streak = CheckInService._calculate_longest_streak(db, user_id, days)
+        longest_streak = self._calculate_longest_streak(user_id, days)
 
         # 计算签到率
         checkin_rate = (total_checkins / days) * 100 if days > 0 else 0
@@ -177,85 +230,34 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
 
         return stats
 
-    @classmethod
-    def get_checkin_status(
-        cls, db: Session, user_id: str, target_date: Optional[date] = None
-    ) -> CheckInStatusResponse:
-        """
-        查询指定日期的签到状态
+    # ========== 紧急联系人 ==========
 
-        Args:
-            db: 数据库会话
-            user_id: 用户ID
-            target_date: 目标日期(默认今天)
-
-        Returns:
-            签到状态
-        """
-        if target_date is None:
-            target_date = date.today()
-
-        date_str = target_date.strftime("%Y-%m-%d")
-
-        checkin = (
-            db.query(CheckIn)
-            .filter(and_(CheckIn.user_id == user_id, CheckIn.checkin_date == date_str))
-            .first()
-        )
-
-        return CheckInStatusResponse(
-            is_checked_in=bool(checkin),
-            checkin_time=checkin.checkin_time if checkin else None,
-        )
-
-    @classmethod
-    def check_today_checked_in(cls, db: Session, user_id: str) -> bool:
-        """
-        检查今天是否已签到
-
-        Args:
-            db: 数据库会话
-            user_id: 用户ID
-
-        Returns:
-            bool: 是否已签到
-        """
-        today = date.today().strftime("%Y-%m-%d")
-        checkin = (
-            db.query(CheckIn)
-            .filter(and_(CheckIn.user_id == user_id, CheckIn.checkin_date == today))
-            .first()
-        )
-        return bool(checkin)
-
-    @classmethod
     def get_emergency_contacts_for_notification(
-        cls, db: Session, user_id: str
+        self, user_id: str
     ) -> List[EmergencyContact]:
         """
         获取用户的紧急联系人(用于签到通知)
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
 
         Returns:
             紧急联系人列表
         """
         return (
-            db.query(EmergencyContact)
+            self.db.query(EmergencyContact)
             .filter(EmergencyContact.user_id == user_id)
             .order_by(EmergencyContact.priority)
             .all()
         )
 
-    @classmethod
-    def _calculate_streak(cls, db: Session, user_id: str, from_date: date) -> int:
+    # ========== 私有辅助方法 ==========
+
+    def _calculate_streak(self, user_id: str, from_date: date) -> int:
         """
         计算从指定日期开始的连续签到天数
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             from_date: 起始日期
 
@@ -269,7 +271,7 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
             date_str = current_date.strftime("%Y-%m-%d")
 
             checkin = (
-                db.query(CheckIn)
+                self.db.query(CheckIn)
                 .filter(
                     and_(CheckIn.user_id == user_id, CheckIn.checkin_date == date_str)
                 )
@@ -287,13 +289,11 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
 
         return streak
 
-    @classmethod
-    def _calculate_longest_streak(cls, db: Session, user_id: str, days: int) -> int:
+    def _calculate_longest_streak(self, user_id: str, days: int) -> int:
         """
         计算指定天数内的最长连续签到天数
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             days: 查询天数
 
@@ -302,7 +302,7 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
         """
         # 获取指定天数内的所有签到记录
         checkins = (
-            db.query(CheckIn)
+            self.db.query(CheckIn)
             .filter(
                 and_(
                     CheckIn.user_id == user_id,
@@ -335,3 +335,9 @@ class CheckInService(BaseService[CheckIn], ICheckInService):
                 current_streak = 1
 
         return longest_streak
+
+    # ========== 向后兼容的适配器方法 ==========
+
+    def create_checkin(self, user_id: str, checkin_data: CheckInCreate) -> CheckIn:
+        """向后兼容：创建签到记录"""
+        return self.create(user_id, checkin_data)

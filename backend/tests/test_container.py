@@ -4,7 +4,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
 from app.core.container import (
     Container,
     get_global_container,

@@ -1,47 +1,101 @@
 """
 用户服务层
+
+提供用户相关的业务逻辑处理
 """
 
+import random
+import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from app.core.cache import cache, cache_result, invalidate_cache
-from app.core.config import settings
+from app.core.cache import invalidate_cache
 from app.core.redis import redis_manager
-from app.core.security import get_password_hash, verify_password
+from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 from app.services.base_service import BaseService
 from sqlalchemy.orm import Session
 
 
 class UserService(BaseService[User]):
-    """用户服务类"""
+    """
+    用户服务类
+
+    提供用户的CRUD操作和认证相关业务逻辑
+
+    Attributes:
+        db: 数据库会话
+        model_class: 用户模型类
+        cache_prefix: 缓存前缀
+        cache_ttl: 缓存过期时间（秒）
+    """
 
     model_class = User
     cache_prefix = "user"
     cache_ttl = 300
 
-    def __init__(self, db: Session = None):
-        """初始化用户服务
-
-        Args:
-            db: 数据库会话(可选),为空时使用静态方法模式
+    def __init__(self, db: Session):
         """
-        self.db = db
-
-    @staticmethod
-    def create_user(
-        db: Session, user_data: dict, verify_code: Optional[str] = None
-    ) -> User:
-        """创建用户（统一方法）
+        初始化用户服务
 
         Args:
             db: 数据库会话
+        """
+        self.db = db
+
+    # ========== 查询方法 ==========
+
+    def get_by_id(self, user_id: str) -> Optional[User]:
+        """
+        根据ID获取用户
+
+        Args:
+            user_id: 用户ID
+
+        Returns:
+            用户对象或None
+        """
+        return self.get_by_id_internal(user_id, pk_column="user_id")
+
+    def get_by_phone(self, phone: str) -> Optional[User]:
+        """
+        根据手机号获取用户
+
+        Args:
+            phone: 手机号
+
+        Returns:
+            用户对象或None
+        """
+        return self.get_by_field(self.db, "phone", phone)
+
+    def list_users(self, skip: int = 0, limit: int = 100) -> List[User]:
+        """
+        获取用户列表
+
+        Args:
+            skip: 跳过数量
+            limit: 限制数量
+
+        Returns:
+            用户列表
+        """
+        return self.list_records(
+            self.db, skip=skip, limit=limit, order_by="created_at", order_desc=True
+        )
+
+    # ========== 创建方法 ==========
+
+    def create(self, user_data: dict, verify_code: Optional[str] = None) -> User:
+        """
+        创建用户
+
+        Args:
             user_data: 用户数据字典，包含 phone, password, nickname 等
             verify_code: 验证码（可选），如果提供则验证
 
         Returns:
-            User: 创建的用户对象
+            创建的用户对象
 
         Raises:
             ValueError: 手机号已注册、验证码错误等
@@ -54,24 +108,22 @@ class UserService(BaseService[User]):
 
         # 检查手机号是否已存在
         existing_user = (
-            db.query(User).filter(User.phone == user_data.get("phone")).first()
+            self.db.query(User).filter(User.phone == user_data.get("phone")).first()
         )
         if existing_user:
             raise ValueError("该手机号已注册")
 
         # 验证码验证（如果提供）
         if user_data.get("verify_code"):
-            if not UserService.verify_code(
+            if not self.verify_code(
                 user_data.get("phone"), user_data.get("verify_code")
             ):
                 raise ValueError("验证码错误或已过期")
 
-        # 限制密码长度,避免bcrypt超限
+        # 限制密码长度，避免bcrypt超限
         password = user_data.get("password", "123456")
         if len(password) > 72:
             password = password[:72]
-
-        import uuid
 
         user = User(
             user_id=str(uuid.uuid4()),
@@ -79,86 +131,28 @@ class UserService(BaseService[User]):
             nickname=user_data.get("nickname"),
             password_hash=get_password_hash(password),
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
         return user
 
-    def login(self, phone: str, password: str) -> dict:
-        """用户登录并生成token（实例方法）
+    # ========== 更新方法 ==========
+
+    def update(self, user_id: str, update_data: dict) -> User:
+        """
+        更新用户信息
 
         Args:
-            phone: 手机号
-            password: 密码
+            user_id: 用户ID
+            update_data: 更新数据
 
         Returns:
-            dict: 包含access_token, token_type, user的字典
+            更新后的用户对象
 
         Raises:
-            ValueError: 用户不存在或密码错误
+            ValueError: 用户不存在
         """
-        user = UserService.login_user(self.db, phone, password)
-
-        # 生成JWT token
-        from app.core.security import create_access_token
-
-        access_token = create_access_token(data={"sub": user.user_id})
-
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": user.to_dict(),
-        }
-
-    @staticmethod
-    def login_user(db: Session, phone: str, password: str) -> User:
-        """用户登录并更新登录时间（静态方法）
-
-        Args:
-            db: 数据库会话
-            phone: 手机号
-            password: 密码
-
-        Returns:
-            User: 用户对象
-
-        Raises:
-            ValueError: 用户不存在或密码错误
-        """
-        user = UserService.authenticate_user(db, phone, password)
-        if user is None:
-            raise ValueError("用户不存在或密码错误")
-
-        # 更新最后登录时间
-        user.last_sign_in = datetime.utcnow()
-        db.commit()
-        db.refresh(user)
-
-        return user
-
-    @classmethod
-    def get_user_by_id(cls, db: Session, user_id: str) -> Optional[User]:
-        """根据ID获取用户
-
-        使用 BaseService 的统一缓存机制
-        """
-        return cls.get_by_id(db, user_id, pk_column="user_id")
-
-    @classmethod
-    def get_user_by_phone(cls, db: Session, phone: str) -> Optional[User]:
-        """根据手机号获取用户
-
-        使用 BaseService 的字段查询方法
-        """
-        return cls.get_by_field(db, "phone", phone)
-
-    @classmethod
-    def update_user(cls, db: Session, user_id: str, update_data: dict) -> User:
-        """更新用户信息
-
-        使用 BaseService 的统一更新方法
-        """
-        user = cls.get_user_by_id(db, user_id)
+        user = self.get_by_id(user_id)
         if not user:
             raise ValueError("用户不存在")
 
@@ -166,29 +160,35 @@ class UserService(BaseService[User]):
         allowed_fields = ["nickname", "avatar", "email", "bio"]
         filtered_data = {k: v for k, v in update_data.items() if k in allowed_fields}
 
-        return cls.update_record(db, user_id, filtered_data, pk_column="user_id")
+        return self.update_record(self.db, user_id, filtered_data, pk_column="user_id")
 
-    @classmethod
-    def delete_user(cls, db: Session, user_id: str) -> bool:
-        """删除用户
+    # ========== 删除方法 ==========
 
-        使用 BaseService 的统一删除方法
+    def delete(self, user_id: str) -> bool:
         """
-        return cls.delete_record(db, user_id, pk_column="user_id")
+        删除用户
 
-    @classmethod
-    def list_users(cls, db: Session, skip: int = 0, limit: int = 100) -> List[User]:
-        """获取用户列表
+        Args:
+            user_id: 用户ID
 
-        使用 BaseService 的统一列表查询方法
+        Returns:
+            是否成功删除
         """
-        return cls.list_records(
-            db, skip=skip, limit=limit, order_by="created_at", order_desc=True
-        )
+        return self.delete_record(self.db, user_id, pk_column="user_id")
 
-    @staticmethod
-    def authenticate_user(db: Session, phone: str, password: str) -> Optional[User]:
-        """用户认证"""
+    # ========== 认证相关 ==========
+
+    def authenticate(self, phone: str, password: str) -> Optional[User]:
+        """
+        用户认证
+
+        Args:
+            phone: 手机号
+            password: 密码
+
+        Returns:
+            认证成功的用户对象或None
+        """
         # 先检查失败的登录尝试
         redis_client = redis_manager.get_sync_client()
         if redis_client:
@@ -197,7 +197,7 @@ class UserService(BaseService[User]):
                 # 登录失败次数过多
                 return None
 
-        user = db.query(User).filter(User.phone == phone).first()
+        user = self.db.query(User).filter(User.phone == phone).first()
         if not user:
             # 记录失败
             if redis_client:
@@ -218,13 +218,52 @@ class UserService(BaseService[User]):
 
         return user
 
-    @staticmethod
-    def generate_verify_code(phone: str) -> str:
-        """生成验证码"""
-        import random
+    def login(self, phone: str, password: str) -> dict:
+        """
+        用户登录并生成token
 
+        Args:
+            phone: 手机号
+            password: 密码
+
+        Returns:
+            包含access_token, token_type, user的字典
+
+        Raises:
+            ValueError: 用户不存在或密码错误
+        """
+        user = self.authenticate(phone, password)
+        if user is None:
+            raise ValueError("用户不存在或密码错误")
+
+        # 更新最后登录时间
+        user.last_sign_in = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(user)
+
+        # 生成JWT token
+        access_token = create_access_token(data={"sub": user.user_id})
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": user.to_dict(),
+        }
+
+    # ========== 验证码相关 ==========
+
+    def generate_verify_code(self, phone: str) -> str:
+        """
+        生成验证码
+
+        Args:
+            phone: 手机号
+
+        Returns:
+            6位数字验证码
+        """
         code = str(random.randint(100000, 999999))
-        # 存储到Redis,有效期5分钟
+        # 存储到Redis，有效期5分钟
         redis_client = redis_manager.get_sync_client()
         if redis_client:
             redis_client.setex(f"verify_code:{phone}", 300, code)
@@ -233,12 +272,20 @@ class UserService(BaseService[User]):
             redis_client.expire(f"verify_code_count:{phone}", 3600)
         return code
 
-    @staticmethod
-    def verify_code(phone: str, code: str) -> bool:
-        """验证验证码"""
+    def verify_code(self, phone: str, code: str) -> bool:
+        """
+        验证验证码
+
+        Args:
+            phone: 手机号
+            code: 验证码
+
+        Returns:
+            验证是否成功
+        """
         redis_client = redis_manager.get_sync_client()
         if not redis_client:
-            return True  # 如果没有Redis,测试环境下通过
+            return True  # 如果没有Redis，测试环境下通过
         stored_code = redis_client.get(f"verify_code:{phone}")
         if not stored_code:
             return False
@@ -248,15 +295,15 @@ class UserService(BaseService[User]):
         invalidate_cache(f"verify_code:{phone}")
         return True
 
-    @staticmethod
-    def check_verify_code_limit(phone: str) -> bool:
-        """检查验证码请求限制（防止刷验证码）
+    def check_verify_code_limit(self, phone: str) -> bool:
+        """
+        检查验证码请求限制（防止刷验证码）
 
         Args:
             phone: 手机号
 
         Returns:
-            bool: True表示可以请求，False表示已超过限制
+            True表示可以请求，False表示已超过限制
         """
         redis_client = redis_manager.get_sync_client()
         if not redis_client:
@@ -268,3 +315,40 @@ class UserService(BaseService[User]):
             return False
 
         return True
+
+    # ========== 向后兼容的适配器方法 ==========
+
+    def create_user(self, user_data: dict, verify_code: Optional[str] = None) -> User:
+        """向后兼容：创建用户（使用create方法）"""
+        return self.create(user_data, verify_code)
+
+    def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """向后兼容：根据ID获取用户"""
+        return self.get_by_id(user_id)
+
+    def get_user_by_phone(self, phone: str) -> Optional[User]:
+        """向后兼容：根据手机号获取用户"""
+        return self.get_by_phone(phone)
+
+    def update_user(self, user_id: str, update_data: dict) -> User:
+        """向后兼容：更新用户"""
+        return self.update(user_id, update_data)
+
+    def delete_user(self, user_id: str) -> bool:
+        """向后兼容：删除用户"""
+        return self.delete(user_id)
+
+    def authenticate_user(self, phone: str, password: str) -> Optional[User]:
+        """向后兼容：用户认证"""
+        return self.authenticate(phone, password)
+
+    def login_user(self, phone: str, password: str) -> User:
+        """向后兼容：用户登录（返回用户对象）"""
+        user = self.authenticate(phone, password)
+        if user is None:
+            raise ValueError("用户不存在或密码错误")
+        # 更新最后登录时间
+        user.last_sign_in = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(user)
+        return user

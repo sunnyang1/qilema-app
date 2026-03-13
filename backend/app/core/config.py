@@ -5,7 +5,7 @@
 import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -29,7 +29,10 @@ class Settings(BaseSettings):
 
     # ========== 日志配置 ==========
     LOG_LEVEL: str = "INFO"  # 日志级别: DEBUG, INFO, WARNING, ERROR, CRITICAL
-    LOG_FORMAT: str = "%(asctime)s | %(levelname)s | %(request_id)s | %(user_id)s | %(name)s | %(message)s"
+    LOG_FORMAT: str = (
+        "%(asctime)s | %(levelname)s | %(request_id)s | "
+        "%(user_id)s | %(name)s | %(message)s"
+    )
     LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
     LOG_DIR: str = "logs"  # 日志目录
     LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024  # 10MB
@@ -282,8 +285,8 @@ class Settings(BaseSettings):
         if not v or v.strip() == "":
             raise ValueError(
                 "SECRET_KEY不能为空。"
-                f"请通过环境变量设置或修改 .env 文件。"
-                f"请使用以下命令生成强随机密钥: python backend/scripts/generate_secret_key.py"
+                "请通过环境变量设置或修改 .env 文件。"
+                "请使用以下命令生成强随机密钥: python backend/scripts/generate_secret_key.py"
             )
 
         # 获取环境类型

@@ -21,7 +21,7 @@ class GenderEnum(str, enum.Enum):
 class BloodTypeEnum(str, enum.Enum):
     A = "A"
     B = "B"
-    O = "O"
+    O = "O"  # noqa: E741
     AB = "AB"
     UNKNOWN = "UNKNOWN"
 

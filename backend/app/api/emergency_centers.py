@@ -7,6 +7,7 @@
 
 from typing import List
 
+from app.api.dependencies import get_emergency_center_service
 from app.core.database import get_db
 from app.core.exceptions import (
     ForbiddenException,
@@ -17,19 +18,14 @@ from app.core.response_builder import ApiResponseBuilder
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.emergency_center import (
-    AmbulanceCreate,
     AmbulanceLocation,
     AmbulanceResponse,
     AmbulanceTracking,
-    AmbulanceUpdate,
     Call120Request,
-    Call120Response,
-    EmergencyCallCreate,
     EmergencyCallResponse,
     EmergencyCallUpdate,
     EmergencyCenterCreate,
     EmergencyCenterResponse,
-    EmergencyCenterUpdate,
     HealthSummary,
     RescueRecordCreate,
     RescueRecordResponse,
@@ -40,7 +36,6 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["120急救中心"])
-emergency_center_service = EmergencyCenterService()
 
 
 # ========== 120一键拨打 ==========
@@ -49,7 +44,7 @@ emergency_center_service = EmergencyCenterService()
 @router.post("/call-120", status_code=status.HTTP_201_CREATED)
 def call_120(
     request: Call120Request,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -58,7 +53,7 @@ def call_120(
     创建急救呼叫记录,拨打120电话,自动发送位置和健康档案
     """
     try:
-        response = emergency_center_service.call_120(db, request)
+        response = service.call_120(request)
         return ApiResponseBuilder.success(data=response, message="120急救呼叫成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -70,7 +65,7 @@ def call_120(
 @router.get("/calls/{call_id}", response_model=EmergencyCallResponse)
 def get_emergency_call(
     call_id: int,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -78,7 +73,7 @@ def get_emergency_call(
 
     返回呼叫记录的完整信息
     """
-    call = emergency_center_service.get_emergency_call(db, call_id)
+    call = service.get_emergency_call(call_id)
     if not call:
         raise NotFoundException("呼叫记录不存在")
 
@@ -92,7 +87,7 @@ def get_emergency_call(
 @router.get("/calls/my-calls", response_model=List[EmergencyCallResponse])
 def get_my_emergency_calls(
     limit: int = 10,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -100,9 +95,7 @@ def get_my_emergency_calls(
 
     返回当前用户的所有急救呼叫记录
     """
-    calls = emergency_center_service.get_user_emergency_calls(
-        db, current_user.user_id, limit
-    )
+    calls = service.get_user_emergency_calls(current_user.user_id, limit)
     return calls
 
 
@@ -111,6 +104,7 @@ def update_emergency_call(
     call_id: int,
     update_data: EmergencyCallUpdate,
     db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -118,7 +112,7 @@ def update_emergency_call(
 
     更新呼叫状态、通话备注等信息
     """
-    call = emergency_center_service.get_emergency_call(db, call_id)
+    call = service.get_emergency_call(call_id)
     if not call:
         raise NotFoundException("呼叫记录不存在")
 
@@ -142,7 +136,7 @@ def update_emergency_call(
 )
 def dispatch_ambulance(
     emergency_call_id: int,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -151,7 +145,7 @@ def dispatch_ambulance(
     为急救呼叫创建救护车记录并标记为已派出
     """
     try:
-        ambulance = emergency_center_service.dispatch_ambulance(db, emergency_call_id)
+        ambulance = service.dispatch_ambulance(emergency_call_id)
         return ambulance
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -159,7 +153,8 @@ def dispatch_ambulance(
 
 @router.post("/ambulances/location", response_model=AmbulanceResponse)
 def update_ambulance_location(
-    location_data: AmbulanceLocation, db: Session = Depends(get_db)
+    location_data: AmbulanceLocation,
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
 ):
     """
     更新救护车位置
@@ -167,9 +162,7 @@ def update_ambulance_location(
     接收救护车位置更新并保存
     """
     try:
-        ambulance = emergency_center_service.update_ambulance_location(
-            db, location_data
-        )
+        ambulance = service.update_ambulance_location(location_data)
         return ambulance
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -178,7 +171,7 @@ def update_ambulance_location(
 @router.get("/ambulances/{emergency_call_id}/track", response_model=AmbulanceTracking)
 def track_ambulance(
     emergency_call_id: int,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -187,7 +180,7 @@ def track_ambulance(
     获取救护车的实时位置和状态
     """
     try:
-        tracking = emergency_center_service.track_ambulance(db, emergency_call_id)
+        tracking = service.track_ambulance(emergency_call_id)
         return tracking
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -203,7 +196,7 @@ def track_ambulance(
 )
 def create_rescue_record(
     record_data: RescueRecordCreate,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -212,7 +205,7 @@ def create_rescue_record(
     记录完整的救援过程信息
     """
     try:
-        record = emergency_center_service.create_rescue_record(db, record_data)
+        record = service.create_rescue_record(record_data)
         return record
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -222,7 +215,7 @@ def create_rescue_record(
 def update_rescue_record(
     record_id: int,
     update_data: RescueRecordUpdate,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -231,9 +224,7 @@ def update_rescue_record(
     更新救援过程、结果、费用等信息
     """
     try:
-        record = emergency_center_service.update_rescue_record(
-            db, record_id, update_data
-        )
+        record = service.update_rescue_record(record_id, update_data)
         if not record:
             raise NotFoundException("救援记录不存在")
         return record
@@ -247,7 +238,7 @@ def update_rescue_record(
 @router.post("/health-summary/{user_id}", response_model=HealthSummary)
 def get_health_summary(
     user_id: str,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -256,7 +247,7 @@ def get_health_summary(
     生成用户的健康档案摘要,包括基本信息、健康档案、设备数据、异常记录等
     """
     try:
-        summary = emergency_center_service.generate_health_summary(db, user_id)
+        summary = service.generate_health_summary(user_id)
         return summary
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -271,7 +262,8 @@ def get_health_summary(
     status_code=status.HTTP_201_CREATED,
 )
 def create_emergency_center(
-    center_data: EmergencyCenterCreate, db: Session = Depends(get_db)
+    center_data: EmergencyCenterCreate,
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
 ):
     """
     创建急救中心(管理员接口)
@@ -279,20 +271,23 @@ def create_emergency_center(
     添加新的急救中心配置
     """
     try:
-        center = emergency_center_service.create_emergency_center(db, center_data)
+        center = service.create_emergency_center(center_data)
         return center
     except ValueError as e:
         raise ValidationException(detail=str(e))
 
 
 @router.get("/centers", response_model=List[EmergencyCenterResponse])
-def get_emergency_centers(active_only: bool = True, db: Session = Depends(get_db)):
+def get_emergency_centers(
+    active_only: bool = True,
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
+):
     """
     获取急救中心列表(管理员接口)
 
     返回所有急救中心配置
     """
-    centers = emergency_center_service.get_emergency_centers(db, active_only)
+    centers = service.get_emergency_centers(active_only)
     return centers
 
 
@@ -300,7 +295,9 @@ def get_emergency_centers(active_only: bool = True, db: Session = Depends(get_db
 
 
 @router.get("/statistics/overview")
-def get_rescue_statistics(db: Session = Depends(get_db)):
+def get_rescue_statistics(
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
+):
     """
     获取救援统计信息(管理员接口)
 
@@ -327,7 +324,7 @@ def quick_call_120(
     current_lat: float,
     current_lon: float,
     send_health_summary: bool = True,
-    db: Session = Depends(get_db),
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -341,13 +338,14 @@ def quick_call_120(
         send_health_summary=send_health_summary,
     )
 
-    response = emergency_center_service.call_120(db, request)
+    response = service.call_120(request)
     return ApiResponseBuilder.success(data=response, message="快速拨打120成功")
 
 
 @router.get("/my-health-summary", response_model=HealthSummary)
 def get_my_health_summary(
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    service: EmergencyCenterService = Depends(get_emergency_center_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     获取我的健康档案摘要
@@ -355,9 +353,7 @@ def get_my_health_summary(
     快速获取当前用户的健康档案摘要
     """
     try:
-        summary = emergency_center_service.generate_health_summary(
-            db, current_user.user_id
-        )
+        summary = service.generate_health_summary(current_user.user_id)
         return summary
     except ValueError as e:
         raise ValidationException(detail=str(e))

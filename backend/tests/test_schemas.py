@@ -14,7 +14,6 @@ from app.core.schemas import (
     SuccessResponse,
     TimestampMixin,
 )
-from pydantic import BaseModel
 
 
 # 测试用的模拟ORM对象

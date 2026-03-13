@@ -8,7 +8,6 @@ import math
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import requests
 from app.models.emergency_resource_model import (
     EmergencyResource,
     NavigationRoute,
@@ -16,7 +15,6 @@ from app.models.emergency_resource_model import (
     ResourceFacility,
     ResourceUsageLog,
 )
-from app.models.user import User
 from app.schemas.emergency_resource import (
     NavigationRequest,
     NavigationResponse,
@@ -27,10 +25,11 @@ from app.schemas.emergency_resource import (
     ResourceFacilityCreate,
     ResourceQuery,
     ResourceStatistics,
+    ResourceStatus,
+    ResourceType,
     ResourceUpdate,
-    ResourceUsageLogCreate,
 )
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 
@@ -495,7 +494,7 @@ class EmergencyResourceService:
             db.query(func.count(EmergencyResource.id))
             .filter(
                 EmergencyResource.resource_type == ResourceType.HOSPITAL.value,
-                EmergencyResource.has_emergency == True,
+                EmergencyResource.has_emergency.is_(True),
             )
             .scalar()
         )
@@ -510,7 +509,7 @@ class EmergencyResourceService:
             db.query(func.count(EmergencyResource.id))
             .filter(
                 EmergencyResource.resource_type == ResourceType.AED.value,
-                EmergencyResource.is_24h == True,
+                EmergencyResource.is_24h.is_(True),
             )
             .scalar()
         )

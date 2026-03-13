@@ -5,7 +5,6 @@
 """
 
 import os
-from unittest.mock import patch
 
 import pytest
 from sqlalchemy import event
@@ -92,7 +91,7 @@ class TestEagerLoading:
         query_count = 0
 
         # 使用服务获取健康档案
-        service = HealthRecordService()
+        service = HealthRecordService(db)
         record = service.get_health_record(db, test_user.user_id)
 
         # 记录第一次查询后的查询次数
@@ -139,7 +138,7 @@ class TestEagerLoading:
         query_count = 0
 
         # 获取健康档案
-        service = HealthRecordService()
+        service = HealthRecordService(db)
         record = service.get_health_record(db, test_user.user_id)
 
         # 验证结果
@@ -175,7 +174,7 @@ class TestEagerLoading:
         query_count = 0
 
         # 获取健康档案
-        service = HealthRecordService()
+        service = HealthRecordService(db)
         record = service.get_health_record(db, test_user.user_id)
 
         # 访问病史记录（不应触发额外查询）

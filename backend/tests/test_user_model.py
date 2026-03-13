@@ -4,7 +4,6 @@ User模型单元测试 - 测试重构后的to_dict方法
 
 from datetime import datetime
 
-import pytest
 from app.models.user import BloodTypeEnum, GenderEnum, User
 
 

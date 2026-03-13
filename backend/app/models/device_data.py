@@ -2,11 +2,9 @@
 设备数据SQLAlchemy模型
 """
 
-from typing import List, Optional
-
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship as db_relationship
 
 

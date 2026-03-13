@@ -4,9 +4,9 @@
 提供药品管理、用药计划、提醒和服药记录功能
 """
 
-from datetime import date, datetime, time
+from datetime import datetime
 from enum import Enum as PyEnum
-from typing import List, Optional
+from typing import List
 
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
@@ -223,7 +223,11 @@ class MedicationReminderSchedule(Base, BaseModelMixin):
     )
 
     def __repr__(self):
-        return f"<MedicationReminderSchedule(id={self.id}, medication_item={self.medication_item_id})>"
+        return (
+            f"<MedicationReminderSchedule("
+            f"id={self.id}, "
+            f"medication_item={self.medication_item_id})>"
+        )
 
     def get_times_list(self) -> List[str]:
         """获取用药时间列表"""

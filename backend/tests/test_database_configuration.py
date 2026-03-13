@@ -5,8 +5,6 @@
 import pytest
 from app.core.config import Settings
 from app.core.database import get_db, get_db_session, get_engine
-from sqlalchemy import create_engine
-from sqlalchemy.pool import NullPool, QueuePool
 
 
 class TestDatabaseConfiguration:
@@ -48,7 +46,6 @@ class TestDatabaseConfiguration:
         engine = get_engine(settings.DATABASE_URL)
 
         # SQLite使用NullPool
-        from sqlalchemy.pool import NullPool
 
         # 注意：SQLite的pool_class可能是None而不是NullPool
         # 这里我们只验证引擎创建成功
@@ -70,7 +67,7 @@ class TestDatabaseConfiguration:
 
         # 注意：如果没有psycopg2，这里会失败
         try:
-            from psycopg2 import OperationalError
+            pass
         except ImportError:
             pytest.skip("psycopg2未安装")
 

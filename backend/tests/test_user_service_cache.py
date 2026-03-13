@@ -3,10 +3,8 @@
 """
 
 import json
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import app.services.user_service
-import pytest
 from app.models.user import User
 from app.services.user_service import UserService
 
@@ -167,7 +165,6 @@ class TestUserServiceCache:
 
         # 验证失效了相关缓存（如果实现的话）
         # 注意：这个测试可能需要根据实际实现调整
-        pass
 
     @patch("app.services.user_service.redis_manager")
     def test_cache_ttl_5_minutes(self, mock_redis_manager):

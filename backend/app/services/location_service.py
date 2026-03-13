@@ -50,4 +50,3 @@ class LocationService:
     ):
         """更新用户位置"""
         # 这里应该将位置信息保存到数据库
-        pass

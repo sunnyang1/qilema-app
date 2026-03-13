@@ -7,11 +7,11 @@ AED设备服务
 import json
 import math
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from app.models.emergency_resource_model import AEDStatus, EmergencyResource
 from app.services.base_service import BaseService
-from sqlalchemy import and_, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 
@@ -21,10 +21,16 @@ class AEDService(BaseService[EmergencyResource]):
     model_class = EmergencyResource
     cache_prefix = "aed"
 
-    @classmethod
+    def __init__(self, db: Session):
+        """初始化AED服务
+
+        Args:
+            db: 数据库会话
+        """
+        self.db = db
+
     def get_nearby_aeds(
-        cls,
-        db: Session,
+        self,
         latitude: float,
         longitude: float,
         radius: float = 5000,  # 默认5公里
@@ -35,7 +41,6 @@ class AEDService(BaseService[EmergencyResource]):
         获取附近的AED设备
 
         Args:
-            db: 数据库会话
             latitude: 中心点纬度
             longitude: 中心点经度
             radius: 搜索半径（米）
@@ -46,10 +51,10 @@ class AEDService(BaseService[EmergencyResource]):
             AED设备列表，包含距离信息
         """
         # 计算搜索边界
-        boundaries = cls._calculate_search_boundaries(latitude, longitude, radius)
+        boundaries = self._calculate_search_boundaries(latitude, longitude, radius)
 
         # 基础查询
-        query = db.query(EmergencyResource).filter(
+        query = self.db.query(EmergencyResource).filter(
             EmergencyResource.resource_type == "aed",
             EmergencyResource.is_active == 1,
             EmergencyResource.latitude >= boundaries["min_lat"],
@@ -63,7 +68,7 @@ class AEDService(BaseService[EmergencyResource]):
             query = query.filter(
                 or_(
                     EmergencyResource.aed_status == AEDStatus.ACTIVE.value,
-                    EmergencyResource.aed_status == None,
+                    EmergencyResource.aed_status.is_(None),
                 )
             )
 
@@ -73,18 +78,18 @@ class AEDService(BaseService[EmergencyResource]):
         # 计算精确距离并筛选
         results = []
         for aed in candidates:
-            distance = cls._calculate_distance(
+            distance = self._calculate_distance(
                 latitude, longitude, aed.latitude, aed.longitude
             )
 
             if distance <= radius:
                 aed_dict = aed.to_dict()
                 aed_dict["distance"] = round(distance, 2)
-                aed_dict["distance_text"] = cls._format_distance(distance)
+                aed_dict["distance_text"] = self._format_distance(distance)
                 # 估算到达时间（步行速度约1.2m/s）
                 duration_seconds = int(distance / 1.2)
                 aed_dict["duration_seconds"] = duration_seconds
-                aed_dict["duration_text"] = cls._format_duration(duration_seconds)
+                aed_dict["duration_text"] = self._format_duration(duration_seconds)
                 results.append(aed_dict)
 
         # 按距离排序
@@ -92,9 +97,8 @@ class AEDService(BaseService[EmergencyResource]):
 
         return results[:limit]
 
-    @classmethod
     def get_aed_navigation_url(
-        cls,
+        self,
         from_lat: float,
         from_lon: float,
         to_lat: float,
@@ -124,7 +128,9 @@ class AEDService(BaseService[EmergencyResource]):
         return {
             "amap": (
                 f"https://uri.amap.com/navigation?"
-                f"from={from_coord_lonlat},起点&to={to_coord_lonlat},AED位置&mode={nav_type}&callnative=1"
+                f"from={from_coord_lonlat},起点&"
+                f"to={to_coord_latlon},AED位置&"
+                f"mode={nav_type}&callnative=1"
             ),
             "baidu": (
                 f"https://api.map.baidu.com/direction?origin=latlng:{from_coord_latlon}|"
@@ -137,7 +143,7 @@ class AEDService(BaseService[EmergencyResource]):
             ),
             "apple": (
                 f"http://maps.apple.com/?saddr={from_lat},{from_lon}&"
-                f"daddr={to_lat},{to_lon}&dirflg={cls._get_apple_nav_flag(nav_type)}"
+                f"daddr={to_lat},{to_lon}&dirflg={self._get_apple_nav_flag(nav_type)}"
             ),
             "google": (
                 f"https://www.google.com/maps/dir/?api=1&origin={from_lat},{from_lon}&"
@@ -145,10 +151,8 @@ class AEDService(BaseService[EmergencyResource]):
             ),
         }
 
-    @classmethod
     def import_aeds_batch(
-        cls,
-        db: Session,
+        self,
         aed_data_list: List[Dict[str, Any]],
         operator_id: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -156,7 +160,6 @@ class AEDService(BaseService[EmergencyResource]):
         批量导入AED设备
 
         Args:
-            db: 数据库会话
             aed_data_list: AED数据列表
             operator_id: 操作人ID
 
@@ -169,7 +172,7 @@ class AEDService(BaseService[EmergencyResource]):
 
         for idx, data in enumerate(aed_data_list):
             try:
-                aed = cls._create_aed_from_dict(db, data)
+                self._create_aed_from_dict(data)
                 success_count += 1
             except Exception as e:
                 failed_count += 1
@@ -181,7 +184,7 @@ class AEDService(BaseService[EmergencyResource]):
                     }
                 )
 
-        db.commit()
+        self.db.commit()
 
         return {
             "total": len(aed_data_list),
@@ -190,21 +193,17 @@ class AEDService(BaseService[EmergencyResource]):
             "errors": errors[:10],  # 最多返回10个错误
         }
 
-    @classmethod
-    def get_aed_statistics(
-        cls, db: Session, city: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def get_aed_statistics(self, city: Optional[str] = None) -> Dict[str, Any]:
         """
         获取AED统计信息
 
         Args:
-            db: 数据库会话
             city: 城市名称（可选，不传则统计全部）
 
         Returns:
             统计数据
         """
-        query = db.query(EmergencyResource).filter(
+        query = self.db.query(EmergencyResource).filter(
             EmergencyResource.resource_type == "aed"
         )
 
@@ -220,12 +219,12 @@ class AEDService(BaseService[EmergencyResource]):
             status_counts[status.value] = count
 
         # 未设置状态的
-        unknown_count = query.filter(EmergencyResource.aed_status == None).count()
+        unknown_count = query.filter(EmergencyResource.aed_status.is_(None)).count()
         status_counts["unknown"] = unknown_count
 
         # 按城市统计（前10）
         city_stats = (
-            db.query(
+            self.db.query(
                 EmergencyResource.city, func.count(EmergencyResource.id).label("count")
             )
             .filter(EmergencyResource.resource_type == "aed")
@@ -251,10 +250,8 @@ class AEDService(BaseService[EmergencyResource]):
             ),
         }
 
-    @classmethod
     def update_aed_status(
-        cls,
-        db: Session,
+        self,
         aed_id: int,
         status: str,
         inspection_data: Optional[Dict] = None,
@@ -263,7 +260,6 @@ class AEDService(BaseService[EmergencyResource]):
         更新AED设备状态
 
         Args:
-            db: 数据库会话
             aed_id: AED设备ID
             status: 新状态
             inspection_data: 检查数据（可选）
@@ -271,7 +267,7 @@ class AEDService(BaseService[EmergencyResource]):
         Returns:
             更新后的AED设备
         """
-        aed = cls.get_by_id(db, aed_id)
+        aed = self.__class__.get_by_id(self.db, aed_id)
         if not aed or aed.resource_type != "aed":
             return None
 
@@ -287,17 +283,15 @@ class AEDService(BaseService[EmergencyResource]):
                 # 可以添加到description或使用新字段
                 pass
 
-        db.commit()
-        db.refresh(aed)
+        self.db.commit()
+        self.db.refresh(aed)
         return aed
 
-    @classmethod
-    def get_expiring_aeds(cls, db: Session, days: int = 30) -> List[Dict[str, Any]]:
+    def get_expiring_aeds(self, days: int = 30) -> List[Dict[str, Any]]:
         """
         获取即将过期的AED设备（电池或电极片）
 
         Args:
-            db: 数据库会话
             days: 提前多少天预警
 
         Returns:
@@ -306,7 +300,7 @@ class AEDService(BaseService[EmergencyResource]):
         expiry_date = datetime.utcnow() + timedelta(days=days)
 
         aeds = (
-            db.query(EmergencyResource)
+            self.db.query(EmergencyResource)
             .filter(
                 EmergencyResource.resource_type == "aed",
                 EmergencyResource.is_active == 1,
@@ -348,10 +342,7 @@ class AEDService(BaseService[EmergencyResource]):
 
         return results
 
-    @classmethod
-    def _create_aed_from_dict(
-        cls, db: Session, data: Dict[str, Any]
-    ) -> EmergencyResource:
+    def _create_aed_from_dict(self, data: Dict[str, Any]) -> EmergencyResource:
         """从字典创建AED设备"""
         aed = EmergencyResource(
             resource_type="aed",
@@ -410,13 +401,12 @@ class AEDService(BaseService[EmergencyResource]):
             else:
                 aed.aed_photos = photos
 
-        db.add(aed)
-        db.flush()  # 获取ID但不提交
+        self.db.add(aed)
+        self.db.flush()  # 获取ID但不提交
         return aed
 
-    @staticmethod
     def _calculate_distance(
-        lat1: float, lon1: float, lat2: float, lon2: float
+        self, lat1: float, lon1: float, lat2: float, lon2: float
     ) -> float:
         """计算两点间距离（米）使用Haversine公式"""
         lat1_rad = math.radians(lat1)
@@ -437,9 +427,8 @@ class AEDService(BaseService[EmergencyResource]):
 
         return earth_radius * c
 
-    @staticmethod
     def _calculate_search_boundaries(
-        latitude: float, longitude: float, radius: float
+        self, latitude: float, longitude: float, radius: float
     ) -> Dict[str, float]:
         """计算搜索边界的经纬度"""
         lat_delta = radius / 111000.0
@@ -452,16 +441,14 @@ class AEDService(BaseService[EmergencyResource]):
             "max_lon": longitude + lon_delta,
         }
 
-    @staticmethod
-    def _format_distance(distance: float) -> str:
+    def _format_distance(self, distance: float) -> str:
         """格式化距离显示"""
         if distance < 1000:
             return f"{int(distance)}米"
         else:
             return f"{distance/1000:.1f}公里"
 
-    @staticmethod
-    def _format_duration(seconds: int) -> str:
+    def _format_duration(self, seconds: int) -> str:
         """格式化时长显示"""
         if seconds < 60:
             return "1分钟"
@@ -474,8 +461,7 @@ class AEDService(BaseService[EmergencyResource]):
                 return f"{hours}小时{mins}分钟"
             return f"{hours}小时"
 
-    @staticmethod
-    def _get_apple_nav_flag(nav_type: str) -> str:
+    def _get_apple_nav_flag(self, nav_type: str) -> str:
         """获取苹果地图导航类型标识"""
         flags = {"walking": "w", "driving": "d", "bus": "r"}
         return flags.get(nav_type, "d")

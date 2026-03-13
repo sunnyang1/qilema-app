@@ -5,9 +5,8 @@
 """
 
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
-import pytest
 from app.core.adapters.adapter_factory import AdapterFactory
 from app.core.adapters.jpush_adapter import JPushAdapter, create_jpush_adapter
 

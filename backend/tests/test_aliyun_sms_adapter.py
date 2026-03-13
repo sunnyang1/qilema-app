@@ -5,9 +5,8 @@
 """
 
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
-import pytest
 from app.core.adapters.adapter_factory import AdapterFactory, get_adapter_config
 from app.core.adapters.aliyun_sms_adapter import (
     AliyunSMSAdapter,

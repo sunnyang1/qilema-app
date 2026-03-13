@@ -7,18 +7,11 @@
 import asyncio
 import time
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Dict
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import (
-    create_access_token,
-    decode_access_token,
-    get_current_active_user,
-    get_current_user,
-    verify_password,
-)
+from app.core.security import create_access_token, get_current_user, verify_password
 from app.models.user import User
 from app.schemas.user import UserRegisterRequest
 from app.services.user_service import UserService
@@ -122,8 +115,16 @@ async def login(
     )
 
 
+def get_user_service(db: Session = Depends(get_db)) -> UserService:
+    """获取用户服务实例"""
+    return UserService(db)
+
+
 @router.post("/register", summary="用户注册")
-async def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
+async def register(
+    user_data: UserRegisterRequest,
+    service: UserService = Depends(get_user_service),
+):
     """用户注册"""
     # UserRegisterRequest 已经通过 Pydantic 进行了字段验证
     # 包括：phone 格式、密码长度、name 必填等
@@ -133,7 +134,7 @@ async def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)
 
     # 使用 UserService 创建用户
     try:
-        user = UserService.create_user(db, user_dict)
+        user = service.create(user_dict)
         return ApiResponseBuilder.success(
             data={"user_id": user.user_id}, message="注册成功"
         )

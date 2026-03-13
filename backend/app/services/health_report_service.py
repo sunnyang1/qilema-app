@@ -4,7 +4,6 @@
 提供健康数据趋势分析、异常检测、统计报告等功能
 """
 
-import json
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from enum import Enum as PyEnum
@@ -13,7 +12,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.models.device_data import DeviceData, DeviceThreshold
 from app.models.health_record import HealthRecord
 from app.services.base_service import BaseService
-from sqlalchemy import and_, desc, extract, func, or_
 from sqlalchemy.orm import Session
 
 
@@ -54,10 +52,18 @@ class HealthReportService(BaseService):
         "sleep_duration": {"min": 6, "max": 10, "unit": "小时"},
     }
 
-    @classmethod
+    def __init__(self, db: Session):
+        """
+        初始化健康报告服务
+
+        Args:
+            db: 数据库会话
+        """
+        super().__init__()
+        self.db = db
+
     def get_trend_analysis(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         metric_type: str,
         start_date: date,
@@ -68,7 +74,6 @@ class HealthReportService(BaseService):
         获取健康数据趋势分析
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             metric_type: 指标类型
             start_date: 开始日期
@@ -79,9 +84,7 @@ class HealthReportService(BaseService):
             趋势分析结果
         """
         # 获取数据
-        data_points = cls._get_metric_data(
-            db, user_id, metric_type, start_date, end_date
-        )
+        data_points = self._get_metric_data(user_id, metric_type, start_date, end_date)
 
         if not data_points:
             return {
@@ -93,19 +96,19 @@ class HealthReportService(BaseService):
             }
 
         # 按周期聚合数据
-        aggregated = cls._aggregate_by_period(data_points, period)
+        aggregated = self._aggregate_by_period(data_points, period)
 
         # 计算统计值
-        statistics = cls._calculate_statistics([d["value"] for d in data_points])
+        statistics = self._calculate_statistics([d["value"] for d in data_points])
 
         # 分析趋势
-        trend = cls._analyze_trend([d["value"] for d in data_points])
+        trend = self._analyze_trend([d["value"] for d in data_points])
 
         # 获取阈值
-        thresholds = cls._get_user_thresholds(db, user_id, metric_type)
+        thresholds = self._get_user_thresholds(user_id, metric_type)
 
         # 检测异常
-        anomalies = cls._detect_anomalies(data_points, thresholds)
+        anomalies = self._detect_anomalies(data_points, thresholds)
 
         return {
             "metric_type": metric_type,
@@ -122,10 +125,8 @@ class HealthReportService(BaseService):
             "total_readings": len(data_points),
         }
 
-    @classmethod
     def get_comprehensive_report(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         report_date: date,
         period: ReportPeriod = ReportPeriod.WEEK,
@@ -134,7 +135,6 @@ class HealthReportService(BaseService):
         获取综合健康报告
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             report_date: 报告日期
             period: 报告周期
@@ -143,7 +143,7 @@ class HealthReportService(BaseService):
             综合健康报告
         """
         # 计算日期范围
-        start_date, end_date = cls._get_period_range(report_date, period)
+        start_date, end_date = self._get_period_range(report_date, period)
 
         # 获取各项指标数据
         metrics = {}
@@ -158,14 +158,14 @@ class HealthReportService(BaseService):
             "sleep",
         ]:
             try:
-                trend = cls.get_trend_analysis(
-                    db, user_id, metric_type, start_date, end_date, period
+                trend = self.get_trend_analysis(
+                    user_id, metric_type, start_date, end_date, period
                 )
                 metrics[metric_type] = trend
 
                 if trend["statistics"]:
                     # 计算单项健康评分（简化算法）
-                    score = cls._calculate_metric_score(trend)
+                    score = self._calculate_metric_score(trend)
                     metrics[metric_type]["health_score"] = score
                     overall_score += score
                     metric_count += 1
@@ -176,11 +176,11 @@ class HealthReportService(BaseService):
         avg_score = round(overall_score / metric_count, 1) if metric_count > 0 else 0
 
         # 生成健康建议
-        suggestions = cls._generate_suggestions(metrics)
+        suggestions = self._generate_suggestions(metrics)
 
         # 获取健康档案基本信息
         health_record = (
-            db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
+            self.db.query(HealthRecord).filter(HealthRecord.user_id == user_id).first()
         )
 
         return {
@@ -194,7 +194,7 @@ class HealthReportService(BaseService):
                 "end_date": end_date.isoformat(),
             },
             "overall_health_score": avg_score,
-            "health_level": cls._get_health_level(avg_score),
+            "health_level": self._get_health_level(avg_score),
             "metrics": metrics,
             "suggestions": suggestions,
             "user_profile": {
@@ -206,15 +206,13 @@ class HealthReportService(BaseService):
             "generated_at": datetime.utcnow().isoformat(),
         }
 
-    @classmethod
     def get_anomaly_report(
-        cls, db: Session, user_id: str, days: int = 7, severity: Optional[str] = None
+        self, user_id: str, days: int = 7, severity: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         获取异常检测报告
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             days: 查询天数
             severity: 严重程度筛选（high/medium/low）
@@ -233,8 +231,8 @@ class HealthReportService(BaseService):
             "blood_oxygen",
             "body_temperature",
         ]:
-            trend = cls.get_trend_analysis(
-                db, user_id, metric_type, start_date, end_date, ReportPeriod.DAY
+            trend = self.get_trend_analysis(
+                user_id, metric_type, start_date, end_date, ReportPeriod.DAY
             )
 
             for anomaly in trend.get("anomalies", []):
@@ -261,13 +259,11 @@ class HealthReportService(BaseService):
             "total_anomalies": len(all_anomalies),
             "severity_distribution": severity_counts,
             "anomalies": all_anomalies[:50],  # 最多返回50条
-            "summary": cls._generate_anomaly_summary(all_anomalies),
+            "summary": self._generate_anomaly_summary(all_anomalies),
         }
 
-    @classmethod
     def compare_periods(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         metric_type: str,
         current_start: date,
@@ -279,7 +275,6 @@ class HealthReportService(BaseService):
         对比两个时期的数据
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             metric_type: 指标类型
             current_start, current_end: 当前时期
@@ -288,12 +283,12 @@ class HealthReportService(BaseService):
         Returns:
             对比分析结果
         """
-        current_data = cls.get_trend_analysis(
-            db, user_id, metric_type, current_start, current_end, ReportPeriod.DAY
+        current_data = self.get_trend_analysis(
+            user_id, metric_type, current_start, current_end, ReportPeriod.DAY
         )
 
-        previous_data = cls.get_trend_analysis(
-            db, user_id, metric_type, previous_start, previous_end, ReportPeriod.DAY
+        previous_data = self.get_trend_analysis(
+            user_id, metric_type, previous_start, previous_end, ReportPeriod.DAY
         )
 
         current_stats = current_data.get("statistics", {})
@@ -330,15 +325,11 @@ class HealthReportService(BaseService):
 
         return comparison
 
-    @classmethod
-    def get_daily_summary(
-        cls, db: Session, user_id: str, summary_date: date
-    ) -> Dict[str, Any]:
+    def get_daily_summary(self, user_id: str, summary_date: date) -> Dict[str, Any]:
         """
         获取每日健康摘要
 
         Args:
-            db: 数据库会话
             user_id: 用户ID
             summary_date: 摘要日期
 
@@ -350,9 +341,7 @@ class HealthReportService(BaseService):
         summary = {"date": summary_date.isoformat(), "user_id": user_id, "metrics": {}}
 
         # 心率
-        hr_data = cls._get_metric_data(
-            db, user_id, "heart_rate", summary_date, next_day
-        )
+        hr_data = self._get_metric_data(user_id, "heart_rate", summary_date, next_day)
         if hr_data:
             summary["metrics"]["heart_rate"] = {
                 "avg": round(sum(d["value"] for d in hr_data) / len(hr_data), 1),
@@ -362,7 +351,7 @@ class HealthReportService(BaseService):
             }
 
         # 步数
-        steps_data = cls._get_metric_data(db, user_id, "steps", summary_date, next_day)
+        steps_data = self._get_metric_data(user_id, "steps", summary_date, next_day)
         if steps_data:
             total_steps = sum(d["value"] for d in steps_data)
             summary["metrics"]["steps"] = {
@@ -373,8 +362,8 @@ class HealthReportService(BaseService):
             }
 
         # 血压
-        bp_data = cls._get_metric_data(
-            db, user_id, "blood_pressure", summary_date, next_day
+        bp_data = self._get_metric_data(
+            user_id, "blood_pressure", summary_date, next_day
         )
         if bp_data:
             summary["metrics"]["blood_pressure"] = {
@@ -388,31 +377,29 @@ class HealthReportService(BaseService):
             }
 
         # 睡眠
-        sleep_data = cls._get_metric_data(db, user_id, "sleep", summary_date, next_day)
+        sleep_data = self._get_metric_data(user_id, "sleep", summary_date, next_day)
         if sleep_data:
             total_sleep = sum(d["value"] for d in sleep_data)
             summary["metrics"]["sleep"] = {
                 "total_hours": round(total_sleep, 1),
-                "quality": cls._evaluate_sleep_quality(total_sleep),
+                "quality": self._evaluate_sleep_quality(total_sleep),
             }
 
         # 计算今日健康评分
-        summary["daily_score"] = cls._calculate_daily_score(summary["metrics"])
-        summary["health_status"] = cls._get_health_level(summary["daily_score"])
+        summary["daily_score"] = self._calculate_daily_score(summary["metrics"])
+        summary["health_status"] = self._get_health_level(summary["daily_score"])
 
         return summary
 
-    @classmethod
     def _get_metric_data(
-        cls,
-        db: Session,
+        self,
         user_id: str,
         metric_type: str,
         start_date: date,
         end_date: date,
     ) -> List[Dict[str, Any]]:
         """获取指标数据"""
-        query = db.query(DeviceData).filter(
+        query = self.db.query(DeviceData).filter(
             DeviceData.user_id == user_id,
             DeviceData.data_timestamp
             >= datetime.combine(start_date, datetime.min.time()),
@@ -519,9 +506,8 @@ class HealthReportService(BaseService):
 
         return []
 
-    @classmethod
     def _aggregate_by_period(
-        cls, data_points: List[Dict], period: ReportPeriod
+        self, data_points: List[Dict], period: ReportPeriod
     ) -> List[Dict]:
         """按周期聚合数据"""
         if not data_points:
@@ -583,8 +569,7 @@ class HealthReportService(BaseService):
 
         return data_points
 
-    @classmethod
-    def _calculate_statistics(cls, values: List[float]) -> Dict[str, float]:
+    def _calculate_statistics(self, values: List[float]) -> Dict[str, float]:
         """计算统计数据"""
         if not values:
             return None
@@ -613,8 +598,7 @@ class HealthReportService(BaseService):
             "count": n,
         }
 
-    @classmethod
-    def _analyze_trend(cls, values: List[float]) -> str:
+    def _analyze_trend(self, values: List[float]) -> str:
         """分析趋势"""
         if len(values) < 3:
             return "insufficient_data"
@@ -645,79 +629,75 @@ class HealthReportService(BaseService):
         else:
             return "stable"
 
-    @classmethod
-    def _get_user_thresholds(
-        cls, db: Session, user_id: str, metric_type: str
-    ) -> Dict[str, Any]:
+    def _get_user_thresholds(self, user_id: str, metric_type: str) -> Dict[str, Any]:
         """获取用户阈值设置"""
         threshold = (
-            db.query(DeviceThreshold)
+            self.db.query(DeviceThreshold)
             .filter(DeviceThreshold.user_id == user_id, DeviceThreshold.enabled == 1)
             .first()
         )
 
         if not threshold:
-            return cls.DEFAULT_THRESHOLDS.get(metric_type, {})
+            return self.DEFAULT_THRESHOLDS.get(metric_type, {})
 
         # 根据指标类型返回对应的阈值
         if metric_type == "heart_rate":
             return {
                 "min": threshold.heart_rate_min
-                or cls.DEFAULT_THRESHOLDS["heart_rate"]["min"],
+                or self.DEFAULT_THRESHOLDS["heart_rate"]["min"],
                 "max": threshold.heart_rate_max
-                or cls.DEFAULT_THRESHOLDS["heart_rate"]["max"],
+                or self.DEFAULT_THRESHOLDS["heart_rate"]["max"],
                 "unit": "bpm",
             }
         elif metric_type == "blood_pressure":
             return {
                 "systolic": {
                     "min": threshold.blood_pressure_systolic_min
-                    or cls.DEFAULT_THRESHOLDS["blood_pressure_systolic"]["min"],
+                    or self.DEFAULT_THRESHOLDS["blood_pressure_systolic"]["min"],
                     "max": threshold.blood_pressure_systolic_max
-                    or cls.DEFAULT_THRESHOLDS["blood_pressure_systolic"]["max"],
+                    or self.DEFAULT_THRESHOLDS["blood_pressure_systolic"]["max"],
                 },
                 "diastolic": {
                     "min": threshold.blood_pressure_diastolic_min
-                    or cls.DEFAULT_THRESHOLDS["blood_pressure_diastolic"]["min"],
+                    or self.DEFAULT_THRESHOLDS["blood_pressure_diastolic"]["min"],
                     "max": threshold.blood_pressure_diastolic_max
-                    or cls.DEFAULT_THRESHOLDS["blood_pressure_diastolic"]["max"],
+                    or self.DEFAULT_THRESHOLDS["blood_pressure_diastolic"]["max"],
                 },
                 "unit": "mmHg",
             }
         elif metric_type == "blood_oxygen":
             return {
                 "min": threshold.blood_oxygen_min
-                or cls.DEFAULT_THRESHOLDS["blood_oxygen"]["min"],
+                or self.DEFAULT_THRESHOLDS["blood_oxygen"]["min"],
                 "max": 100,
                 "unit": "%",
             }
         elif metric_type == "body_temperature":
             return {
                 "min": threshold.temperature_min
-                or cls.DEFAULT_THRESHOLDS["body_temperature"]["min"],
+                or self.DEFAULT_THRESHOLDS["body_temperature"]["min"],
                 "max": threshold.temperature_max
-                or cls.DEFAULT_THRESHOLDS["body_temperature"]["max"],
+                or self.DEFAULT_THRESHOLDS["body_temperature"]["max"],
                 "unit": "℃",
             }
         elif metric_type == "steps":
             return {
-                "min": threshold.steps_min or cls.DEFAULT_THRESHOLDS["steps"]["min"],
-                "max": threshold.steps_max or cls.DEFAULT_THRESHOLDS["steps"]["max"],
+                "min": threshold.steps_min or self.DEFAULT_THRESHOLDS["steps"]["min"],
+                "max": threshold.steps_max or self.DEFAULT_THRESHOLDS["steps"]["max"],
                 "unit": "步",
             }
         elif metric_type == "sleep":
             return {
                 "min": threshold.sleep_duration_min
-                or cls.DEFAULT_THRESHOLDS["sleep_duration"]["min"],
-                "max": cls.DEFAULT_THRESHOLDS["sleep_duration"]["max"],
+                or self.DEFAULT_THRESHOLDS["sleep_duration"]["min"],
+                "max": self.DEFAULT_THRESHOLDS["sleep_duration"]["max"],
                 "unit": "小时",
             }
 
         return {}
 
-    @classmethod
     def _detect_anomalies(
-        cls, data_points: List[Dict], thresholds: Dict[str, Any]
+        self, data_points: List[Dict], thresholds: Dict[str, Any]
     ) -> List[Dict]:
         """检测异常数据"""
         anomalies = []
@@ -767,9 +747,8 @@ class HealthReportService(BaseService):
 
         return anomalies
 
-    @classmethod
     def _get_period_range(
-        cls, report_date: date, period: ReportPeriod
+        self, report_date: date, period: ReportPeriod
     ) -> Tuple[date, date]:
         """获取报告周期日期范围"""
         end_date = report_date
@@ -787,8 +766,7 @@ class HealthReportService(BaseService):
 
         return start_date, end_date
 
-    @classmethod
-    def _calculate_metric_score(cls, trend_data: Dict) -> float:
+    def _calculate_metric_score(self, trend_data: Dict) -> float:
         """计算单项健康评分（简化算法）"""
         stats = trend_data.get("statistics", {})
         if not stats:
@@ -807,8 +785,7 @@ class HealthReportService(BaseService):
 
         return round(max(0, min(100, base_score)), 1)
 
-    @classmethod
-    def _get_health_level(cls, score: float) -> str:
+    def _get_health_level(self, score: float) -> str:
         """获取健康等级"""
         if score >= 90:
             return "excellent"
@@ -819,8 +796,7 @@ class HealthReportService(BaseService):
         else:
             return "poor"
 
-    @classmethod
-    def _generate_suggestions(cls, metrics: Dict) -> List[str]:
+    def _generate_suggestions(self, metrics: Dict) -> List[str]:
         """生成健康建议"""
         suggestions = []
 
@@ -850,8 +826,7 @@ class HealthReportService(BaseService):
 
         return suggestions[:5]  # 最多返回5条建议
 
-    @classmethod
-    def _generate_anomaly_summary(cls, anomalies: List[Dict]) -> str:
+    def _generate_anomaly_summary(self, anomalies: List[Dict]) -> str:
         """生成异常摘要"""
         if not anomalies:
             return "最近未检测到明显异常"
@@ -865,8 +840,7 @@ class HealthReportService(BaseService):
         else:
             return "有少量异常，但总体在可控范围内"
 
-    @classmethod
-    def _evaluate_sleep_quality(cls, total_hours: float) -> str:
+    def _evaluate_sleep_quality(self, total_hours: float) -> str:
         """评估睡眠质量"""
         if total_hours >= 7 and total_hours <= 9:
             return "good"
@@ -877,8 +851,7 @@ class HealthReportService(BaseService):
         else:
             return "excessive"
 
-    @classmethod
-    def _calculate_daily_score(cls, metrics: Dict) -> float:
+    def _calculate_daily_score(self, metrics: Dict) -> float:
         """计算每日健康评分"""
         score = 70  # 基础分
 

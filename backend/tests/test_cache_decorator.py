@@ -2,9 +2,7 @@
 测试通用缓存装饰器
 """
 
-import time
-from functools import wraps
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from app.core.cache import cache, cache_clear, cache_result, invalidate_cache

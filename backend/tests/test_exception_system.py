@@ -5,7 +5,7 @@
 """
 
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from app.core.exceptions import (
@@ -13,19 +13,14 @@ from app.core.exceptions import (
     BaseAppException,
     DatabaseException,
     DeviceNotFoundException,
-    NotFoundException,
     UnauthorizedException,
     UserAlreadyExistsException,
     UserNotFoundException,
     ValidationException,
     handle_database_error,
 )
-from app.core.middleware import (
-    ExceptionHandlerMiddleware,
-    RequestLoggingMiddleware,
-    setup_middleware,
-)
-from fastapi import FastAPI, Request
+from app.core.middleware import setup_middleware
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 

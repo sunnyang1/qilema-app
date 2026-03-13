@@ -4,9 +4,6 @@
 验证响应Schema的正确性和一致性
 """
 
-from datetime import datetime
-
-import pytest
 from app.schemas.common import (
     ApiResponse,
     ErrorResponse,

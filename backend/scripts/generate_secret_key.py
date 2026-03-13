@@ -9,9 +9,7 @@
     生成的64字节随机密钥（base64编码）
 """
 import base64
-import os
 import secrets
-import sys
 
 
 def generate_secret_key() -> str:

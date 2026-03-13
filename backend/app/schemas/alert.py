@@ -3,10 +3,9 @@
 """
 
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional
 
-from app.core.schemas import BaseSchema
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class AlertSettingCreate(BaseModel):

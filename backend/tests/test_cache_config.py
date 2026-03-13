@@ -1,6 +1,5 @@
 """缓存配置模块测试"""
 
-import pytest
 from app.core.cache_config import CacheConfig, cache_key, cache_pattern
 
 

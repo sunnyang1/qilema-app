@@ -8,7 +8,6 @@
 import json
 import logging
 import logging.handlers
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -170,7 +169,7 @@ class ContextFilter(logging.Filter):
             request_id = request_id_var.get()
             if request_id:
                 record.request_id = request_id
-        except:
+        except Exception:
             pass
 
         # 尝试从上下文中获取用户 ID
@@ -181,7 +180,7 @@ class ContextFilter(logging.Filter):
             user_id = user_id_var.get()
             if user_id:
                 record.user_id = user_id
-        except:
+        except Exception:
             pass
 
         return True
@@ -291,5 +290,5 @@ if __name__ == "__main__":
     # 记录异常日志
     try:
         1 / 0
-    except Exception as e:
+    except Exception:
         logger.error("Division by zero", exc_info=True)

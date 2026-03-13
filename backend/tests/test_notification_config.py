@@ -6,7 +6,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
 from app.core.notification_simulators import (
     EmailNotificationSimulator,
     NotificationServiceConfig,

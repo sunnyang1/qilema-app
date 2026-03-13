@@ -5,9 +5,8 @@ SendGrid邮件适配器集成测试
 """
 
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
-import pytest
 from app.core.adapters.adapter_factory import AdapterFactory
 from app.core.adapters.sendgrid_adapter import SendGridAdapter, create_sendgrid_adapter
 

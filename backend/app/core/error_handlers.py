@@ -4,8 +4,6 @@
 统一处理应用中所有异常，返回标准化的错误响应
 """
 
-from typing import Union
-
 from app.core.exceptions import BaseAppException
 from app.core.response import APIResponse
 from fastapi import Request, status

@@ -2,8 +2,7 @@
 测试签到服务缓存功能
 """
 
-from datetime import date, timedelta
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from app.schemas.checkin import CheckInCreate
@@ -162,9 +161,9 @@ class TestCheckInServiceCache:
                 result1, CheckInStatusResponse
             )
             if isinstance(result1, dict):
-                assert result1["is_checked_in"] == True
+                assert result1["is_checked_in"] is True
             else:
-                assert result1.is_checked_in == True
+                assert result1.is_checked_in is True
 
     def test_get_checkin_status_cache_miss(self, mock_db, mock_redis_client):
         """测试缓存未命中时查询数据库"""

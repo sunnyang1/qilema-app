@@ -5,9 +5,8 @@
 """
 
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
-import pytest
 from app.core.adapters.adapter_factory import AdapterFactory
 from app.core.adapters.aliyun_voice_adapter import (
     AliyunVoiceAdapter,

@@ -6,7 +6,6 @@
 
 from datetime import date, datetime, timedelta
 
-import pytest
 from app.models.device_data import DeviceData
 from app.services.health_report_service import HealthReportService, ReportPeriod
 from sqlalchemy.orm import Session
