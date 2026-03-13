@@ -1,0 +1,68 @@
+schemaVersion: '2.1.0'
+
+metadata:
+  name: 'qilema-backend'
+  version: '1.0.0'
+
+# Check if essential files exist
+fileExistenceTests:
+  - name: 'Has uvicorn start command'
+    path: '/opt/venv/bin/uvicorn'
+    shouldExist: true
+    permissions: '-rwx'
+
+  - name: 'Has Python venv'
+    path: '/opt/venv'
+    shouldExist: true
+    isDirectory: true
+
+  - name: 'Has app directory'
+    path: '/app'
+    shouldExist: true
+    isDirectory: true
+
+# Verify labels
+labels:
+  - key: 'maintainer'
+    value: 'Qilema Team'
+
+  - key: 'description'
+    value: '起了吗 App - 后端API服务'
+
+# Check runtime configuration
+fileContentTests:
+  - name: 'Has PYTHONUNBUFFERED set'
+    path: '/etc/profile'
+    excludedLines: ['.*#.*']
+    matchedLines: []
+    excludedContent: []
+    includedContent: []
+
+# Run specific commands
+runTests:
+  - name: 'Can import fastapi'
+    command: 'python'
+    args:
+      - '-c'
+      - 'import fastapi; print(fastapi.__version__)'
+    excludedOutput: ['.*Error.*']
+
+  - name: 'Can import sqlalchemy'
+    command: 'python'
+    args:
+      - '-c'
+      - 'import sqlalchemy; print(sqlalchemy.__version__)'
+    excludedOutput: ['.*Error.*']
+
+  - name: 'Has health endpoint config'
+    command: 'grep'
+    args:
+      - '-r'
+      - 'health'
+      - '/app/app'
+    excludedOutput: []
+
+# Verify no root user
+userTests:
+  - uid: 1000
+    username: 'appuser'

@@ -6,10 +6,13 @@ FROM python:3.12-slim as builder
 # 设置工作目录
 WORKDIR /app
 
-# 安装构建依赖
+# 安装构建依赖（包括编译 dependency-injector 所需的工具）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    python3-dev \
+    gcc \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
@@ -18,7 +21,10 @@ COPY requirements.txt .
 # 创建虚拟环境并安装依赖
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip && \
+
+# 升级 pip 并安装依赖
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir cython && \
     pip install --no-cache-dir -r requirements.txt
 
 # 运行阶段
