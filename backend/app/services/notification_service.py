@@ -1,32 +1,30 @@
 """
 消息通知服务
 
-实现APP推送通知、短信通知、电话通知等核心功能
-继承BaseService获得统一的CRUD和缓存能力
+此模块已重构，NotificationService 现在作为门面模式实现。
+为了保持向后兼容，此文件重新导出新的门面服务。
+
+新的服务结构：
+- app/services/notification/circuit_breaker_service.py
+- app/services/notification/notification_sender_service.py
+- app/services/notification/notification_template_service.py
+- app/services/notification/notification_stats_service.py
+- app/services/notification/notification_facade.py (门面)
+
+使用示例:
+    >>> from app.services.notification import NotificationService
+    >>> # 或者
+    >>> from app.services.notification_service import NotificationService
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, desc
-import logging
-
-from app.models.notification_model import Notification, NotificationPreference
-from app.models.user import User
-from app.models.emergency_contact import EmergencyContact
-from app.schemas.notification import (
-    NotificationCreate, NotificationUpdate, NotificationQuery, NotificationStatistics as NotificationStatisticsSchema,
-    SendNotificationRequest, BatchSendNotificationRequest, MarkAsReadRequest,
-    NotificationPreferenceCreate, NotificationPreferenceUpdate,
-    NotificationTemplateCreate, NotificationTemplateUpdate,
-    NotificationPriority, NotificationChannelEnum, NotificationStatusEnum, NotificationTypeEnum
-)
-from app.core.notification_simulators import (
-    NotificationServiceConfig,
-    create_push_simulator,
-    create_sms_simulator,
-    create_phone_simulator,
-    create_email_simulator
+# 为了保持向后兼容，重新导出新的门面服务
+from app.services.notification import (
+    CircuitBreakerService,
+    NotificationSenderService,
+    NotificationService,
+    NotificationStatsService,
+    NotificationTemplate,
+    NotificationTemplateService,
 )
 from app.services.base_service import BaseService
 from app.core.cache_config import CacheConfig
@@ -850,3 +848,11 @@ class NotificationService(BaseService[Notification]):
         finally:
             db.close()
 
+__all__ = [
+    "CircuitBreakerService",
+    "NotificationSenderService",
+    "NotificationTemplateService",
+    "NotificationTemplate",
+    "NotificationStatsService",
+    "NotificationService",
+]

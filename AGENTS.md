@@ -1,379 +1,253 @@
-# 测试组织规范文档
+# AGENTS.md - 项目知识库
 
-## 1. 概述
+## 服务层重构 - 最佳实践
 
-本文档定义了起了吗App项目的测试组织规范，包括测试文件命名规则、测试分类、测试清理流程等，旨在确保测试套件的稳定性和可维护性。
+### 阶段4: 模型层优化
 
-## 2. 测试文件命名规则
-
-### 2.1 单元测试文件命名
-
-**格式**: `test_<module_name>.py`
-
-**示例**:
-- `test_user_service.py` - UserService的单元测试
-- `test_device_service.py` - DeviceService的单元测试
-- `test_health_record_service.py` - HealthRecordService的单元测试
-
-**规则**:
-- 必须以`test_`开头
-- 模块名称应为小写，使用下划线分隔
-- **禁止在文件名中使用hash后缀**（如`test_user_service-4d794b424b.py`）
-- 文件名应简洁且描述性强
-
-### 2.2 集成测试文件命名
-
-**格式**: `test_<feature>_integration.py`
-
-**示例**:
-- `test_notification_integration.py` - 通知功能集成测试
-
-**规则**:
-- 必须以`test_`开头，以`_integration.py`结尾
-- 功能名称应为小写，使用下划线分隔
-
-### 2.3 其他测试文件命名
-
-**配置测试**: `test_<component>_<aspect>.py`
-- `test_config_validation.py` - 配置验证测试
-- `test_cache_decorator.py` - 缓存装饰器测试
-
-## 3. 测试分类
-
-### 3.1 单元测试 (Unit Tests)
-
-**定义**: 测试单个函数、方法或类，隔离外部依赖（如数据库、网络等）
-
-**特点**:
-- 快速执行
-- 不依赖外部系统
-- 使用Mock隔离依赖
-- 覆盖边界条件和异常情况
-
-**存放位置**: `tests/`目录下（当前不使用子目录）
-
-**示例**:
+#### 关联加载策略
 ```python
-def test_create_health_record_success(db, health_service):
-    """测试成功创建健康档案"""
-    # Given
-    data = HealthRecordCreate(...)
-    # When
-    result = health_service.create_health_record(db, data)
-    # Then
-    assert result is not None
+# 高频/大数据量 - 使用 lazy='dynamic'（返回 Query 对象）
+checkins = db_relationship("CheckIn", lazy="dynamic")
+
+# 中频/小数据量 - 使用 lazy='select'（默认）
+emergency_contacts = db_relationship("EmergencyContact", lazy="select")
+
+# 一对一/总是需要 - 使用 lazy='joined'（立即加载）
+health_record = db_relationship("HealthRecord", lazy="joined", uselist=False)
 ```
 
-### 3.2 集成测试 (Integration Tests)
-
-**定义**: 测试多个组件或服务之间的交互，使用真实的数据库和外部服务
-
-**特点**:
-- 测试组件间的集成
-- 使用测试数据库
-- 可能使用真实的外部服务（如Redis）
-- 执行速度较慢
-
-**示例**:
+#### 数据库索引
 ```python
-def test_notification_integration():
-    """测试通知发送集成流程"""
-    # 测试从异常检测到通知发送的完整流程
+__table_args__ = (
+    Index("idx_users_phone_created", "phone", "created_at"),
+    Index("idx_users_last_sign_in", "last_sign_in"),
+)
 ```
 
-### 3.3 E2E测试 (End-to-End Tests)
-
-**定义**: 测试完整的用户场景，从前端到后端
-
-**状态**: 当前不实现E2E测试，将来可根据需要添加
-
-## 4. 测试结构规范
-
-### 4.1 测试类组织
-
-**格式**:
+#### to_dict() 优化
 ```python
-class Test<ModuleName>:
-    """测试描述"""
+# 预定义关联关系列表，避免运行时 inspect
+_RELATIONSHIP_NAMES = frozenset(["emergency_contacts", "checkins", ...])
 
-    def test_<feature>_<scenario>(self, fixtures):
-        """测试描述"""
-        # Given - 准备测试数据
-        # When - 执行操作
-        # Then - 验证结果
+# 支持选择性包含关联关系
+def to_dict(self, include_relations: Optional[List[str]] = None) -> dict:
+    ...
+
+# 便捷方法：包含指定关联关系
+def to_dict_with_relations(self, relations: List[str]) -> dict:
+    ...
 ```
 
-**规则**:
-- 测试类以`Test`开头，使用大驼峰命名法
-- 测试方法以`test_`开头，使用小写和下划线
-- 测试方法名应清晰描述测试的场景
-- 使用`pytest.fixture`管理测试数据
+### 阶段5: 代码复用优化
 
-### 4.2 Fixture命名
-
-**格式**: `test_<resource_name>` 或 `<resource_name>`
-
-**示例**:
+#### CacheMixin 使用
 ```python
-@pytest.fixture
-def test_user(db):
-    """创建测试用户"""
-    user = User(...)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+from app.core.cache_mixin import CacheMixin
 
-@pytest.fixture
-def health_service():
-    """创建健康档案服务实例"""
-    return HealthRecordService()
+class UserService(BaseService[User], CacheMixin):
+    cache_prefix = "user"
+    cache_ttl = 300
+
+    def get_by_id(self, user_id: str):
+        # 1. 尝试从缓存获取
+        cache_key = self._make_key(f"id:{user_id}")
+        cached = self._get(cache_key)
+        if cached:
+            return cached
+
+        # 2. 查询数据库
+        user = ...
+
+        # 3. 写入缓存
+        self._set(cache_key, user)
+        return user
 ```
 
-**规则**:
-- Fixture函数名应简洁且描述性强
-- 清理操作应在`finally`块中或使用`yield`实现
-- 避免Fixture之间的隐式依赖
-
-### 4.3 数据库Fixture
-
-**格式**:
+#### QueryBuilder 使用
 ```python
-@pytest.fixture(scope="function")
-def db():
-    """创建测试数据库会话"""
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
+from app.core.query_builder import QueryBuilder, paginate
+
+# 方法1: 使用 QueryBuilder
+builder = QueryBuilder(db.query(User), User)
+result = (
+    builder.filter(status='active')
+    .where_like('name', f'%{keyword}%')
+    .order_by('created_at', desc=True)
+    .paginate(page=1, per_page=20)
+    .execute()
+)
+
+# 方法2: 使用便捷函数
+pagination = paginate(query, page=1, per_page=20)
 ```
 
-**规则**:
-- 使用`scope="function"`确保每个测试都有干净的数据库
-- 在`finally`块中清理数据库
-- 使用SQLite内存数据库进行测试
-
-## 5. 测试清理流程
-
-### 5.1 定期清理
-
-**频率**: 每月或每个Sprint
-
-**清理内容**:
-- 删除过时的测试文件
-- 合并重复的测试
-- 更新测试文档
-- 清理临时测试数据
-
-**流程**:
-1. 运行完整测试套件
-2. 识别未通过的测试
-3. 分析失败原因（代码变更 vs 测试问题）
-4. 删除或归档无效测试
-5. 更新相关文档
-
-### 5.2 代码重构时的测试清理
-
-**触发条件**: 服务层重构或API变更
-
-**流程**:
-1. 识别受影响的服务
-2. 列出相关测试
-3. 更新测试以使用新API
-4. 验证所有测试通过
-5. 更新测试文档
-
-### 5.3 测试命名清理
-
-**触发条件**: 发现不符合命名规范的测试文件
-
-**流程**:
-1. 识别不符合规范的文件（如带hash后缀的文件）
-2. 重命名文件为规范格式
-3. 更新所有相关导入
-4. 验证测试仍然通过
-
-## 6. 测试最佳实践
-
-### 6.1 测试编写原则
-
-**AAA模式**: Given-When-Then
+#### 统一缓存失效
 ```python
-def test_create_user_duplicate(db):
-    # Given - 已存在用户
-    existing_user = User(phone="13800138000")
-    db.add(existing_user)
-    db.commit()
-
-    # When - 创建相同手机号的用户
-    with pytest.raises(Exception):
-        create_user(db, User(phone="13800138000"))
-
-    # Then - 抛出异常
-    pass
+def _invalidate_user_caches(self, user_id: str, phone: Optional[str] = None):
+    """失效用户相关缓存"""
+    self.invalidate_entity_cache(f"id:{user_id}")
+    if phone:
+        self.invalidate_entity_cache(f"phone:{phone}")
+    self._invalidate_list_cache()
+    self._invalidate_pattern("search:*")
 ```
-
-### 6.2 测试数据隔离
-
-- 每个测试应该独立，不依赖其他测试
-- 使用fixture创建测试数据
-- 在测试结束后清理数据
-
-### 6.3 异常测试
-
-**必须覆盖的场景**:
-- 无效输入
-- 权限不足
-- 资源不存在
-- 数据库约束违反
-- 网络错误
-
-**示例**:
-```python
-def test_get_user_not_found(db):
-    """测试获取不存在的用户"""
-    with pytest.raises(ValueError, match="用户不存在"):
-        user_service.get_user_by_id(db, "invalid_id")
-```
-
-### 6.4 Mock使用原则
-
-**使用Mock的场景**:
-- 测试外部API调用
-- 测试第三方服务集成
-- 测试时间相关逻辑
-
-**不应该Mock的场景**:
-- 数据库操作（使用测试数据库）
-- 业务逻辑核心
-- 模型关系
-
-### 6.5 断言原则
-
-- 每个测试应该至少一个断言
-- 断言消息应该清晰
-- 使用`pytest.raises`测试异常
-- 避免过于复杂的断言逻辑
-
-## 7. 测试覆盖目标
-
-### 7.1 单元测试覆盖率
-
-**目标**: >85%
-
-**测量**: 使用pytest-cov插件
-
-```bash
-pytest --cov=app --cov-report=html
-```
-
-### 7.2 核心功能覆盖率
-
-**必须100%覆盖**:
-- 用户认证和授权
-- SOS紧急呼叫
-- 异常检测和告警
-- 设备数据上传
-
-**应该>90%覆盖**:
-- 健康档案管理
-- 紧急联系人管理
-- 通知发送
-
-### 7.3 边界条件测试
-
-每个功能必须测试:
-- 最小值边界
-- 最大值边界
-- 空值/None
-- 无效值
-- 并发操作
-
-## 8. 测试失败处理
-
-### 8.1 调试失败测试
-
-**步骤**:
-1. 单独运行失败测试：`pytest tests/test_module.py::test_name -v`
-2. 查看完整错误信息：`pytest --tb=long`
-3. 检查数据库状态
-4. 验证fixture数据
-5. 查看相关日志
-
-### 8.2 Flaky测试处理
-
-**定义**: 偶尔失败、偶尔通过的测试
-
-**处理方式**:
-- 重试机制（谨慎使用）
-- 隔离测试环境因素
-- 修复根本原因
-- 考虑删除不可靠的测试
-
-### 8.3 慢速测试优化
-
-**目标**: 每个测试<5秒
-
-**优化方法**:
-- 减少数据库操作
-- 使用事务回滚而不是删除
-- Mock外部服务
-- 并行运行独立测试
-
-## 9. CI/CD集成
-
-### 9.1 测试运行命令
-
-```bash
-# 单元测试
-pytest tests/ -v --tb=short
-
-# 带覆盖率
-pytest tests/ --cov=app --cov-report=xml
-
-# 快速测试（跳过集成测试）
-pytest tests/ -m "not integration" -v
-```
-
-### 9.2 测试报告
-
-- JUnit XML：用于CI/CD集成
-- HTML覆盖率报告：用于本地查看
-- 控制台输出：用于快速反馈
-
-### 9.3 失败处理
-
-- 测试失败时，CI应该失败
-- 提供详细的错误报告
-- 上传覆盖率报告
-- 通知相关人员
-
-## 10. 文档维护
-
-### 10.1 更新频率
-
-- 代码结构变更时更新
-- 新增测试类型时更新
-- 发现新的最佳实践时更新
-- 每季度审查一次
-
-### 10.2 责任分工
-
-- 测试开发人员：编写和维护测试
-- 代码审查人员：确保测试符合规范
-- 技术负责人：维护测试文档
-
-## 11. 参考资源
-
-- [Pytest官方文档](https://docs.pytest.org/)
-- [Python测试最佳实践](https://docs.python-guide.org/writing/tests/)
-- [测试覆盖率工具](https://coverage.readthedocs.io/)
 
 ---
 
-**文档版本**: 1.0
-**最后更新**: 2026-02-02
-**维护者**: 开发团队
+## CI/CD 最佳实践
+
+### GitHub Actions Workflow 配置
+
+#### 1. 并发控制（必须）
+```yaml
+# 防止多个 workflow 同时运行
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 部署特殊配置（不能取消）
+concurrency:
+  group: deployment-${{ github.ref }}
+  cancel-in-progress: false
+```
+
+#### 2. 超时设置（必须）
+```yaml
+jobs:
+  job-name:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # 根据任务复杂度设置
+```
+
+#### 3. Action 版本管理
+```yaml
+# 推荐使用的稳定版本
+actions/checkout@v4
+actions/setup-python@v5
+actions/cache@v4
+actions/upload-artifact@v4
+codecov/codecov-action@v4
+github/codeql-action/upload-sarif@v3
+```
+
+#### 4. pre-commit 优化
+```yaml
+# 单独运行 pre-commit，避免在矩阵中重复
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: Run pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
+```
+
+#### 5. Docker 构建优化
+```yaml
+- name: Build and push
+  uses: docker/build-push-action@v5
+  with:
+    context: ./backend
+    push: ${{ github.event_name != 'pull_request' }}
+    tags: ${{ steps.meta.outputs.tags }}
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+```
+
+#### 6. 安全扫描配置
+```yaml
+- name: Run Trivy vulnerability scanner
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: your-image:latest
+    format: 'sarif'
+    output: 'trivy-results.sarif'
+    severity: 'CRITICAL,HIGH'  # 只关注严重问题
+    exit-code: '0'  # 不阻止构建
+    ignore-unfixed: true  # 忽略无修复版本的漏洞
+```
+
+#### 7. 条件执行
+```yaml
+# PR 不推送镜像
+push: ${{ github.event_name != 'pull_request' }}
+
+# Secret 存在时才通知
+if: always() && secrets.SLACK_WEBHOOK != ''
+```
+
+### PR 规范
+
+#### 标题格式（约定式提交）
+```
+feat: 添加用户登录功能
+fix: 修复数据库连接问题
+docs: 更新 API 文档
+refactor: 重构通知服务
+ci: 修复 GitHub Actions 配置
+```
+
+#### Workflow 检查
+- `pr-title-check.yml`: 自动验证 PR 标题格式
+- `dependency-review.yml`: 检查依赖安全漏洞
+
+---
+
+## 设计原则
+
+### 代码设计
+1. **关联加载策略**：按使用频率选择 lazy 模式
+   - 高频/大数据量：dynamic
+   - 中频/小数据量：select
+   - 一对一/必需要：joined
+
+2. **缓存策略**：
+   - 单个实体：长期缓存（5分钟+）
+   - 列表数据：短期缓存（60秒）
+   - 数据变更时主动失效
+
+3. **查询优化**：
+   - 使用 QueryBuilder 替代原始 SQLAlchemy 查询
+   - 分页查询使用 QueryBuilder.paginate()
+   - 复杂条件使用链式调用
+
+### CI/CD 设计
+1. **并发控制**：所有 workflow 必须配置 concurrency
+2. **超时设置**：所有 job 必须配置 timeout-minutes
+3. **版本管理**：定期检查并升级 action 版本
+4. **安全优先**：安全扫描不阻止构建但报告问题
+5. **条件执行**：根据事件类型和 secrets  availability 控制步骤
+
+## 测试
+
+```bash
+# 运行核心测试
+python -m pytest tests/test_user_model.py tests/test_user_service.py -v
+
+# 运行 CacheMixin 测试
+python -m pytest tests/unit/core/test_cache_mixin.py -v
+
+# 运行 QueryBuilder 测试
+python -m pytest tests/unit/core/test_query_builder.py -v
+```
+
+## CI/CD 测试
+
+```bash
+# 本地验证 workflow 语法
+python -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"
+
+# 使用 act 本地运行 workflow（需要安装 act）
+act -j pre-commit
+```

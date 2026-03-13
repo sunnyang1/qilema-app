@@ -4,23 +4,23 @@
 测试紧急联系人的创建、查询、更新、删除等功能
 """
 
-import pytest
 from datetime import datetime
-from typing import List
 from unittest.mock import Mock, patch
-from sqlalchemy.orm import Session
 
-from app.services.emergency_contact_service import EmergencyContactService
-from app.schemas.emergency_contact import EmergencyContactCreate, EmergencyContactUpdate
+import pytest
 from app.models.emergency_contact import EmergencyContact
-
+from app.schemas.emergency_contact import EmergencyContactCreate, EmergencyContactUpdate
+from app.services.emergency_contact_service import EmergencyContactService
+from sqlalchemy.orm import Session
 
 # ==================== Fixtures ====================
 
+
 @pytest.fixture
-def service():
+def service(mock_db):
     """创建服务实例"""
-    return EmergencyContactService()
+    return EmergencyContactService(mock_db)
+
 
 @pytest.fixture
 def mock_db():
@@ -28,10 +28,12 @@ def mock_db():
     db = Mock(spec=Session)
     return db
 
+
 @pytest.fixture
 def sample_user_id():
     """示例用户ID"""
     return "test_user_123"
+
 
 @pytest.fixture
 def sample_contact_data(sample_user_id):
@@ -41,11 +43,12 @@ def sample_contact_data(sample_user_id):
         contact_name="张三",
         relationship="配偶",
         phone="13800138000",
-        is_primary=True
+        is_primary=True,
     )
 
 
 # ==================== Test Classes ====================
+
 
 class TestGetEmergencyContacts:
     """获取紧急联系人列表测试"""
@@ -59,11 +62,13 @@ class TestGetEmergencyContacts:
 
         # 模拟数据库查询
         mock_query = Mock()
-        mock_query.filter.return_value.order_by.return_value.all.return_value = [sample_contact]
+        mock_query.filter.return_value.order_by.return_value.all.return_value = [
+            sample_contact
+        ]
         mock_db.query.return_value = mock_query
 
         # 获取紧急联系人列表
-        result = service.get_emergency_contacts(mock_db, sample_user_id)
+        result = service.get_emergency_contacts(sample_user_id)
 
         # 验证查询调用
         mock_db.query.assert_called_once_with(EmergencyContact)
@@ -81,7 +86,7 @@ class TestGetEmergencyContacts:
         mock_db.query.return_value = mock_query
 
         # 获取紧急联系人列表
-        result = service.get_emergency_contacts(mock_db, sample_user_id)
+        result = service.get_emergency_contacts(sample_user_id)
 
         # 验证返回空列表
         assert len(result) == 0
@@ -101,7 +106,7 @@ class TestGetEmergencyContact:
         mock_db.query.return_value = mock_query
 
         # 获取紧急联系人
-        result = service.get_emergency_contact(mock_db, contact_id, sample_user_id)
+        result = service.get_emergency_contact(contact_id, sample_user_id)
 
         # 验证查询调用
         mock_db.query.assert_called_once_with(EmergencyContact)
@@ -120,7 +125,7 @@ class TestGetEmergencyContact:
         mock_db.query.return_value = mock_query
 
         # 获取紧急联系人
-        result = service.get_emergency_contact(mock_db, contact_id, sample_user_id)
+        result = service.get_emergency_contact(contact_id, sample_user_id)
 
         # 验证返回None
         assert result is None
@@ -132,19 +137,18 @@ class TestUpdateEmergencyContact:
     def test_update_emergency_contact_success(self, service, mock_db, sample_user_id):
         """测试成功更新紧急联系人"""
         contact_id = 1
-        update_data = EmergencyContactUpdate(
-            contact_name="张三更新",
-            phone="13800138999"
-        )
+        update_data = EmergencyContactUpdate(contact_name="张三更新", phone="13800138999")
 
         sample_contact = Mock(spec=EmergencyContact)
         sample_contact.name = "张三"
         sample_contact.phone = "13800138000"
 
-        # 模拟get_emergency_contact返回联系人
-        with patch.object(service, 'get_emergency_contact', return_value=sample_contact):
+        # 模拟get_by_id返回联系人
+        with patch.object(service, "get_by_id", return_value=sample_contact):
             # 更新紧急联系人
-            result = service.update_emergency_contact(mock_db, contact_id, update_data, sample_user_id)
+            result = service.update_emergency_contact(
+                contact_id, update_data, sample_user_id
+            )
 
         # 验证数据库操作
         mock_db.commit.assert_called_once()
@@ -158,10 +162,12 @@ class TestUpdateEmergencyContact:
         contact_id = 999
         update_data = EmergencyContactUpdate(contact_name="更新名称")
 
-        # 模拟get_emergency_contact返回None
-        with patch.object(service, 'get_emergency_contact', return_value=None):
+        # 模拟get_by_id返回None
+        with patch.object(service, "get_by_id", return_value=None):
             # 更新紧急联系人
-            result = service.update_emergency_contact(mock_db, contact_id, update_data, sample_user_id)
+            result = service.update_emergency_contact(
+                contact_id, update_data, sample_user_id
+            )
 
         # 验证返回None
         assert result is None
@@ -175,10 +181,10 @@ class TestDeleteEmergencyContact:
         contact_id = 1
         sample_contact = Mock(spec=EmergencyContact)
 
-        # 模拟get_emergency_contact返回联系人
-        with patch.object(service, 'get_emergency_contact', return_value=sample_contact):
+        # 模拟get_by_id返回联系人
+        with patch.object(service, "get_by_id", return_value=sample_contact):
             # 删除紧急联系人
-            result = service.delete_emergency_contact(mock_db, contact_id, sample_user_id)
+            result = service.delete_emergency_contact(contact_id, sample_user_id)
 
         # 验证数据库操作
         mock_db.delete.assert_called_once_with(sample_contact)
@@ -191,10 +197,10 @@ class TestDeleteEmergencyContact:
         """测试删除不存在的紧急联系人"""
         contact_id = 999
 
-        # 模拟get_emergency_contact返回None
-        with patch.object(service, 'get_emergency_contact', return_value=None):
+        # 模拟get_by_id返回None
+        with patch.object(service, "get_by_id", return_value=None):
             # 删除紧急联系人
-            result = service.delete_emergency_contact(mock_db, contact_id, sample_user_id)
+            result = service.delete_emergency_contact(contact_id, sample_user_id)
 
         # 验证不调用delete和commit
         mock_db.delete.assert_not_called()
@@ -217,9 +223,9 @@ class TestSetPrimaryContact:
         mock_query = Mock()
         mock_db.query.return_value = mock_query
 
-        with patch.object(service, 'get_emergency_contact', return_value=sample_contact):
+        with patch.object(service, "get_by_id", return_value=sample_contact):
             # 设置主要联系人
-            result = service.set_primary_contact(mock_db, contact_id, sample_user_id)
+            result = service.set_primary_contact(contact_id, sample_user_id)
 
         # 验证查询被调用
         mock_db.query.assert_called()
@@ -240,9 +246,9 @@ class TestSetPrimaryContact:
         mock_query = Mock()
         mock_db.query.return_value = mock_query
 
-        with patch.object(service, 'get_emergency_contact', return_value=None):
+        with patch.object(service, "get_by_id", return_value=None):
             # 设置主要联系人
-            result = service.set_primary_contact(mock_db, contact_id, sample_user_id)
+            result = service.set_primary_contact(contact_id, sample_user_id)
 
         # 验证返回None
         assert result is None
@@ -262,7 +268,7 @@ class TestGetPrimaryContact:
         mock_db.query.return_value = mock_query
 
         # 获取主要联系人
-        result = service.get_primary_contact(mock_db, sample_user_id)
+        result = service.get_primary_contact(sample_user_id)
 
         # 验证查询调用
         mock_db.query.assert_called_once_with(EmergencyContact)
@@ -280,7 +286,7 @@ class TestGetPrimaryContact:
         mock_db.query.return_value = mock_query
 
         # 获取主要联系人
-        result = service.get_primary_contact(mock_db, sample_user_id)
+        result = service.get_primary_contact(sample_user_id)
 
         # 验证返回None
         assert result is None

@@ -12,9 +12,9 @@ SQLite到PostgreSQL数据库迁移脚本
 - 也可以手动导出SQLite数据再导入到PostgreSQL
 """
 
+import os
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 # 添加项目根目录到Python路径
@@ -28,9 +28,7 @@ def check_pgloader_installed():
     """检查pgloader是否已安装"""
     try:
         result = subprocess.run(
-            ["pgloader", "--version"],
-            capture_output=True,
-            text=True
+            ["pgloader", "--version"], capture_output=True, text=True
         )
         if result.returncode == 0:
             print(f"✓ pgloader已安装: {result.stdout.strip()}")
@@ -44,9 +42,7 @@ def check_pgloader_installed():
 
 
 def migrate_with_pgloader(
-    sqlite_db: str,
-    postgres_url: str,
-    verbose: bool = True
+    sqlite_db: str, postgres_url: str, verbose: bool = True
 ) -> bool:
     """使用pgloader从SQLite迁移到PostgreSQL
 
@@ -65,11 +61,7 @@ def migrate_with_pgloader(
     # 构建pgloader命令
     # PostgreSQL URL格式: postgresql://user:password@host:port/database
     # pgloader格式: postgresql://user:password@host:port/database
-    pgloader_cmd = [
-        "pgloader",
-        f"sqlite://{sqlite_db}",
-        postgres_url
-    ]
+    pgloader_cmd = ["pgloader", f"sqlite://{sqlite_db}", postgres_url]
 
     if verbose:
         pgloader_cmd.append("--verbose")
@@ -79,11 +71,7 @@ def migrate_with_pgloader(
         print(" ".join(pgloader_cmd))
         print("\n迁移中...\n")
 
-        result = subprocess.run(
-            pgloader_cmd,
-            capture_output=not verbose,
-            text=True
-        )
+        result = subprocess.run(pgloader_cmd, capture_output=not verbose, text=True)
 
         if result.returncode == 0:
             print("\n✓ 迁移成功!")
@@ -123,10 +111,7 @@ def backup_sqlite_database(sqlite_db: str) -> str:
     return backup_path
 
 
-def manual_migration_guide(
-    sqlite_db: str,
-    postgres_url: str
-):
+def manual_migration_guide(sqlite_db: str, postgres_url: str):
     """输出手动迁移指南
 
     Args:
@@ -172,28 +157,13 @@ def main():
     # 延迟导入settings，避免启动时验证失败
     from app.core.config import settings
 
-    parser = argparse.ArgumentParser(
-        description="SQLite到PostgreSQL数据库迁移工具"
-    )
+    parser = argparse.ArgumentParser(description="SQLite到PostgreSQL数据库迁移工具")
     parser.add_argument(
-        "--sqlite",
-        default="qilema.db",
-        help="SQLite数据库文件路径 (默认: qilema.db)"
+        "--sqlite", default="qilema.db", help="SQLite数据库文件路径 (默认: qilema.db)"
     )
-    parser.add_argument(
-        "--postgres",
-        help="PostgreSQL连接字符串 (默认: 使用环境变量DATABASE_URL)"
-    )
-    parser.add_argument(
-        "--no-backup",
-        action="store_true",
-        help="不创建SQLite数据库备份"
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="静默模式，不显示详细输出"
-    )
+    parser.add_argument("--postgres", help="PostgreSQL连接字符串 (默认: 使用环境变量DATABASE_URL)")
+    parser.add_argument("--no-backup", action="store_true", help="不创建SQLite数据库备份")
+    parser.add_argument("--quiet", action="store_true", help="静默模式，不显示详细输出")
 
     args = parser.parse_args()
 
@@ -225,9 +195,7 @@ def main():
     if check_pgloader_installed():
         # 使用pgloader迁移
         success = migrate_with_pgloader(
-            args.sqlite,
-            postgres_url,
-            verbose=not args.quiet
+            args.sqlite, postgres_url, verbose=not args.quiet
         )
     else:
         # 输出手动迁移指南

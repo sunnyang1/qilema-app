@@ -1,0 +1,106 @@
+# 起了吗App - 测试环境配置
+# 使用方式：python -m uvicorn app.main:app --env-file .env.staging
+
+# 环境配置
+environment: testing
+debug: false
+
+# 应用配置
+app:
+  name: "起了吗App"
+  version: "1.0.0"
+
+# 数据库配置
+database:
+  url: "postgresql://qilema:qilema_password@localhost:5432/qilema_staging"
+  echo: false
+  pool_size: 5
+  max_overflow: 10
+  pool_recycle: 3600
+
+# Redis配置
+redis:
+  url: "redis://localhost:6379/1"
+
+# API配置
+api:
+  v1_prefix: "/api/v1"
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s | %(levelname)s | %(request_id)s | %(user_id)s | %(name)s | %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  dir: "logs"
+  file_max_bytes: 10485760  # 10MB
+  file_backup_count: 10
+  to_console: true
+  to_file: true
+
+# CORS配置
+cors:
+  origins:
+    - "http://staging.example.com"
+    - "https://staging.example.com"
+  allow_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "PATCH"
+    - "OPTIONS"
+  allow_headers:
+    - "Content-Type"
+    - "Authorization"
+    - "X-Requested-With"
+    - "Accept"
+    - "Origin"
+
+# JWT配置
+jwt:
+  algorithm: "HS256"
+  access_token_expire_minutes: 60  # 测试环境延长token有效期
+
+# 签到配置
+checkin:
+  default_hours: 24
+
+# 紧急求助配置
+sos:
+  contact_notify_channels:
+    - "push"
+    - "sms"
+
+# 通知服务配置
+notification:
+  push:
+    enabled: true
+    success_rate: 95.0  # 测试环境可能有失败
+    delay_ms: 100
+    max_retries: 3
+    retry_interval_ms: 1000
+  sms:
+    enabled: true
+    success_rate: 95.0
+    delay_ms: 100
+    max_retries: 3
+    retry_interval_ms: 1000
+  phone:
+    enabled: true
+    success_rate: 95.0
+    delay_ms: 100
+    max_retries: 3
+    retry_interval_ms: 1000
+  email:
+    enabled: true
+    success_rate: 95.0
+    delay_ms: 100
+    max_retries: 3
+    retry_interval_ms: 1000
+  degradation:
+    enabled: true
+    channel_priority:
+      - "phone"
+      - "sms"
+      - "push"
+      - "email"

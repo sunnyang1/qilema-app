@@ -1,26 +1,24 @@
 """预警服务层单元测试"""
+
+from datetime import date, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, date
+from app.core.database import Base
+from app.models.alert import AlertSetting
+from app.models.checkin import CheckIn
+from app.models.emergency_contact import EmergencyContact
+from app.models.user import User
+from app.schemas.alert import AlertCreate, AlertResolveRequest, AlertSettingCreate
+from app.services.alert_service import AlertService
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from app.core.database import Base
-from app.models.user import User
-from app.models.alert import Alert, AlertSetting
-from app.models.checkin import CheckIn
-from app.models.emergency_contact import EmergencyContact
-from app.services.alert_service import AlertService
-from app.schemas.alert import (
-    AlertSettingCreate, AlertCreate, AlertResolveRequest
-)
-
 
 # 创建测试数据库
 engine = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -59,14 +57,14 @@ def test_contacts(db, test_user):
         name="紧急联系人1",
         phone="13900139000",
         relationship="家人",
-        priority=1
+        priority=1,
     )
     contact2 = EmergencyContact(
         user_id=test_user.user_id,
         name="紧急联系人2",
         phone="13900139001",
         relationship="朋友",
-        priority=2
+        priority=2,
     )
     db.add(contact1)
     db.add(contact2)
@@ -83,10 +81,12 @@ class TestAlertSettingService:
             checkin_threshold_hours=24,
             enable_notification=True,
             notification_channels="push,sms",
-            auto_resolve=True
+            auto_resolve=True,
         )
 
-        setting = AlertService.create_or_update_setting(db, test_user.user_id, setting_data)
+        setting = AlertService(db).create_or_update_setting(
+            test_user.user_id, setting_data
+        )
 
         assert setting.user_id == test_user.user_id
         assert setting.checkin_threshold_hours == 24
@@ -98,11 +98,15 @@ class TestAlertSettingService:
         """测试更新预警配置"""
         # 先创建配置
         setting_data = AlertSettingCreate(checkin_threshold_hours=24)
-        AlertService.create_or_update_setting(db, test_user.user_id, setting_data)
+        AlertService(db).create_or_update_setting(test_user.user_id, setting_data)
 
         # 更新配置
-        update_data = AlertSettingCreate(checkin_threshold_hours=48, enable_notification=False)
-        setting = AlertService.create_or_update_setting(db, test_user.user_id, update_data)
+        update_data = AlertSettingCreate(
+            checkin_threshold_hours=48, enable_notification=False
+        )
+        setting = AlertService(db).create_or_update_setting(
+            test_user.user_id, update_data
+        )
 
         assert setting.checkin_threshold_hours == 48
         assert setting.enable_notification is False
@@ -110,9 +114,9 @@ class TestAlertSettingService:
     def test_get_alert_setting(self, db, test_user):
         """测试获取预警配置"""
         setting_data = AlertSettingCreate(checkin_threshold_hours=24)
-        AlertService.create_or_update_setting(db, test_user.user_id, setting_data)
+        AlertService(db).create_or_update_setting(test_user.user_id, setting_data)
 
-        setting = AlertService.get_setting(db, test_user.user_id)
+        setting = AlertService(db).get_setting(test_user.user_id)
 
         assert setting is not None
         assert setting.checkin_threshold_hours == 24
@@ -137,51 +141,59 @@ class TestAlertCheckInService:
         db.add(setting)
         db.commit()
 
-        status = AlertService.check_user_checkin_status(db, test_user.user_id)
+        status = AlertService(db).check_user_checkin_status(test_user.user_id)
 
         assert status is not None
-        assert status['trigger_alert'] is True
-        assert status['last_checkin_time'] is None
+        assert status["trigger_alert"] is True
+        assert status["last_checkin_time"] is None
 
     def test_check_user_checkin_today(self, db, test_user):
         """测试用户今天已签到"""
-        setting = AlertSetting(user_id=test_user.user_id, enable_notification=True, checkin_threshold_hours=24)
+        setting = AlertSetting(
+            user_id=test_user.user_id,
+            enable_notification=True,
+            checkin_threshold_hours=24,
+        )
         db.add(setting)
 
         checkin = CheckIn(
             user_id=test_user.user_id,
             checkin_time=datetime.utcnow(),
-            checkin_date=date.today().strftime('%Y-%m-%d'),
-            checkin_method="manual"
+            checkin_date=date.today().strftime("%Y-%m-%d"),
+            checkin_method="manual",
         )
         db.add(checkin)
         db.commit()
 
-        status = AlertService.check_user_checkin_status(db, test_user.user_id)
+        status = AlertService(db).check_user_checkin_status(test_user.user_id)
 
         assert status is not None
-        assert status['trigger_alert'] is False
-        assert status['missed_hours'] < 24
+        assert status["trigger_alert"] is False
+        assert status["missed_hours"] < 24
 
     def test_check_user_missed_2_days(self, db, test_user):
         """测试用户连续2天未签到"""
-        setting = AlertSetting(user_id=test_user.user_id, enable_notification=True, checkin_threshold_hours=48)
+        setting = AlertSetting(
+            user_id=test_user.user_id,
+            enable_notification=True,
+            checkin_threshold_hours=48,
+        )
         db.add(setting)
 
         checkin = CheckIn(
             user_id=test_user.user_id,
             checkin_time=datetime.utcnow() - timedelta(days=2),
-            checkin_date=(date.today() - timedelta(days=2)).strftime('%Y-%m-%d'),
-            checkin_method="manual"
+            checkin_date=(date.today() - timedelta(days=2)).strftime("%Y-%m-%d"),
+            checkin_method="manual",
         )
         db.add(checkin)
         db.commit()
 
-        status = AlertService.check_user_checkin_status(db, test_user.user_id)
+        status = AlertService(db).check_user_checkin_status(test_user.user_id)
 
         assert status is not None
-        assert status['trigger_alert'] is True
-        assert status['missed_days'] >= 2
+        assert status["trigger_alert"] is True
+        assert status["missed_days"] >= 2
 
     def test_check_user_notification_disabled(self, db, test_user):
         """测试通知已禁用"""
@@ -189,7 +201,7 @@ class TestAlertCheckInService:
         db.add(setting)
         db.commit()
 
-        status = AlertService.check_user_checkin_status(db, test_user.user_id)
+        status = AlertService(db).check_user_checkin_status(test_user.user_id)
 
         assert status is None
 
@@ -205,10 +217,10 @@ class TestAlertCreationService:
             severity="medium",
             trigger_reason="用户连续2天未签到",
             missed_days=2,
-            threshold_hours=48
+            threshold_hours=48,
         )
 
-        alert = AlertService.create_alert(db, alert_data)
+        alert = AlertService(db).create_alert(alert_data)
 
         assert alert.user_id == test_user.user_id
         assert alert.alert_type == "checkin_absent"
@@ -221,23 +233,23 @@ class TestAlertCreationService:
             user_id=test_user.user_id,
             alert_type="checkin_absent",
             severity="medium",
-            trigger_reason="用户连续2天未签到"
+            trigger_reason="用户连续2天未签到",
         )
 
         # 创建第一个预警
-        alert1 = AlertService.create_alert(db, alert_data)
+        alert1 = AlertService(db).create_alert(alert_data)
 
         # 尝试创建重复预警
-        alert2 = AlertService.create_alert(db, alert_data)
+        alert2 = AlertService(db).create_alert(alert_data)
 
         assert alert1.id == alert2.id  # 返回同一个预警
 
     def test_severity_calculation(self):
         """测试严重程度计算"""
-        assert AlertService._calculate_severity(96) == 'critical'
-        assert AlertService._calculate_severity(60) == 'high'
-        assert AlertService._calculate_severity(30) == 'medium'
-        assert AlertService._calculate_severity(12) == 'low'
+        assert AlertService(db)._calculate_severity(96) == "critical"
+        assert AlertService(db)._calculate_severity(60) == "high"
+        assert AlertService(db)._calculate_severity(30) == "medium"
+        assert AlertService(db)._calculate_severity(12) == "low"
 
 
 class TestAlertResolveService:
@@ -250,16 +262,18 @@ class TestAlertResolveService:
             user_id=test_user.user_id,
             alert_type="checkin_absent",
             severity="medium",
-            trigger_reason="测试预警"
+            trigger_reason="测试预警",
         )
-        alert = AlertService.create_alert(db, alert_data)
+        alert = AlertService(db).create_alert(alert_data)
 
         # 解除预警
         resolve_request = AlertResolveRequest(resolved_reason="已联系用户确认安全")
-        resolved_alert = AlertService.resolve_alert(db, alert.id, test_user.user_id, resolve_request)
+        resolved_alert = AlertService(db).resolve_alert(
+            alert.id, test_user.user_id, resolve_request
+        )
 
-        assert resolved_alert.status == 'resolved'
-        assert resolved_alert.resolved_by == 'manual_dismiss'
+        assert resolved_alert.status == "resolved"
+        assert resolved_alert.resolved_by == "manual_dismiss"
         assert resolved_alert.resolved_reason == "已联系用户确认安全"
         assert resolved_alert.resolved_at is not None
 
@@ -270,21 +284,29 @@ class TestAlertResolveService:
         db.add(setting)
 
         # 创建多个活动预警(使用不同类型避免重复检查)
-        alert_data1 = AlertCreate(user_id=test_user.user_id, alert_type="checkin_absent", trigger_reason="预警1")
-        alert_data2 = AlertCreate(user_id=test_user.user_id, alert_type="sos_missed", trigger_reason="预警2")
-        AlertService.create_alert(db, alert_data1)
-        AlertService.create_alert(db, alert_data2)
+        alert_data1 = AlertCreate(
+            user_id=test_user.user_id,
+            alert_type="checkin_absent",
+            trigger_reason="预警1",
+        )
+        alert_data2 = AlertCreate(
+            user_id=test_user.user_id, alert_type="sos_missed", trigger_reason="预警2"
+        )
+        AlertService(db).create_alert(alert_data1)
+        AlertService(db).create_alert(alert_data2)
         db.commit()
 
         # 用户签到后自动解除
-        count = AlertService.auto_resolve_by_checkin(db, test_user.user_id)
+        count = AlertService(db).auto_resolve_by_checkin(test_user.user_id)
 
         assert count == 2
 
     def test_resolve_nonexistent_alert(self, db, test_user):
         """测试解除不存在的预警"""
         resolve_request = AlertResolveRequest()
-        result = AlertService.resolve_alert(db, 9999, test_user.user_id, resolve_request)
+        result = AlertService(db).resolve_alert(
+            9999, test_user.user_id, resolve_request
+        )
 
         assert result is None
 
@@ -299,12 +321,12 @@ class TestAlertQueryService:
             user_id=test_user.user_id,
             alert_type="checkin_absent",
             severity="medium",
-            trigger_reason="测试预警"
+            trigger_reason="测试预警",
         )
-        AlertService.create_alert(db, alert_data)
+        AlertService(db).create_alert(alert_data)
 
         # 查询预警
-        alerts, total = AlertService.get_alerts(db, test_user.user_id)
+        alerts, total = AlertService(db).get_alerts(test_user.user_id)
 
         assert total == 1
         assert len(alerts) == 1
@@ -313,41 +335,53 @@ class TestAlertQueryService:
     def test_get_alerts_with_status_filter(self, db, test_user):
         """测试按状态查询预警"""
         # 创建预警记录
-        alert_data = AlertCreate(user_id=test_user.user_id, alert_type="checkin_absent", trigger_reason="测试")
-        alert = AlertService.create_alert(db, alert_data)
+        alert_data = AlertCreate(
+            user_id=test_user.user_id,
+            alert_type="checkin_absent",
+            trigger_reason="测试",
+        )
+        alert = AlertService(db).create_alert(alert_data)
 
         # 解除预警
         resolve_request = AlertResolveRequest(resolved_reason="测试解除")
-        AlertService.resolve_alert(db, alert.id, test_user.user_id, resolve_request)
+        AlertService(db).resolve_alert(alert.id, test_user.user_id, resolve_request)
 
         # 查询活动预警
-        active_alerts, _ = AlertService.get_alerts(db, test_user.user_id, status="active")
+        active_alerts, _ = AlertService(db).get_alerts(
+            test_user.user_id, status="active"
+        )
         assert len(active_alerts) == 0
 
         # 查询已解除预警
-        resolved_alerts, _ = AlertService.get_alerts(db, test_user.user_id, status="resolved")
+        resolved_alerts, _ = AlertService(db).get_alerts(
+            test_user.user_id, status="resolved"
+        )
         assert len(resolved_alerts) == 1
 
     def test_get_alert_stats(self, db, test_user):
         """测试获取预警统计"""
         # 创建活动预警
-        alert_data = AlertCreate(user_id=test_user.user_id, alert_type="checkin_absent", trigger_reason="预警1")
-        alert = AlertService.create_alert(db, alert_data)
+        alert_data = AlertCreate(
+            user_id=test_user.user_id,
+            alert_type="checkin_absent",
+            trigger_reason="预警1",
+        )
+        alert = AlertService(db).create_alert(alert_data)
 
         # 解除预警
         resolve_request = AlertResolveRequest(resolved_reason="测试")
-        AlertService.resolve_alert(db, alert.id, test_user.user_id, resolve_request)
+        AlertService(db).resolve_alert(alert.id, test_user.user_id, resolve_request)
 
         # 获取统计
-        stats = AlertService.get_alert_stats(db, test_user.user_id)
+        stats = AlertService(db).get_alert_stats(test_user.user_id)
 
-        assert stats['total_alerts'] == 1
-        assert stats['resolved_alerts'] == 1
-        assert stats['active_alerts'] == 0
+        assert stats["total_alerts"] == 1
+        assert stats["resolved_alerts"] == 1
+        assert stats["active_alerts"] == 0
 
     def test_get_contacts_for_notification(self, db, test_user, test_contacts):
         """测试获取通知联系人"""
-        contacts = AlertService.get_contacts_for_notification(db, test_user.user_id)
+        contacts = AlertService(db).get_contacts_for_notification(test_user.user_id)
 
         assert len(contacts) == 2
         assert contacts[0].priority == 1
@@ -356,22 +390,26 @@ class TestAlertQueryService:
     def test_check_all_users_and_create_alerts(self, db, test_user, test_contacts):
         """测试检查所有用户并创建预警"""
         # 创建预警配置
-        setting = AlertSetting(user_id=test_user.user_id, enable_notification=True, checkin_threshold_hours=24)
+        setting = AlertSetting(
+            user_id=test_user.user_id,
+            enable_notification=True,
+            checkin_threshold_hours=24,
+        )
         db.add(setting)
 
         # 创建2天前的签到记录
         checkin = CheckIn(
             user_id=test_user.user_id,
             checkin_time=datetime.utcnow() - timedelta(days=2),
-            checkin_date=(date.today() - timedelta(days=2)).strftime('%Y-%m-%d'),
-            checkin_method="manual"
+            checkin_date=(date.today() - timedelta(days=2)).strftime("%Y-%m-%d"),
+            checkin_method="manual",
         )
         db.add(checkin)
         db.commit()
 
         # 检查所有用户
-        created_alerts = AlertService.check_all_users_and_create_alerts(db)
+        created_alerts = AlertService(db).check_all_users_and_create_alerts()
 
         assert len(created_alerts) == 1
-        assert created_alerts[0].alert_type == 'checkin_absent'
-        assert created_alerts[0].severity == 'high'
+        assert created_alerts[0].alert_type == "checkin_absent"
+        assert created_alerts[0].severity == "high"

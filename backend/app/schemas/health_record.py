@@ -1,13 +1,16 @@
 """
 健康档案相关的Schema验证
 """
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
+
 from datetime import datetime
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class HealthRecordCreate(BaseModel):
     """创建健康档案"""
+
     user_id: str = Field(..., description="用户ID")
     real_name: str = Field(..., min_length=1, max_length=50, description="真实姓名")
     gender: str = Field(..., description="性别: 男/女/其他")
@@ -15,29 +18,58 @@ class HealthRecordCreate(BaseModel):
     height: Optional[float] = Field(None, gt=0, le=300, description="身高(cm)")
     weight: Optional[float] = Field(None, gt=0, le=500, description="体重(kg)")
     age: Optional[int] = Field(None, gt=0, le=150, description="年龄")
-    emergency_contact_name: Optional[str] = Field(None, max_length=50, description="紧急医疗联系人姓名")
-    emergency_contact_phone: Optional[str] = Field(None, max_length=20, description="紧急医疗联系人电话")
-    emergency_contact_relation: Optional[str] = Field(None, max_length=20, description="紧急医疗联系人关系")
+    emergency_contact_name: Optional[str] = Field(
+        None, max_length=50, description="紧急医疗联系人姓名"
+    )
+    emergency_contact_phone: Optional[str] = Field(
+        None, max_length=20, description="紧急医疗联系人电话"
+    )
+    emergency_contact_relation: Optional[str] = Field(
+        None, max_length=20, description="紧急医疗联系人关系"
+    )
 
-    @field_validator('gender')
+    @field_validator("gender")
     @classmethod
     def validate_gender(cls, v):
         """验证性别字段"""
-        if v not in ['男', '女', '其他', 'male', 'female', 'other', 'Male', 'Female', 'Other']:
-            raise ValueError('性别必须是男、女或其他')
+        if v not in [
+            "男",
+            "女",
+            "其他",
+            "male",
+            "female",
+            "other",
+            "Male",
+            "Female",
+            "Other",
+        ]:
+            raise ValueError("性别必须是男、女或其他")
         return v
 
-    @field_validator('blood_type')
+    @field_validator("blood_type")
     @classmethod
     def validate_blood_type(cls, v):
         """验证血型字段"""
-        if v is not None and v not in ['A', 'B', 'O', 'AB', 'a', 'b', 'o', 'ab', '其他', 'other', 'Other']:
-            raise ValueError('血型必须是A、B、O、AB或其他')
+        if v is not None and v not in [
+            "A",
+            "B",
+            "O",
+            "AB",
+            "a",
+            "b",
+            "o",
+            "ab",
+            "其他",
+            "other",
+            "Other",
+        ]:
+            raise ValueError("血型必须是A、B、O、AB或其他")
         return v
 
 
 class HealthRecordUpdate(BaseModel):
     """更新健康档案"""
+
     real_name: Optional[str] = Field(None, min_length=1, max_length=50)
     gender: Optional[str] = None
     blood_type: Optional[str] = None
@@ -51,6 +83,7 @@ class HealthRecordUpdate(BaseModel):
 
 class HealthRecordResponse(BaseModel):
     """健康档案响应"""
+
     id: int
     user_id: str
     real_name: str
@@ -66,11 +99,17 @@ class HealthRecordResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
+    # 关联数据（可选） - 使用字符串前向引用避免顺序问题
+    medical_histories: Optional[List["MedicalHistoryResponse"]] = None
+    medications: Optional[List["MedicationResponse"]] = None
+    allergies: Optional[List["AllergyResponse"]] = None
+
     model_config = {"from_attributes": True}
 
 
 class MedicalHistoryCreate(BaseModel):
     """创建病史"""
+
     health_record_id: int = Field(..., description="健康档案ID")
     disease_name: str = Field(..., min_length=1, max_length=100, description="疾病名称")
     diagnosis_date: Optional[datetime] = Field(None, description="诊断日期")
@@ -81,6 +120,7 @@ class MedicalHistoryCreate(BaseModel):
 
 class MedicalHistoryResponse(BaseModel):
     """病史响应"""
+
     id: int
     health_record_id: int
     disease_name: str
@@ -96,6 +136,7 @@ class MedicalHistoryResponse(BaseModel):
 
 class MedicalHistoryUpdate(BaseModel):
     """更新病史"""
+
     disease_name: Optional[str] = Field(None, min_length=1, max_length=100)
     diagnosis_date: Optional[datetime] = None
     description: Optional[str] = None
@@ -105,6 +146,7 @@ class MedicalHistoryUpdate(BaseModel):
 
 class MedicationCreate(BaseModel):
     """创建用药信息"""
+
     health_record_id: int = Field(..., description="健康档案ID")
     drug_name: str = Field(..., min_length=1, max_length=100, description="药品名称")
     dosage: Optional[str] = Field(None, max_length=50, description="剂量")
@@ -117,6 +159,7 @@ class MedicationCreate(BaseModel):
 
 class MedicationResponse(BaseModel):
     """用药信息响应"""
+
     id: int
     health_record_id: int
     drug_name: str
@@ -134,6 +177,7 @@ class MedicationResponse(BaseModel):
 
 class MedicationUpdate(BaseModel):
     """更新用药信息"""
+
     drug_name: Optional[str] = Field(None, min_length=1, max_length=100)
     dosage: Optional[str] = Field(None, max_length=50)
     frequency: Optional[str] = Field(None, max_length=50)
@@ -145,6 +189,7 @@ class MedicationUpdate(BaseModel):
 
 class AllergyCreate(BaseModel):
     """创建过敏史"""
+
     health_record_id: int = Field(..., description="健康档案ID")
     allergen: str = Field(..., min_length=1, max_length=100, description="过敏原")
     allergic_reaction: Optional[str] = Field(None, max_length=200, description="过敏反应")
@@ -155,6 +200,7 @@ class AllergyCreate(BaseModel):
 
 class AllergyResponse(BaseModel):
     """过敏史响应"""
+
     id: int
     health_record_id: int
     allergen: str
@@ -170,6 +216,7 @@ class AllergyResponse(BaseModel):
 
 class AllergyUpdate(BaseModel):
     """更新过敏史"""
+
     allergen: Optional[str] = Field(None, min_length=1, max_length=100)
     allergic_reaction: Optional[str] = Field(None, max_length=200)
     severity: Optional[str] = None
@@ -179,6 +226,7 @@ class AllergyUpdate(BaseModel):
 
 class HealthRecordSummary(BaseModel):
     """健康档案摘要"""
+
     real_name: str
     gender: str
     blood_type: Optional[str]

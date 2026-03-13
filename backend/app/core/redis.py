@@ -1,16 +1,15 @@
 """
 Redis连接管理
 """
-import redis
-import redis.asyncio as aioredis
-from typing import Optional, Any, Union, Dict
-from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
-import json
+
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, Optional
 
+import redis
+import redis.asyncio as aioredis
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -18,12 +17,12 @@ logger = logging.getLogger(__name__)
 
 class RedisConnectionError(Exception):
     """Redis连接异常"""
-    pass
 
 
 @dataclass
 class RedisHealthInfo:
     """Redis健康信息"""
+
     is_healthy: bool
     latency_ms: float
     connected_clients: int = 0
@@ -37,6 +36,7 @@ class RedisHealthInfo:
 @dataclass
 class RedisStats:
     """Redis统计信息"""
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
@@ -86,13 +86,11 @@ class RedisManager:
                     socket_keepalive_options={},
                     health_check_interval=30,
                     retry_on_timeout=True,
-                    max_connections=50
+                    max_connections=50,
                 )
 
                 # 创建客户端
-                cls._sync_client = redis.Redis(
-                    connection_pool=cls._connection_pool
-                )
+                cls._sync_client = redis.Redis(connection_pool=cls._connection_pool)
 
                 # 测试连接（带重试）
                 max_retries = 3
@@ -144,11 +142,12 @@ class RedisManager:
                     socket_timeout=5,
                     health_check_interval=30,
                     retry_on_timeout=True,
-                    max_connections=50
+                    max_connections=50,
                 )
 
                 # 测试连接
                 import asyncio
+
                 start_time = time.time()
                 asyncio.run(cls._async_client.ping())
                 latency_ms = (time.time() - start_time) * 1000
@@ -205,11 +204,11 @@ class RedisManager:
             return RedisHealthInfo(
                 is_healthy=True,
                 latency_ms=latency_ms,
-                connected_clients=info.get('connected_clients', 0),
-                used_memory_human=info.get('used_memory_human', ''),
-                uptime_in_seconds=info.get('uptime_in_seconds', 0),
-                redis_version=info.get('redis_version', ''),
-                timestamp=datetime.utcnow()
+                connected_clients=info.get("connected_clients", 0),
+                used_memory_human=info.get("used_memory_human", ""),
+                uptime_in_seconds=info.get("uptime_in_seconds", 0),
+                redis_version=info.get("redis_version", ""),
+                timestamp=datetime.utcnow(),
             )
 
         except Exception as e:
@@ -218,7 +217,7 @@ class RedisManager:
                 is_healthy=False,
                 latency_ms=0,
                 error_message=str(e),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.utcnow(),
             )
 
     @classmethod
@@ -238,7 +237,11 @@ class RedisManager:
             "avg_latency_ms": cls._stats.avg_latency_ms,
             "success_rate": cls._calculate_success_rate(),
             "last_error": cls._stats.last_error,
-            "last_error_time": cls._stats.last_error_time.isoformat() if cls._stats.last_error_time else None
+            "last_error_time": (
+                cls._stats.last_error_time.isoformat()
+                if cls._stats.last_error_time
+                else None
+            ),
         }
 
     @classmethod
@@ -256,14 +259,15 @@ class RedisManager:
                 "status": "已初始化",
                 "connection_kwargs": cls._connection_pool.connection_kwargs,
                 "max_connections": cls._connection_pool.max_connections,
-                "created_connections": getattr(cls._connection_pool, 'created_connections', 'N/A'),
-                "available_connections": getattr(cls._connection_pool, 'available_connections', 'N/A'),
+                "created_connections": getattr(
+                    cls._connection_pool, "created_connections", "N/A"
+                ),
+                "available_connections": getattr(
+                    cls._connection_pool, "available_connections", "N/A"
+                ),
             }
         except Exception as e:
-            return {
-                "status": "错误",
-                "error": str(e)
-            }
+            return {"status": "错误", "error": str(e)}
 
     @classmethod
     def _record_request(cls):
@@ -306,7 +310,9 @@ class RedisManager:
         else:
             # 使用指数移动平均
             alpha = 0.1
-            cls._stats.avg_latency_ms = alpha * latency_ms + (1 - alpha) * cls._stats.avg_latency_ms
+            cls._stats.avg_latency_ms = (
+                alpha * latency_ms + (1 - alpha) * cls._stats.avg_latency_ms
+            )
 
     @classmethod
     def _calculate_hit_rate(cls) -> float:
@@ -351,6 +357,7 @@ class RedisManager:
         if cls._async_client:
             try:
                 import asyncio
+
                 asyncio.run(cls._async_client.close())
                 cls._async_client = None
                 logger.info("Redis异步客户端已关闭")

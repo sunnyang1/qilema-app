@@ -1,0 +1,44 @@
+{
+  "name": "qilema-app",
+  "displayName": "起了吗 App",
+  "version": "1.0.0",
+  "description": "为独居人群提供紧急医疗救助服务",
+  "status": "production",
+  "deployed": true,
+  "platforms": [
+    "ios",
+    "android",
+    "web"
+  ],
+  "categories": [
+    "health",
+    "medical",
+    "emergency",
+    "safety"
+  ],
+  "features": [
+    "每日签到",
+    "SOS 紧急求助",
+    "联系人管理",
+    "健康档案",
+    "急救资源对接",
+    "用药提醒"
+  ],
+  "techStack": {
+    "frontend": "Expo 54 + React Native 0.81.5",
+    "backend": "Python FastAPI",
+    "database": "SQLite / PostgreSQL",
+    "cache": "Redis"
+  },
+  "deployment": {
+    "type": "coze",
+    "entrypoint": "server.js",
+    "runtime": "nodejs-24",
+    "port": 5000
+  },
+  "contact": {
+    "email": "support@qilema.app",
+    "repository": "https://github.com/sunnyang1/qilema-app"
+  },
+  "license": "MIT"
+}

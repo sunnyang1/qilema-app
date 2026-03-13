@@ -1,0 +1,188 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# 并发控制：防止多个 workflow 同时运行
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 单独运行 pre-commit，避免在矩阵中重复运行
+  pre-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pre-commit-
+
+      - name: Install pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit install-hooks
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  backend-tests:
+    needs: pre-commit  # 先运行 pre-commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false  # 一个版本失败不影响其他版本
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        env:
+          ENVIRONMENT: testing
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          cd backend
+          pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+          name: backend-${{ matrix.python-version }}
+          fail_ci_if_error: false
+
+  frontend-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check pnpm-lock.yaml exists
+        id: check-lockfile
+        run: |
+          if [ -f "mobile/pnpm-lock.yaml" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Warning: mobile/pnpm-lock.yaml not found"
+          fi
+
+      - name: Install pnpm
+        if: steps.check-lockfile.outputs.exists == 'true'
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: |
+          cd mobile
+          pnpm install
+
+      - name: Run lint
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: |
+          cd mobile/client
+          pnpm lint
+
+      - name: Type check
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: |
+          cd mobile/client
+          pnpm tsc --noEmit
+
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: qilema-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker Compose configuration
+        run: |
+          docker-compose -f docker-compose.yml config > /dev/null && echo "Docker Compose config valid"
+
+      - name: Test Docker Compose up (health check)
+        run: |
+          # 启动服务并等待健康检查
+          docker-compose -f docker-compose.yml up -d postgres redis
+          sleep 10
+
+          # 检查服务健康状态
+          docker-compose ps | grep -E "(healthy|Up)" || {
+            echo "Services failed to start"
+            docker-compose logs
+            exit 1
+          }
+
+          echo "Docker Compose services healthy"
+          docker-compose down

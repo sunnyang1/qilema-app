@@ -1,17 +1,17 @@
 """
 测试通用缓存装饰器
 """
+
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-import time
-from functools import wraps
 from app.core.cache import cache, cache_clear, cache_result, invalidate_cache
 
 
 class TestCacheDecorator:
     """测试缓存装饰器"""
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_decorator_basic(self, mock_redis_manager):
         """测试基本缓存装饰器"""
         # Mock Redis客户端
@@ -32,12 +32,12 @@ class TestCacheDecorator:
         # 验证调用了原函数
         assert mock_client.setex.called
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_decorator_hit(self, mock_redis_manager):
         """测试缓存命中"""
         # Mock Redis客户端
         mock_client = Mock()
-        mock_client.get = Mock(return_value='10')  # 缓存命中
+        mock_client.get = Mock(return_value="10")  # 缓存命中
         mock_client.setex = Mock()  # 设置缓存
         mock_redis_manager.get_sync_client = Mock(return_value=mock_client)
 
@@ -52,7 +52,7 @@ class TestCacheDecorator:
         # 验证没有调用原函数（缓存命中，不执行函数体）
         assert not mock_client.setex.called
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_ttl_configuration(self, mock_redis_manager):
         """测试TTL配置"""
         # Mock Redis客户端
@@ -74,7 +74,7 @@ class TestCacheDecorator:
         # setex的第二个参数是TTL（秒）
         assert args[1] == 300
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_custom_key(self, mock_redis_manager):
         """测试自定义缓存键"""
         # Mock Redis客户端
@@ -98,7 +98,7 @@ class TestCacheDecorator:
         cache_key = args[0]
         assert "custom:5" in cache_key
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_with_multiple_arguments(self, mock_redis_manager):
         """测试多个参数的缓存键"""
         # Mock Redis客户端
@@ -126,7 +126,7 @@ class TestCacheDecorator:
         assert "test:expensive_function" in first_key
         assert "test:expensive_function" in second_key
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_condition(self, mock_redis_manager):
         """测试条件缓存"""
         # Mock Redis客户端
@@ -147,12 +147,12 @@ class TestCacheDecorator:
         expensive_function(-1)
         assert mock_client.setex.call_count == 1  # 还是1，没有增加
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_clear(self, mock_redis_manager):
         """测试清除缓存"""
         # Mock Redis客户端
         mock_client = Mock()
-        mock_client.keys = Mock(return_value=['test:key1', 'test:key2'])
+        mock_client.keys = Mock(return_value=["test:key1", "test:key2"])
         mock_client.delete = Mock()
         mock_redis_manager.get_sync_client = Mock(return_value=mock_client)
 
@@ -162,7 +162,7 @@ class TestCacheDecorator:
         # 验证调用删除
         assert mock_client.delete.called
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_result_function(self, mock_redis_manager):
         """测试cache_result辅助函数"""
         # Mock Redis客户端
@@ -176,7 +176,7 @@ class TestCacheDecorator:
         # 验证设置了缓存
         assert mock_client.setex.called
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_invalidate_cache(self, mock_redis_manager):
         """测试缓存失效"""
         # Mock Redis客户端
@@ -193,7 +193,7 @@ class TestCacheDecorator:
         args, kwargs = call_args
         assert "test:key" in args
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_json_serialization(self, mock_redis_manager):
         """测试JSON序列化"""
         # Mock Redis客户端
@@ -211,7 +211,7 @@ class TestCacheDecorator:
         assert result == {"x": 10}
         assert isinstance(result, dict)
 
-    @patch('app.core.cache.redis_manager')
+    @patch("app.core.cache.redis_manager")
     def test_cache_with_exception(self, mock_redis_manager):
         """测试函数抛出异常时的缓存行为"""
         # Mock Redis客户端

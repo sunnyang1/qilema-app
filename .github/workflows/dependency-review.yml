@@ -1,0 +1,54 @@
+# 依赖审查 - 检查依赖项中的已知漏洞
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+# 并发控制
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        # 对已知漏洞失败
+        fail-on-severity: high
+        # 显示扫描的依赖数量
+        show-openssf-scorecard: true
+        # 评论 PR 显示结果
+        comment-summary-in-pr: true
+        # 允许授权许可
+        allow-licenses: |
+          MIT
+          Apache-2.0
+          BSD-2-Clause
+          BSD-3-Clause
+          ISC
+          Python-2.0
+          Unlicense
+
+    - name: Scan Python dependencies
+      run: |
+        cd backend
+        pip install safety
+        safety check -r requirements.txt --full-report || true
+
+    - name: Check for outdated dependencies
+      run: |
+        cd backend
+        pip list --outdated --format=columns || true

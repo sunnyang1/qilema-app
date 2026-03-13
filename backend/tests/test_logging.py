@@ -4,19 +4,11 @@
 测试日志配置、格式、请求ID追踪等功能
 """
 
-import pytest
 import logging
 import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import patch
 
-from app.core.config import (
-    Settings,
-    setup_logging,
-    get_logger,
-    RequestIDFilter
-)
+from app.core.config import RequestIDFilter, Settings, get_logger, setup_logging
 
 
 class TestRequestIDFilter:
@@ -34,7 +26,7 @@ class TestRequestIDFilter:
             lineno=1,
             msg="test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         # 设置request_id
@@ -59,7 +51,7 @@ class TestRequestIDFilter:
             lineno=1,
             msg="test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         # 不过滤
@@ -81,7 +73,7 @@ class TestRequestIDFilter:
             lineno=1,
             msg="test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         # 设置user_id
@@ -117,7 +109,7 @@ class TestSetupLogging:
                 LOG_LEVEL="DEBUG",
                 LOG_TO_CONSOLE=False,
                 LOG_TO_FILE=True,
-                LOG_DIR=temp_dir
+                LOG_DIR=temp_dir,
             )
 
             setup_logging(custom_settings)
@@ -133,7 +125,7 @@ class TestSetupLogging:
                 LOG_LEVEL="INFO",
                 LOG_TO_CONSOLE=False,
                 LOG_TO_FILE=True,
-                LOG_DIR=temp_dir
+                LOG_DIR=temp_dir,
             )
 
             setup_logging(custom_settings)
@@ -154,7 +146,7 @@ class TestSetupLogging:
                 LOG_LEVEL="INFO",
                 LOG_TO_CONSOLE=True,
                 LOG_TO_FILE=False,
-                LOG_DIR=temp_dir
+                LOG_DIR=temp_dir,
             )
 
             setup_logging(custom_settings)
@@ -248,41 +240,37 @@ class TestLogOutput:
         """测试日志输出到控制台"""
         with tempfile.TemporaryDirectory() as temp_dir:
             custom_settings = Settings(
-                LOG_TO_CONSOLE=True,
-                LOG_TO_FILE=False,
-                LOG_DIR=temp_dir
+                LOG_TO_CONSOLE=True, LOG_TO_FILE=False, LOG_DIR=temp_dir
             )
             setup_logging(custom_settings)
 
             # 验证有StreamHandler
             root_logger = logging.getLogger()
-            stream_handlers = [h for h in root_logger.handlers
-                             if isinstance(h, logging.StreamHandler)]
+            stream_handlers = [
+                h for h in root_logger.handlers if isinstance(h, logging.StreamHandler)
+            ]
             assert len(stream_handlers) > 0
 
     def test_log_to_file(self):
         """测试日志输出到文件"""
         with tempfile.TemporaryDirectory() as temp_dir:
             custom_settings = Settings(
-                LOG_TO_CONSOLE=False,
-                LOG_TO_FILE=True,
-                LOG_DIR=temp_dir
+                LOG_TO_CONSOLE=False, LOG_TO_FILE=True, LOG_DIR=temp_dir
             )
             setup_logging(custom_settings)
 
             # 验证有FileHandler
             root_logger = logging.getLogger()
-            file_handlers = [h for h in root_logger.handlers
-                            if hasattr(h, 'baseFilename')]
+            file_handlers = [
+                h for h in root_logger.handlers if hasattr(h, "baseFilename")
+            ]
             assert len(file_handlers) >= 2  # 应用日志 + 错误日志
 
     def test_log_message_writing(self):
         """测试日志消息写入"""
         with tempfile.TemporaryDirectory() as temp_dir:
             custom_settings = Settings(
-                LOG_TO_CONSOLE=False,
-                LOG_TO_FILE=True,
-                LOG_DIR=temp_dir
+                LOG_TO_CONSOLE=False, LOG_TO_FILE=True, LOG_DIR=temp_dir
             )
             setup_logging(custom_settings)
 
@@ -296,7 +284,7 @@ class TestLogOutput:
             # 验证日志文件包含消息
             log_dir = Path(temp_dir)
             log_file = log_dir / f"{custom_settings.APP_NAME}.log"
-            log_content = log_file.read_text(encoding='utf-8')
+            log_content = log_file.read_text(encoding="utf-8")
 
             assert test_message in log_content
 
@@ -308,9 +296,7 @@ class TestRequestIDTracking:
         """测试带有请求ID的日志"""
         with tempfile.TemporaryDirectory() as temp_dir:
             custom_settings = Settings(
-                LOG_TO_CONSOLE=False,
-                LOG_TO_FILE=True,
-                LOG_DIR=temp_dir
+                LOG_TO_CONSOLE=False, LOG_TO_FILE=True, LOG_DIR=temp_dir
             )
             setup_logging(custom_settings)
 
@@ -325,7 +311,7 @@ class TestRequestIDTracking:
                 lineno=1,
                 msg="test message",
                 args=(),
-                exc_info=None
+                exc_info=None,
             )
             record.request_id = "req-123"
             record.user_id = "user-456"

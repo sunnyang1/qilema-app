@@ -6,24 +6,26 @@ AED设备地图API路由
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, UploadFile, File, Query
+
+from app.core.database import get_db
+from app.core.exceptions import NotFoundException
+from app.core.response_builder import ApiResponseBuilder
+from app.core.security import get_current_active_user
+from app.models.user import User
+from app.services.aed_service import AEDService
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.security import get_current_user, get_current_active_user
-from app.core.exceptions import NotFoundException, ValidationException
-from app.core.response_builder import ApiResponseBuilder
-from app.models.user import User
-from app.services.aed_service import AEDService
-
-router = APIRouter(prefix="/api/aed", tags=["AED设备"])
+router = APIRouter(tags=["AED设备"])
 
 
 # ========== 请求/响应模型 ==========
 
+
 class NearbyAEDRequest(BaseModel):
     """附近AED查询请求"""
+
     latitude: float = Field(..., ge=-90, le=90, description="纬度")
     longitude: float = Field(..., ge=-180, le=180, description="经度")
     radius: float = Field(default=5000, ge=100, le=50000, description="搜索半径（米）")
@@ -33,6 +35,7 @@ class NearbyAEDRequest(BaseModel):
 
 class NavigationRequest(BaseModel):
     """导航请求"""
+
     from_lat: float = Field(..., ge=-90, le=90, description="起点纬度")
     from_lon: float = Field(..., ge=-180, le=180, description="起点经度")
     to_aed_id: int = Field(..., description="目标AED设备ID")
@@ -41,6 +44,7 @@ class NavigationRequest(BaseModel):
 
 class AEDStatusUpdateRequest(BaseModel):
     """AED状态更新请求"""
+
     status: str = Field(..., description="新状态: active/maintenance/inactive/deprecated")
     battery_expiry: Optional[str] = Field(None, description="电池过期日期（ISO格式）")
     pad_expiry: Optional[str] = Field(None, description="电极片过期日期（ISO格式）")
@@ -49,6 +53,7 @@ class AEDStatusUpdateRequest(BaseModel):
 
 class BatchImportResponse(BaseModel):
     """批量导入响应"""
+
     total: int
     success: int
     failed: int
@@ -57,6 +62,7 @@ class BatchImportResponse(BaseModel):
 
 class AEDStatistics(BaseModel):
     """AED统计信息"""
+
     total: int
     status_distribution: dict
     city_distribution: List[dict]
@@ -64,6 +70,7 @@ class AEDStatistics(BaseModel):
 
 
 # ========== API端点 ==========
+
 
 @router.get("/nearby", response_model=dict)
 def get_nearby_aeds(
@@ -73,11 +80,11 @@ def get_nearby_aeds(
     only_active: bool = Query(default=True, description="仅返回可用设备"),
     limit: int = Query(default=20, ge=1, le=100, description="返回数量限制"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取附近的AED设备
-    
+
     基于当前位置搜索附近可用的AED设备，返回距离和预估到达时间
     """
     aeds = AEDService.get_nearby_aeds(
@@ -86,13 +93,13 @@ def get_nearby_aeds(
         longitude=longitude,
         radius=radius,
         only_active=only_active,
-        limit=limit
+        limit=limit,
     )
-    
+
     return {
         "count": len(aeds),
         "user_location": {"latitude": latitude, "longitude": longitude},
-        "aeds": aeds
+        "aeds": aeds,
     }
 
 
@@ -100,7 +107,7 @@ def get_nearby_aeds(
 def get_aed_navigation(
     request: NavigationRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取AED导航链接
@@ -118,21 +125,24 @@ def get_aed_navigation(
         from_lon=request.from_lon,
         to_lat=aed.latitude,
         to_lon=aed.longitude,
-        nav_type=request.nav_type
+        nav_type=request.nav_type,
     )
 
-    return ApiResponseBuilder.success(data={
-        "from": {"latitude": request.from_lat, "longitude": request.from_lon},
-        "to": {
-            "aed_id": aed.id,
-            "name": aed.resource_name,
-            "latitude": aed.latitude,
-            "longitude": aed.longitude,
-            "address": aed.address,
-            "location_desc": aed.aed_location_desc
+    return ApiResponseBuilder.success(
+        data={
+            "from": {"latitude": request.from_lat, "longitude": request.from_lon},
+            "to": {
+                "aed_id": aed.id,
+                "name": aed.resource_name,
+                "latitude": aed.latitude,
+                "longitude": aed.longitude,
+                "address": aed.address,
+                "location_desc": aed.aed_location_desc,
+            },
+            "navigation_urls": nav_urls,
         },
-        "navigation_urls": nav_urls
-    }, message="获取AED导航链接成功")
+        message="获取AED导航链接成功",
+    )
 
 
 @router.get("/nearest")
@@ -140,7 +150,7 @@ def get_nearest_aed(
     latitude: float = Query(..., ge=-90, le=90, description="纬度"),
     longitude: float = Query(..., ge=-180, le=180, description="经度"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取最近的AED设备
@@ -153,14 +163,17 @@ def get_nearest_aed(
         longitude=longitude,
         radius=10000,  # 搜索10公里
         only_active=True,
-        limit=1
+        limit=1,
     )
 
     if not aeds:
-        return ApiResponseBuilder.success(data={
-            "found": False,
-            "user_location": {"latitude": latitude, "longitude": longitude}
-        }, message="附近未找到可用的AED设备")
+        return ApiResponseBuilder.success(
+            data={
+                "found": False,
+                "user_location": {"latitude": latitude, "longitude": longitude},
+            },
+            message="附近未找到可用的AED设备",
+        )
 
     nearest = aeds[0]
 
@@ -169,22 +182,25 @@ def get_nearest_aed(
         from_lat=latitude,
         from_lon=longitude,
         to_lat=nearest["latitude"],
-        to_lon=nearest["longitude"]
+        to_lon=nearest["longitude"],
     )
 
-    return ApiResponseBuilder.success(data={
-        "found": True,
-        "user_location": {"latitude": latitude, "longitude": longitude},
-        "aed": nearest,
-        "navigation_urls": nav_urls
-    }, message="获取最近AED设备成功")
+    return ApiResponseBuilder.success(
+        data={
+            "found": True,
+            "user_location": {"latitude": latitude, "longitude": longitude},
+            "aed": nearest,
+            "navigation_urls": nav_urls,
+        },
+        message="获取最近AED设备成功",
+    )
 
 
 @router.get("/{aed_id}")
 def get_aed_detail(
     aed_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取AED设备详情
@@ -203,7 +219,7 @@ def update_aed_status(
     aed_id: int,
     request: AEDStatusUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     更新AED设备状态
@@ -232,7 +248,7 @@ def update_aed_status(
 def import_aeds_batch(
     import_data: List[dict],
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     批量导入AED设备
@@ -254,9 +270,7 @@ def import_aeds_batch(
     - pad_expiry/electrode_expiry: 电极片过期日期
     """
     result = AEDService.import_aeds_batch(
-        db,
-        import_data,
-        operator_id=current_user.user_id
+        db, import_data, operator_id=current_user.user_id
     )
 
     return ApiResponseBuilder.success(data=result, message="批量导入AED设备成功")
@@ -266,7 +280,7 @@ def import_aeds_batch(
 def get_aed_statistics(
     city: Optional[str] = Query(None, description="城市名称（不传则统计全部）"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取AED统计信息
@@ -281,7 +295,7 @@ def get_aed_statistics(
 def get_expiring_aeds(
     days: int = Query(default=30, ge=1, le=365, description="提前多少天预警"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取即将过期的AED设备
@@ -290,11 +304,10 @@ def get_expiring_aeds(
     """
     aeds = AEDService.get_expiring_aeds(db, days=days)
 
-    return ApiResponseBuilder.success(data={
-        "count": len(aeds),
-        "warning_days": days,
-        "aeds": aeds
-    }, message="获取即将过期的AED设备成功")
+    return ApiResponseBuilder.success(
+        data={"count": len(aeds), "warning_days": days, "aeds": aeds},
+        message="获取即将过期的AED设备成功",
+    )
 
 
 @router.get("/map/bounds")
@@ -305,14 +318,13 @@ def get_aeds_in_bounds(
     max_lon: float = Query(..., ge=-180, le=180, description="最大经度"),
     only_active: bool = Query(default=True, description="仅返回可用设备"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取地图边界内的AED设备
 
     用于地图展示，根据视口范围查询AED设备
     """
-    from sqlalchemy import and_
     from app.models.emergency_resource_model import EmergencyResource
 
     query = db.query(EmergencyResource).filter(
@@ -321,28 +333,32 @@ def get_aeds_in_bounds(
         EmergencyResource.latitude >= min_lat,
         EmergencyResource.latitude <= max_lat,
         EmergencyResource.longitude >= min_lon,
-        EmergencyResource.longitude <= max_lon
+        EmergencyResource.longitude <= max_lon,
     )
 
     if only_active:
         from app.models.emergency_resource_model import AEDStatus
         from sqlalchemy import or_
+
         query = query.filter(
             or_(
                 EmergencyResource.aed_status == AEDStatus.ACTIVE.value,
-                EmergencyResource.aed_status == None
+                EmergencyResource.aed_status.is_(None),
             )
         )
 
     aeds = query.all()
 
-    return ApiResponseBuilder.success(data={
-        "count": len(aeds),
-        "bounds": {
-            "min_lat": min_lat,
-            "max_lat": max_lat,
-            "min_lon": min_lon,
-            "max_lon": max_lon
+    return ApiResponseBuilder.success(
+        data={
+            "count": len(aeds),
+            "bounds": {
+                "min_lat": min_lat,
+                "max_lat": max_lat,
+                "min_lon": min_lon,
+                "max_lon": max_lon,
+            },
+            "aeds": [aed.to_dict() for aed in aeds],
         },
-        "aeds": [aed.to_dict() for aed in aeds]
-    }, message="获取地图边界内的AED设备成功")
+        message="获取地图边界内的AED设备成功",
+    )

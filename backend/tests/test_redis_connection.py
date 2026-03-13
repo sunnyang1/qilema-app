@@ -1,22 +1,22 @@
 """
 测试Redis连接管理
 """
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+
+from unittest.mock import Mock, patch
+
 from app.core.redis import (
     RedisManager,
-    RedisConnectionError,
-    redis_manager,
-    get_redis_client,
+    check_redis_health,
     get_async_redis_client,
-    check_redis_health
+    get_redis_client,
+    redis_manager,
 )
 
 
 class TestRedisConnectionManagement:
     """测试Redis连接管理"""
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_redis_manager_singleton(self, mock_redis_module):
         """测试Redis管理器是单例"""
         manager1 = RedisManager()
@@ -24,7 +24,7 @@ class TestRedisConnectionManagement:
 
         assert manager1 is manager2
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_get_sync_client(self, mock_redis_module):
         """测试获取同步Redis客户端"""
         # Mock redis.ConnectionPool
@@ -47,7 +47,7 @@ class TestRedisConnectionManagement:
         mock_redis_module.ConnectionPool.from_url.assert_called_once()
         mock_redis_module.Redis.assert_called_once()
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_get_sync_client_caches_instance(self, mock_redis_module):
         """测试同步Redis客户端被缓存"""
         # Mock redis.ConnectionPool
@@ -70,11 +70,13 @@ class TestRedisConnectionManagement:
         mock_redis_module.ConnectionPool.from_url.assert_called_once()
         mock_redis_module.Redis.assert_called_once()
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_get_sync_client_connection_failure(self, mock_redis_module):
         """测试同步Redis客户端连接失败"""
         # Mock redis.ConnectionPool抛出异常
-        mock_redis_module.ConnectionPool.from_url = Mock(side_effect=Exception("Connection failed"))
+        mock_redis_module.ConnectionPool.from_url = Mock(
+            side_effect=Exception("Connection failed")
+        )
 
         # 清除缓存的客户端
         RedisManager._sync_client = None
@@ -86,15 +88,17 @@ class TestRedisConnectionManagement:
         # 验证返回None而不是抛出异常
         assert client is None
 
-    @patch('redis.asyncio')
-    @patch('app.core.redis.aioredis')
+    @patch("redis.asyncio")
+    @patch("app.core.redis.aioredis")
     def test_get_async_client(self, mock_aioredis, mock_asyncio):
         """测试获取异步Redis客户端"""
         # Mock aioredis.from_url
         mock_client = Mock()
+
         # 创建一个返回协程的ping mock
         async def mock_ping():
             return True
+
         mock_client.ping = Mock(return_value=mock_ping())
         mock_aioredis.from_url = Mock(return_value=mock_client)
 
@@ -112,7 +116,7 @@ class TestRedisConnectionManagement:
         assert client is mock_client
         mock_aioredis.from_url.assert_called_once()
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_check_health_success(self, mock_redis_module):
         """测试Redis健康检查成功"""
         # Mock redis.ConnectionPool
@@ -134,7 +138,7 @@ class TestRedisConnectionManagement:
         # ping至少被调用一次
         assert mock_client.ping.call_count >= 1
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_check_health_failure(self, mock_redis_module):
         """测试Redis健康检查失败"""
         # Mock redis.ConnectionPool
@@ -154,7 +158,7 @@ class TestRedisConnectionManagement:
         # 验证
         assert is_healthy is False
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_close_connection(self, mock_redis_module):
         """测试关闭Redis连接"""
         # Mock客户端
@@ -177,7 +181,7 @@ class TestRedisConnectionManagement:
         assert redis_manager is not None
         assert isinstance(redis_manager, RedisManager)
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_get_redis_client_function(self, mock_redis_module):
         """测试get_redis_client函数"""
         # Mock redis.ConnectionPool
@@ -198,15 +202,17 @@ class TestRedisConnectionManagement:
         assert client is not None
         assert isinstance(client, Mock)
 
-    @patch('redis.asyncio')
-    @patch('app.core.redis.aioredis')
+    @patch("redis.asyncio")
+    @patch("app.core.redis.aioredis")
     def test_get_async_redis_client_function(self, mock_aioredis, mock_asyncio):
         """测试get_async_redis_client函数"""
         # Mock客户端
         mock_client = Mock()
+
         # 创建一个返回协程的ping mock
         async def mock_ping():
             return True
+
         mock_client.ping = Mock(return_value=mock_ping())
         mock_aioredis.from_url = Mock(return_value=mock_client)
 
@@ -223,7 +229,7 @@ class TestRedisConnectionManagement:
         assert client is not None
         assert isinstance(client, Mock)
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_check_redis_health_function(self, mock_redis_module):
         """测试check_redis_health函数"""
         # Mock redis.ConnectionPool
@@ -243,7 +249,7 @@ class TestRedisConnectionManagement:
         # 验证
         assert is_healthy is True
 
-    @patch('app.core.redis.redis')
+    @patch("app.core.redis.redis")
     def test_redis_connection_from_url_with_config(self, mock_redis_module):
         """测试使用配置的Redis URL创建连接"""
         # Mock redis.ConnectionPool

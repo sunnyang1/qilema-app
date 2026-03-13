@@ -4,15 +4,13 @@
 验证响应Schema的正确性和一致性
 """
 
-import pytest
-from datetime import datetime
 from app.schemas.common import (
     ApiResponse,
     ErrorResponse,
     SuccessResponse,
-    success_response,
+    error_response,
     paginated_response,
-    error_response
+    success_response,
 )
 
 
@@ -22,9 +20,7 @@ class TestApiResponse:
     def test_basic_api_response(self):
         """测试基本的API响应"""
         response = ApiResponse(
-            code=200,
-            message="success",
-            data={"id": 1, "name": "测试"}
+            code=200, message="success", data={"id": 1, "name": "测试"}
         )
 
         assert response.code == 200
@@ -44,11 +40,7 @@ class TestApiResponse:
 
     def test_api_response_serialization(self):
         """测试API响应序列化"""
-        response = ApiResponse(
-            code=200,
-            message="success",
-            data={"items": [1, 2, 3]}
-        )
+        response = ApiResponse(code=200, message="success", data={"items": [1, 2, 3]})
 
         json_data = response.model_dump()
         assert json_data["code"] == 200
@@ -58,16 +50,15 @@ class TestApiResponse:
 
     def test_api_response_model_dump_json(self):
         """测试API响应JSON序列化"""
-        response = ApiResponse(
-            code=200,
-            message="success",
-            data={"test": "data"}
-        )
+        response = ApiResponse(code=200, message="success", data={"test": "data"})
 
         json_str = response.model_dump_json()
         assert '"code":200' in json_str
         assert '"message":"success"' in json_str
-        assert '"data":{ "test":"data"}' in json_str or '"data":{"test":"data"}' in json_str
+        assert (
+            '"data":{ "test":"data"}' in json_str
+            or '"data":{"test":"data"}' in json_str
+        )
 
     def test_api_response_with_none_data(self):
         """测试data为None的API响应"""
@@ -83,9 +74,7 @@ class TestErrorResponse:
     def test_basic_error_response(self):
         """测试基本的错误响应"""
         response = ErrorResponse(
-            code=1001,
-            message="该手机号已注册",
-            detail="手机号: 13800138000"
+            code=1001, message="该手机号已注册", detail="手机号: 13800138000"
         )
 
         assert response.code == 1001
@@ -95,10 +84,7 @@ class TestErrorResponse:
 
     def test_error_response_without_detail(self):
         """测试没有detail的错误响应"""
-        response = ErrorResponse(
-            code=404,
-            message="用户不存在"
-        )
+        response = ErrorResponse(code=404, message="用户不存在")
 
         assert response.code == 404
         assert response.message == "用户不存在"
@@ -132,10 +118,7 @@ class TestSuccessResponse:
 
     def test_basic_success_response(self):
         """测试基本的成功响应"""
-        response = SuccessResponse(
-            message="操作成功",
-            data={"id": 1, "name": "测试"}
-        )
+        response = SuccessResponse(message="操作成功", data={"id": 1, "name": "测试"})
 
         assert response.message == "操作成功"
         assert response.data == {"id": 1, "name": "测试"}
@@ -162,10 +145,7 @@ class TestSuccessResponseFunction:
 
     def test_success_response_with_data(self):
         """测试带数据的成功响应"""
-        response = success_response(
-            data={"id": 1, "name": "测试"},
-            message="操作成功"
-        )
+        response = success_response(data={"id": 1, "name": "测试"}, message="操作成功")
 
         assert response["code"] == 200
         assert response["message"] == "操作成功"
@@ -183,10 +163,7 @@ class TestSuccessResponseFunction:
 
     def test_success_response_custom_code(self):
         """测试自定义响应码的成功响应"""
-        response = success_response(
-            data={"status": "ok"},
-            code=201
-        )
+        response = success_response(data={"status": "ok"}, code=201)
 
         assert response["code"] == 201
         assert response["data"] == {"status": "ok"}
@@ -208,12 +185,7 @@ class TestPaginatedResponseFunction:
     def test_paginated_response_basic(self):
         """测试基本的分页响应"""
         items = [{"id": 1}, {"id": 2}, {"id": 3}]
-        response = paginated_response(
-            items=items,
-            total=10,
-            page=1,
-            page_size=10
-        )
+        response = paginated_response(items=items, total=10, page=1, page_size=10)
 
         assert response["code"] == 200
         assert response["message"] == "success"
@@ -226,12 +198,7 @@ class TestPaginatedResponseFunction:
     def test_paginated_response_multiple_pages(self):
         """测试多页的分页响应"""
         items = [{"id": 1}, {"id": 2}]
-        response = paginated_response(
-            items=items,
-            total=12,
-            page=1,
-            page_size=5
-        )
+        response = paginated_response(items=items, total=12, page=1, page_size=5)
 
         assert response["data"]["total"] == 12
         assert response["data"]["page"] == 1
@@ -242,12 +209,7 @@ class TestPaginatedResponseFunction:
     def test_paginated_response_last_page(self):
         """测试最后一页的分页响应"""
         items = [{"id": 11}, {"id": 12}]
-        response = paginated_response(
-            items=items,
-            total=12,
-            page=3,
-            page_size=5
-        )
+        response = paginated_response(items=items, total=12, page=3, page_size=5)
 
         assert response["data"]["page"] == 3
         assert response["data"]["total_pages"] == 3
@@ -255,12 +217,7 @@ class TestPaginatedResponseFunction:
 
     def test_paginated_response_empty_items(self):
         """测试空数据的分页响应"""
-        response = paginated_response(
-            items=[],
-            total=0,
-            page=1,
-            page_size=10
-        )
+        response = paginated_response(items=[], total=0, page=1, page_size=10)
 
         assert response["data"]["items"] == []
         assert response["data"]["total"] == 0
@@ -269,11 +226,7 @@ class TestPaginatedResponseFunction:
     def test_paginated_response_custom_message(self):
         """测试自定义消息的分页响应"""
         response = paginated_response(
-            items=[{"id": 1}],
-            total=1,
-            page=1,
-            page_size=10,
-            message="查询成功"
+            items=[{"id": 1}], total=1, page=1, page_size=10, message="查询成功"
         )
 
         assert response["message"] == "查询成功"
@@ -284,10 +237,7 @@ class TestErrorResponseFunction:
 
     def test_error_response_basic(self):
         """测试基本的错误响应"""
-        response = error_response(
-            code=1001,
-            message="用户已存在"
-        )
+        response = error_response(code=1001, message="用户已存在")
 
         assert response["code"] == 1001
         assert response["message"] == "用户已存在"
@@ -299,7 +249,7 @@ class TestErrorResponseFunction:
         response = error_response(
             code=400,
             message="参数验证失败",
-            detail={"field": "phone", "error": "格式不正确"}
+            detail={"field": "phone", "error": "格式不正确"},
         )
 
         assert response["code"] == 400

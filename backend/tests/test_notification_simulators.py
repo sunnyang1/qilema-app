@@ -4,15 +4,14 @@
 测试推送、短信、电话、邮件四种通知模拟器的各种场景
 """
 
-import pytest
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import patch
+
 from app.core.notification_simulators import (
-    NotificationSimulator,
+    EmailNotificationSimulator,
+    PhoneNotificationSimulator,
     PushNotificationSimulator,
     SMSNotificationSimulator,
-    PhoneNotificationSimulator,
-    EmailNotificationSimulator
 )
 
 
@@ -62,10 +61,7 @@ class TestPushNotificationSimulator:
     def test_init_with_config(self):
         """测试带配置初始化"""
         simulator = PushNotificationSimulator(
-            enabled=False,
-            success_rate=50.0,
-            delay_ms=200,
-            push_token="test_token_123"
+            enabled=False, success_rate=50.0, delay_ms=200, push_token="test_token_123"
         )
         assert simulator.enabled is False
         assert simulator.success_rate == 50.0
@@ -75,11 +71,7 @@ class TestPushNotificationSimulator:
     def test_send_success(self):
         """测试成功发送推送"""
         simulator = PushNotificationSimulator(success_rate=100.0)
-        result = simulator.send(
-            user_id="user_001",
-            title="测试标题",
-            content="测试内容"
-        )
+        result = simulator.send(user_id="user_001", title="测试标题", content="测试内容")
 
         assert result["status"] == "success"
         assert "message_id" in result["data"]
@@ -92,11 +84,7 @@ class TestPushNotificationSimulator:
         simulator = PushNotificationSimulator(success_rate=100.0, delay_ms=100)
 
         start_time = time.time()
-        result = simulator.send(
-            user_id="user_001",
-            title="测试标题",
-            content="测试内容"
-        )
+        result = simulator.send(user_id="user_001", title="测试标题", content="测试内容")
         end_time = time.time()
 
         assert result["status"] == "success"
@@ -105,11 +93,7 @@ class TestPushNotificationSimulator:
     def test_send_disabled(self):
         """测试禁用状态下发送"""
         simulator = PushNotificationSimulator(enabled=False)
-        result = simulator.send(
-            user_id="user_001",
-            title="测试标题",
-            content="测试内容"
-        )
+        result = simulator.send(user_id="user_001", title="测试标题", content="测试内容")
 
         assert result["status"] == "disabled"
         assert "未启用" in result["message"]
@@ -118,11 +102,7 @@ class TestPushNotificationSimulator:
         """测试发送失败场景"""
         # 使用0%成功率确保失败
         simulator = PushNotificationSimulator(success_rate=0.0)
-        result = simulator.send(
-            user_id="user_001",
-            title="测试标题",
-            content="测试内容"
-        )
+        result = simulator.send(user_id="user_001", title="测试标题", content="测试内容")
 
         assert result["status"] == "failed"
         # 失败时data中应该包含error_type
@@ -136,7 +116,7 @@ class TestPushNotificationSimulator:
         results = simulator.send_batch(
             user_ids=["user_001", "user_002", "user_003"],
             title="批量标题",
-            content="批量内容"
+            content="批量内容",
         )
 
         assert len(results) == 3
@@ -159,10 +139,7 @@ class TestSMSNotificationSimulator:
     def test_send_success(self):
         """测试成功发送短信"""
         simulator = SMSNotificationSimulator(success_rate=100.0)
-        result = simulator.send(
-            phone_number="13800138000",
-            content="您的验证码是123456"
-        )
+        result = simulator.send(phone_number="13800138000", content="您的验证码是123456")
 
         assert result["status"] == "success"
         assert "message_id" in result["data"]
@@ -178,7 +155,7 @@ class TestSMSNotificationSimulator:
             phone_number="13800138000",
             content="您的验证码是{code}",
             template_code="verify_code_template",
-            template_params={"code": "123456"}
+            template_params={"code": "123456"},
         )
 
         assert result["status"] == "success"
@@ -203,10 +180,7 @@ class TestSMSNotificationSimulator:
     def test_send_failure_network_error(self):
         """测试网络错误失败场景"""
         simulator = SMSNotificationSimulator(success_rate=0.0)
-        result = simulator.send(
-            phone_number="13800138000",
-            content="测试内容"
-        )
+        result = simulator.send(phone_number="13800138000", content="测试内容")
 
         assert result["status"] == "failed"
         # 失败时data中应该包含error_code和error_type
@@ -215,15 +189,18 @@ class TestSMSNotificationSimulator:
     def test_send_failure_insufficient_balance(self):
         """测试余额不足失败场景"""
         simulator = SMSNotificationSimulator(success_rate=0.0)
-        result = simulator.send(
-            phone_number="13800138000",
-            content="测试内容"
-        )
+        result = simulator.send(phone_number="13800138000", content="测试内容")
 
         assert result["status"] == "failed"
         error_code = result["data"].get("error_type")
-        assert error_code in ["insufficient_balance", "invalid_phone", "content_sensitive",
-                           "rate_limit_exceeded", "network_error", "timeout"]
+        assert error_code in [
+            "insufficient_balance",
+            "invalid_phone",
+            "content_sensitive",
+            "rate_limit_exceeded",
+            "network_error",
+            "timeout",
+        ]
 
 
 class TestPhoneNotificationSimulator:
@@ -239,10 +216,7 @@ class TestPhoneNotificationSimulator:
     def test_call_success(self):
         """测试成功拨打电话"""
         simulator = PhoneNotificationSimulator(success_rate=100.0)
-        result = simulator.send(
-            phone_number="13800138000",
-            content="用户出现异常，请立即联系"
-        )
+        result = simulator.send(phone_number="13800138000", content="用户出现异常，请立即联系")
 
         assert result["status"] == "success"
         assert "call_id" in result["data"]
@@ -253,28 +227,34 @@ class TestPhoneNotificationSimulator:
     def test_call_failure_busy(self):
         """测试线路忙失败场景"""
         simulator = PhoneNotificationSimulator(success_rate=0.0)
-        result = simulator.send(
-            phone_number="13800138000",
-            content="测试内容"
-        )
+        result = simulator.send(phone_number="13800138000", content="测试内容")
 
         assert result["status"] == "failed"
         error_code = result["data"].get("error_type")
-        assert error_code in ["busy", "no_answer", "invalid_phone", "call_rejected",
-                           "network_error", "timeout"]
+        assert error_code in [
+            "busy",
+            "no_answer",
+            "invalid_phone",
+            "call_rejected",
+            "network_error",
+            "timeout",
+        ]
 
     def test_call_failure_no_answer(self):
         """测试无人接听失败场景"""
         simulator = PhoneNotificationSimulator(success_rate=0.0)
-        result = simulator.send(
-            phone_number="13800138000",
-            content="测试内容"
-        )
+        result = simulator.send(phone_number="13800138000", content="测试内容")
 
         assert result["status"] == "failed"
         error_code = result["data"].get("error_type")
-        assert error_code in ["busy", "no_answer", "invalid_phone", "call_rejected",
-                           "network_error", "timeout"]
+        assert error_code in [
+            "busy",
+            "no_answer",
+            "invalid_phone",
+            "call_rejected",
+            "network_error",
+            "timeout",
+        ]
 
 
 class TestEmailNotificationSimulator:
@@ -291,9 +271,7 @@ class TestEmailNotificationSimulator:
         """测试成功发送纯文本邮件"""
         simulator = EmailNotificationSimulator(success_rate=100.0)
         result = simulator.send(
-            to_email="user@example.com",
-            subject="测试主题",
-            content="测试内容"
+            to_email="user@example.com", subject="测试主题", content="测试内容"
         )
 
         assert result["status"] == "success"
@@ -311,7 +289,7 @@ class TestEmailNotificationSimulator:
             to_email="user@example.com",
             subject="测试主题",
             content="纯文本内容",
-            html_content=html_content
+            html_content=html_content,
         )
 
         assert result["status"] == "success"
@@ -325,7 +303,7 @@ class TestEmailNotificationSimulator:
             to_email="user@example.com",
             subject="测试主题",
             content="测试内容",
-            attachments=["report.pdf", "data.xlsx"]
+            attachments=["report.pdf", "data.xlsx"],
         )
 
         assert result["status"] == "success"
@@ -349,29 +327,39 @@ class TestEmailNotificationSimulator:
         """测试SMTP错误失败场景"""
         simulator = EmailNotificationSimulator(success_rate=0.0)
         result = simulator.send(
-            to_email="user@example.com",
-            subject="测试主题",
-            content="测试内容"
+            to_email="user@example.com", subject="测试主题", content="测试内容"
         )
 
         assert result["status"] == "failed"
         error_code = result["data"].get("error_type")
-        assert error_code in ["invalid_email", "smtp_auth_failed", "smtp_connection_failed",
-                           "attachment_too_large", "spam_rejected", "network_error", "timeout"]
+        assert error_code in [
+            "invalid_email",
+            "smtp_auth_failed",
+            "smtp_connection_failed",
+            "attachment_too_large",
+            "spam_rejected",
+            "network_error",
+            "timeout",
+        ]
 
     def test_send_failure_invalid_email(self):
         """测试无效邮箱失败场景"""
         simulator = EmailNotificationSimulator(success_rate=0.0)
         result = simulator.send(
-            to_email="user@example.com",
-            subject="测试主题",
-            content="测试内容"
+            to_email="user@example.com", subject="测试主题", content="测试内容"
         )
 
         assert result["status"] == "failed"
         error_code = result["data"].get("error_type")
-        assert error_code in ["invalid_email", "smtp_auth_failed", "smtp_connection_failed",
-                           "attachment_too_large", "spam_rejected", "network_error", "timeout"]
+        assert error_code in [
+            "invalid_email",
+            "smtp_auth_failed",
+            "smtp_connection_failed",
+            "attachment_too_large",
+            "spam_rejected",
+            "network_error",
+            "timeout",
+        ]
 
 
 class TestRetryMechanism:
@@ -380,9 +368,7 @@ class TestRetryMechanism:
     def test_retry_on_network_error(self):
         """测试网络错误时重试"""
         simulator = SMSNotificationSimulator(
-            success_rate=100.0,  # 让第1次发送失败
-            max_retries=3,
-            retry_interval_ms=50
+            success_rate=100.0, max_retries=3, retry_interval_ms=50  # 让第1次发送失败
         )
 
         # Mock让第1、2次返回网络错误，第3次成功
@@ -391,10 +377,14 @@ class TestRetryMechanism:
         def mock_send(**kwargs):
             send_count[0] += 1
             if send_count[0] < 3:
-                return {"status": "failed", "error_code": "network_error", "message": "网络错误"}
+                return {
+                    "status": "failed",
+                    "error_code": "network_error",
+                    "message": "网络错误",
+                }
             return {"status": "success", "message": "成功", "data": {}}
 
-        with patch.object(simulator, '_send', side_effect=mock_send):
+        with patch.object(simulator, "_send", side_effect=mock_send):
             result = simulator.send(phone_number="13800138000", content="测试")
             assert send_count[0] == 3  # 失败2次，第3次成功
             assert result["status"] == "success"
@@ -402,9 +392,7 @@ class TestRetryMechanism:
     def test_no_retry_on_business_error(self):
         """测试业务错误时不重试"""
         simulator = SMSNotificationSimulator(
-            success_rate=100.0,
-            max_retries=3,
-            retry_interval_ms=50
+            success_rate=100.0, max_retries=3, retry_interval_ms=50
         )
 
         send_count = [0]
@@ -412,9 +400,13 @@ class TestRetryMechanism:
         def mock_send(**kwargs):
             send_count[0] += 1
             # 业务错误：无效手机号
-            return {"status": "failed", "error_code": "invalid_phone", "message": "无效手机号"}
+            return {
+                "status": "failed",
+                "error_code": "invalid_phone",
+                "message": "无效手机号",
+            }
 
-        with patch.object(simulator, '_send', side_effect=mock_send):
+        with patch.object(simulator, "_send", side_effect=mock_send):
             result = simulator.send(phone_number="13800138000", content="测试")
             assert send_count[0] == 1  # 只发送1次，不重试
             assert result["status"] == "failed"
@@ -422,18 +414,20 @@ class TestRetryMechanism:
     def test_max_retries_exceeded(self):
         """测试超过最大重试次数"""
         simulator = SMSNotificationSimulator(
-            success_rate=0.0,  # 所有发送都失败
-            max_retries=3,
-            retry_interval_ms=10
+            success_rate=0.0, max_retries=3, retry_interval_ms=10  # 所有发送都失败
         )
 
         send_count = [0]
 
         def mock_send(**kwargs):
             send_count[0] += 1
-            return {"status": "failed", "error_code": "network_error", "message": "网络错误"}
+            return {
+                "status": "failed",
+                "error_code": "network_error",
+                "message": "网络错误",
+            }
 
-        with patch.object(simulator, '_send', side_effect=mock_send):
+        with patch.object(simulator, "_send", side_effect=mock_send):
             result = simulator.send(phone_number="13800138000", content="测试")
             assert send_count[0] == 3  # 最多重试3次（max_retries）
             assert result["status"] == "failed"

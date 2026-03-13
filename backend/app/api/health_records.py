@@ -2,32 +2,38 @@
 
 使用 ApiResponseBuilder 统一构建响应
 """
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from typing import List
 
-from app.core.database import get_db
-from app.core.exceptions import ValidationException, NotFoundException, InternalServerException
+from app.api.dependencies import get_health_record_service
+from app.core.exceptions import (
+    InternalServerException,
+    NotFoundException,
+    ValidationException,
+)
 from app.core.response_builder import ApiResponseBuilder
-from app.services.health_record_service import HealthRecordService
 from app.schemas.health_record import (
-    HealthRecordCreate, HealthRecordUpdate, HealthRecordResponse, HealthRecordSummary,
-    MedicalHistoryCreate, MedicalHistoryUpdate,
-    MedicationCreate, MedicationUpdate,
-    AllergyCreate, AllergyUpdate
+    AllergyCreate,
+    AllergyResponse,
+    AllergyUpdate,
+    HealthRecordCreate,
+    HealthRecordResponse,
+    HealthRecordUpdate,
+    MedicalHistoryCreate,
+    MedicalHistoryResponse,
+    MedicalHistoryUpdate,
+    MedicationCreate,
+    MedicationResponse,
+    MedicationUpdate,
 )
-from app.models.health_record import (
-    HealthRecord, MedicalHistory, Medication, Allergy
-)
+from app.services.health_record_service import HealthRecordService
+from fastapi import APIRouter, Depends
 
 router = APIRouter(prefix="/health-records", tags=["健康档案"])
-health_service = HealthRecordService()
 
 
 @router.post("/", summary="创建健康档案")
 def create_health_record(
     data: HealthRecordCreate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     创建健康档案
@@ -44,8 +50,11 @@ def create_health_record(
     - **emergency_contact_relation**: 紧急医疗联系人关系
     """
     try:
-        health_record = health_service.create_health_record(db, data)
-        return ApiResponseBuilder.success(data=health_record.to_dict(), message="健康档案创建成功")
+        health_record = service.create_health_record(data)
+        return ApiResponseBuilder.success(
+            data=HealthRecordResponse.model_validate(health_record).model_dump(),
+            message="健康档案创建成功",
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -55,27 +64,49 @@ def create_health_record(
 @router.get("/{user_id}", summary="获取健康档案")
 def get_health_record(
     user_id: str,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     获取用户的完整健康档案,包含基础信息、病史记录、用药信息、过敏史
     """
     try:
-        health_record = health_service.get_health_record(db, user_id)
+        health_record = service.get_health_record(user_id)
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
-        # 获取关联数据
-        medical_histories = health_record.medical_histories.all()
-        medications = health_record.medications.all()
-        allergies = health_record.allergies.all()
+        # 获取关联数据（lazy="dynamic" 关系需要使用 .all()）
+        medical_histories = [
+            MedicalHistoryResponse.model_validate(mh)
+            for mh in health_record.medical_histories.all()
+        ]
+        medications = [
+            MedicationResponse.model_validate(med)
+            for med in health_record.medications.all()
+        ]
+        allergies = [
+            AllergyResponse.model_validate(allg)
+            for allg in health_record.allergies.all()
+        ]
 
-        return ApiResponseBuilder.success(data={
-            **health_record.to_dict(),
-            "medical_histories": [mh.to_dict() for mh in medical_histories],
-            "medications": [med.to_dict() for med in medications],
-            "allergies": [allg.to_dict() for allg in allergies]
-        }, message="获取健康档案成功")
+        # 使用 Pydantic 模型序列化健康档案，并添加关联数据
+        health_record_data = HealthRecordResponse.model_validate(
+            health_record
+        ).model_dump()
+        health_record_data.update(
+            {
+                "chronic_diseases": health_record.chronic_diseases_json,
+                "allergies_json": health_record.allergies_json,
+                "current_medications": health_record.current_medications_json,
+                "surgeries": health_record.surgeries_json,
+                "blood_transfusion_history": health_record.blood_transfusion_history,
+                "organ_transplant_history": health_record.organ_transplant_history,
+                "medical_histories": [mh.model_dump() for mh in medical_histories],
+                "medications": [med.model_dump() for med in medications],
+                "allergies": [allg.model_dump() for allg in allergies],
+            }
+        )
+
+        return ApiResponseBuilder.success(data=health_record_data, message="获取健康档案成功")
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -86,12 +117,15 @@ def get_health_record(
 def update_health_record(
     user_id: str,
     data: HealthRecordUpdate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """更新健康档案基础信息"""
     try:
-        health_record = health_service.update_health_record(db, user_id, data)
-        return ApiResponseBuilder.success(data=health_record.to_dict(), message="健康档案更新成功")
+        health_record = service.update_health_record(user_id, data)
+        return ApiResponseBuilder.success(
+            data=HealthRecordResponse.model_validate(health_record).model_dump(),
+            message="健康档案更新成功",
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -102,7 +136,7 @@ def update_health_record(
 def add_medical_history(
     user_id: str,
     data: MedicalHistoryCreate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     添加病史记录
@@ -115,14 +149,18 @@ def add_medical_history(
     """
     try:
         # 获取健康档案ID
-        health_record = health_service.get_health_record(db, user_id)
+        health_record = service.get_health_record(user_id)
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
         data.health_record_id = health_record.id
-        medical_history = health_service.add_medical_history(db, health_record.id, data)
+        medical_history = service.add_medical_history(health_record.id, data)
 
-        return ApiResponseBuilder.success(data=medical_history.to_dict(), message="病史记录添加成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=MedicalHistoryResponse.model_validate(medical_history).model_dump(),
+            message="病史记录添加成功",
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -132,17 +170,24 @@ def add_medical_history(
 @router.get("/{user_id}/medical-histories", summary="获取病史记录列表")
 def get_medical_histories(
     user_id: str,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """获取用户的病史记录列表"""
     try:
-        health_record = health_service.get_health_record(db, user_id)
+        health_record = service.get_health_record(user_id)
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
-        medical_histories = health_service.get_medical_histories(db, health_record.id)
+        medical_histories = service.get_medical_histories(health_record.id)
 
-        return ApiResponseBuilder.success(data=[mh.to_dict() for mh in medical_histories], message="获取病史记录成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=[
+                MedicalHistoryResponse.model_validate(mh).model_dump()
+                for mh in medical_histories
+            ],
+            message="获取病史记录成功",
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -153,12 +198,16 @@ def get_medical_histories(
 def update_medical_history(
     history_id: int,
     data: MedicalHistoryUpdate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """更新病史记录"""
     try:
-        medical_history = health_service.update_medical_history(db, history_id, data)
-        return ApiResponseBuilder.success(data=medical_history.to_dict(), message="病史记录更新成功")
+        medical_history = service.update_medical_history(history_id, data)
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=MedicalHistoryResponse.model_validate(medical_history).model_dump(),
+            message="病史记录更新成功",
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -168,11 +217,11 @@ def update_medical_history(
 @router.delete("/medical-histories/{history_id}", summary="删除病史记录")
 def delete_medical_history(
     history_id: int,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """删除病史记录"""
     try:
-        health_service.delete_medical_history(db, history_id)
+        service.delete_medical_history(history_id)
         return ApiResponseBuilder.success(message="病史记录删除成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -184,7 +233,7 @@ def delete_medical_history(
 def add_medication(
     user_id: str,
     data: MedicationCreate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     添加用药信息
@@ -198,14 +247,18 @@ def add_medication(
     - **notes**: 备注
     """
     try:
-        health_record = health_service.get_health_record(db, user_id)
+        health_record = service.get_health_record(user_id)
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
         data.health_record_id = health_record.id
-        medication = health_service.add_medication(db, health_record.id, data)
+        medication = service.add_medication(health_record.id, data)
 
-        return ApiResponseBuilder.success(data=medication.to_dict(), message="用药信息添加成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=MedicationResponse.model_validate(medication).model_dump(),
+            message="用药信息添加成功",
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -216,7 +269,7 @@ def add_medication(
 def get_medications(
     user_id: str,
     current_only: bool = False,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     获取用户的用药信息列表
@@ -224,13 +277,20 @@ def get_medications(
     - **current_only**: 是否只获取当前正在使用的药品
     """
     try:
-        health_record = health_service.get_health_record(db, user_id)
+        health_record = service.get_health_record(user_id)
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
-        medications = health_service.get_medications(db, health_record.id, current_only)
+        medications = service.get_medications(health_record.id, current_only)
 
-        return ApiResponseBuilder.success(data=[med.to_dict() for med in medications], message="获取用药信息成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=[
+                MedicationResponse.model_validate(med).model_dump()
+                for med in medications
+            ],
+            message="获取用药信息成功",
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -241,12 +301,35 @@ def get_medications(
 def update_medication(
     medication_id: int,
     data: MedicationUpdate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """更新用药信息"""
     try:
-        medication = health_service.update_medication(db, medication_id, data)
-        return ApiResponseBuilder.success(data=medication.to_dict(), message="用药信息更新成功")
+        medication = service.update_medication(medication_id, data)
+        return ApiResponseBuilder.success(
+            data={
+                "id": medication.id,
+                "health_record_id": medication.health_record_id,
+                "drug_name": medication.drug_name,
+                "dosage": medication.dosage,
+                "frequency": medication.frequency,
+                "start_date": (
+                    medication.start_date.isoformat() if medication.start_date else None
+                ),
+                "end_date": (
+                    medication.end_date.isoformat() if medication.end_date else None
+                ),
+                "is_current": medication.is_current,
+                "notes": medication.notes,
+                "created_at": (
+                    medication.created_at.isoformat() if medication.created_at else None
+                ),
+                "updated_at": (
+                    medication.updated_at.isoformat() if medication.updated_at else None
+                ),
+            },
+            message="用药信息更新成功",
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -256,11 +339,11 @@ def update_medication(
 @router.delete("/medications/{medication_id}", summary="删除用药信息")
 def delete_medication(
     medication_id: int,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """删除用药信息"""
     try:
-        health_service.delete_medication(db, medication_id)
+        service.delete_medication(medication_id)
         return ApiResponseBuilder.success(message="用药信息删除成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -272,7 +355,7 @@ def delete_medication(
 def add_allergy(
     user_id: str,
     data: AllergyCreate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     添加过敏史
@@ -284,14 +367,18 @@ def add_allergy(
     - **notes**: 备注
     """
     try:
-        health_record = health_service.get_health_record(db, user_id)
+        health_record = service.get_health_record(user_id)
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
         data.health_record_id = health_record.id
-        allergy = health_service.add_allergy(db, health_record.id, data)
+        allergy = service.add_allergy(health_record.id, data)
 
-        return ApiResponseBuilder.success(data=allergy.to_dict(), message="过敏史添加成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=AllergyResponse.model_validate(allergy).model_dump(),
+            message="过敏史添加成功",
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -301,17 +388,23 @@ def add_allergy(
 @router.get("/{user_id}/allergies", summary="获取过敏史列表")
 def get_allergies(
     user_id: str,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """获取用户的过敏史列表"""
     try:
-        health_record = health_service.get_health_record(db, user_id)
+        health_record = service.get_health_record(user_id)
         if not health_record:
             raise NotFoundException("健康档案不存在")
 
-        allergies = health_service.get_allergies(db, health_record.id)
+        allergies = service.get_allergies(health_record.id)
 
-        return ApiResponseBuilder.success(data=[allg.to_dict() for allg in allergies], message="获取过敏史成功")
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=[
+                AllergyResponse.model_validate(allg).model_dump() for allg in allergies
+            ],
+            message="获取过敏史成功",
+        )
     except (ValidationException, NotFoundException):
         raise
     except Exception as e:
@@ -322,12 +415,16 @@ def get_allergies(
 def update_allergy(
     allergy_id: int,
     data: AllergyUpdate,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """更新过敏史"""
     try:
-        allergy = health_service.update_allergy(db, allergy_id, data)
-        return ApiResponseBuilder.success(data=allergy.to_dict(), message="过敏史更新成功")
+        allergy = service.update_allergy(allergy_id, data)
+        # 使用 Pydantic 模型序列化
+        return ApiResponseBuilder.success(
+            data=AllergyResponse.model_validate(allergy).model_dump(),
+            message="过敏史更新成功",
+        )
     except ValueError as e:
         raise ValidationException(detail=str(e))
     except Exception as e:
@@ -337,11 +434,11 @@ def update_allergy(
 @router.delete("/allergies/{allergy_id}", summary="删除过敏史")
 def delete_allergy(
     allergy_id: int,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """删除过敏史"""
     try:
-        health_service.delete_allergy(db, allergy_id)
+        service.delete_allergy(allergy_id)
         return ApiResponseBuilder.success(message="过敏史删除成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -352,7 +449,7 @@ def delete_allergy(
 @router.get("/{user_id}/summary", summary="生成健康档案摘要")
 def generate_summary(
     user_id: str,
-    db: Session = Depends(get_db)
+    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     生成健康档案摘要,用于快速分享给急救人员
@@ -365,12 +462,12 @@ def generate_summary(
     - 紧急联系人信息
     """
     try:
-        summary = health_service.generate_summary(db, user_id)
+        summary = service.generate_summary(user_id)
 
-        return ApiResponseBuilder.success(data={
-            **summary.dict(),
-            "summary_text": summary.generate_summary_text()
-        }, message="生成健康档案摘要成功")
+        return ApiResponseBuilder.success(
+            data={**summary.dict(), "summary_text": summary.generate_summary_text()},
+            message="生成健康档案摘要成功",
+        )
     except ValueError as e:
         raise NotFoundException(detail=str(e))
     except Exception as e:

@@ -1,0 +1,42 @@
+[project]
+name = "qilema-app"
+displayName = "起了吗 App"
+description = "为独居人群提供紧急医疗救助服务。基于 Expo + React Native 的移动应用，提供每日签到、SOS 紧急求助、联系人管理、健康档案等核心功能。"
+version = "1.0.0"
+status = "production"
+entrypoint = "server.js"
+requires = ["nodejs-24"]
+
+[metadata]
+author = "Qilema Team"
+license = "MIT"
+repository = "https://github.com/sunnyang1/qilema-app"
+homepage = "https://github.com/sunnyang1/qilema-app#readme"
+
+[platforms]
+ios = true
+android = true
+web = true
+
+[features]
+daily_checkin = "每日签到打卡"
+sos_emergency = "SOS 紧急求助"
+contact_management = "联系人管理"
+health_records = "健康档案"
+emergency_resources = "急救资源对接"
+medication_reminders = "用药提醒"
+
+[dev]
+build = ["bash", "mobile/.cozeproj/scripts/dev_build.sh"]
+run = ["bash", "mobile/.cozeproj/scripts/dev_run.sh"]
+
+[deploy]
+build = ["bash", "mobile/.cozeproj/scripts/prod_build.sh"]
+run = ["bash", "mobile/.cozeproj/scripts/prod_run.sh"]
+build_app_dir = "./mobile/client"
+port = 5000
+health_check = "/api/v1/health"
+
+[environment]
+NODE_ENV = "production"
+PORT = "5000"

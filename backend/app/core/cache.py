@@ -1,12 +1,14 @@
 """
 通用缓存装饰器
 """
-import json
+
 import hashlib
 from functools import wraps
 from typing import Optional, Callable, Any, Tuple
 import logging
 import time
+from functools import wraps
+from typing import Any, Callable, Optional, Tuple
 
 from app.core.redis import redis_manager
 
@@ -17,7 +19,7 @@ def cache(
     ttl: int,
     key_prefix: str,
     key_builder: Optional[Callable] = None,
-    condition: Optional[Callable] = None
+    condition: Optional[Callable] = None,
 ):
     """缓存装饰器
 
@@ -35,6 +37,7 @@ def cache(
         def get_user(user_id):
             return db.query(User).filter(User.user_id == user_id).first()
     """
+
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -93,7 +96,10 @@ def cache(
 
                 # 序列化并缓存结果
                 try:
-                    if isinstance(result, (dict, list, int, float, bool, str)) or result is None:
+                    if (
+                        isinstance(result, (dict, list, int, float, bool, str))
+                        or result is None
+                    ):
                         # 可序列化的类型，使用JSON
                         cached_value = json.dumps(result)
                     else:
@@ -119,6 +125,7 @@ def cache(
                 return func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -339,7 +346,7 @@ def cache_with_null_protection(
     ttl: int,
     key_prefix: str,
     key_builder: Optional[Callable] = None,
-    null_ttl: int = NULL_VALUE_TTL
+    null_ttl: int = NULL_VALUE_TTL,
 ):
     """缓存装饰器（带缓存穿透防护）
 
@@ -359,6 +366,7 @@ def cache_with_null_protection(
         def get_user(user_id):
             return db.query(User).filter(User.user_id == user_id).first()
     """
+
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -393,4 +401,5 @@ def cache_with_null_protection(
             return result
 
         return wrapper
+
     return decorator

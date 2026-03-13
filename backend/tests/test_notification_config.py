@@ -4,18 +4,18 @@
 测试NotificationServiceConfig类和工厂函数的各种场景
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
 from app.core.notification_simulators import (
+    EmailNotificationSimulator,
     NotificationServiceConfig,
-    create_push_simulator,
-    create_sms_simulator,
-    create_phone_simulator,
-    create_email_simulator,
+    PhoneNotificationSimulator,
     PushNotificationSimulator,
     SMSNotificationSimulator,
-    PhoneNotificationSimulator,
-    EmailNotificationSimulator
+    create_email_simulator,
+    create_phone_simulator,
+    create_push_simulator,
+    create_sms_simulator,
 )
 
 
@@ -117,7 +117,7 @@ class TestFactoryFunctions:
         mock_config.get_push_simulator_config.return_value = {
             "enabled": False,
             "success_rate": 50.0,
-            "delay_ms": 200
+            "delay_ms": 200,
         }
         simulator = create_push_simulator(mock_config)
         assert isinstance(simulator, PushNotificationSimulator)
@@ -150,14 +150,18 @@ class TestFactoryFunctions:
 class TestEnvironmentVariableOverride:
     """测试环境变量覆盖"""
 
-    @patch.dict('os.environ', {
-        'NOTIFICATION_PUSH_ENABLED': 'false',
-        'NOTIFICATION_PUSH_SUCCESS_RATE': '80.0'
-    })
+    @patch.dict(
+        "os.environ",
+        {
+            "NOTIFICATION_PUSH_ENABLED": "false",
+            "NOTIFICATION_PUSH_SUCCESS_RATE": "80.0",
+        },
+    )
     def test_push_config_override_by_env(self):
         """测试推送配置被环境变量覆盖"""
         # 重新加载settings以获取环境变量
         from app.core.config import Settings
+
         settings_obj = Settings()
         config = NotificationServiceConfig(settings_obj)
         push_config = config.get_push_simulator_config()
@@ -167,13 +171,14 @@ class TestEnvironmentVariableOverride:
         assert "enabled" in push_config
         assert "success_rate" in push_config
 
-    @patch.dict('os.environ', {
-        'NOTIFICATION_SMS_ENABLED': 'false',
-        'NOTIFICATION_SMS_SUCCESS_RATE': '75.0'
-    })
+    @patch.dict(
+        "os.environ",
+        {"NOTIFICATION_SMS_ENABLED": "false", "NOTIFICATION_SMS_SUCCESS_RATE": "75.0"},
+    )
     def test_sms_config_override_by_env(self):
         """测试短信配置被环境变量覆盖"""
         from app.core.config import Settings
+
         settings_obj = Settings()
         config = NotificationServiceConfig(settings_obj)
         sms_config = config.get_sms_simulator_config()

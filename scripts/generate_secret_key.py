@@ -25,7 +25,8 @@ def generate_secret_key(length: int = 64) -> str:
 
     # 转换为Base64编码的字符串（易于配置）
     import base64
-    secret_key = base64.urlsafe_b64encode(random_bytes).decode('utf-8')
+
+    secret_key = base64.urlsafe_b64encode(random_bytes).decode("utf-8")
 
     return secret_key
 

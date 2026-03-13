@@ -64,6 +64,18 @@ tmp/
 .env
 .env.local
 .env.*.local
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# 后端特定忽略
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+backend/logs/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
 
 # Test reports
 test_reports/

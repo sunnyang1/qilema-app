@@ -5,61 +5,65 @@
 使用 ApiResponseBuilder 统一构建响应
 """
 
-from typing import List
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
 
+from app.api.dependencies import get_anomaly_service
 from app.core.database import get_db
-from app.core.security import get_current_user
 from app.core.exceptions import (
-    ValidationException, ForbiddenException, NotFoundException
+    ForbiddenException,
+    NotFoundException,
+    ValidationException,
 )
 from app.core.response_builder import ApiResponseBuilder
-from app.models.user import User
+from app.core.security import get_current_user
 from app.models.anomaly import Anomaly
+from app.models.user import User
 from app.schemas.anomaly import (
-    AnomalyCreate, AnomalyUpdate, AnomalyResponse, AnomalyQuery, AnomalyStatistics,
-    TrendAnalysisRequest, HealthTrendResponse,
-    ActivityAnalysisRequest, ActivityPatternResponse,
-    AnomalyDetectionConfig, HeartHealthAnalysis
+    AnomalyCreate,
+    AnomalyDetectionConfig,
+    AnomalyQuery,
+    AnomalyResponse,
+    AnomalyUpdate,
+    TrendAnalysisRequest,
 )
 from app.services.anomaly_service import AnomalyService
+from fastapi import APIRouter, Depends, status
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
-router = APIRouter(prefix="/api/anomalies", tags=["异常监测"])
-anomaly_service = AnomalyService()
+router = APIRouter(tags=["异常监测"])
 
 
 # ========== 异常记录管理 ==========
 
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_anomaly(
     anomaly_data: AnomalyCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     创建异常记录
 
     一般由系统自动创建,也可手动创建异常记录
     """
-    anomaly = anomaly_service.create_anomaly(db, anomaly_data)
+    anomaly = service.create(anomaly_data)
     return ApiResponseBuilder.from_model(anomaly, AnomalyResponse, message="异常记录创建成功")
 
 
 @router.post("/query")
 def query_anomalies(
     query_params: AnomalyQuery,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     查询异常记录
 
     支持按类型、严重程度、状态、时间范围、设备筛选
     """
-    anomalies = anomaly_service.get_anomalies(db, query_params)
+    anomalies = service.get_anomalies(query_params)
     return ApiResponseBuilder.from_model(anomalies, AnomalyResponse, message="获取异常记录成功")
 
 
@@ -67,15 +71,17 @@ def query_anomalies(
 def get_anomaly_statistics(
     start_date: datetime,
     end_date: datetime,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     获取异常统计数据
 
     统计指定时间段内的异常数量、按类型分组、按严重程度分组等
     """
-    statistics = anomaly_service.get_anomaly_statistics(db, current_user.user_id, start_date, end_date)
+    statistics = service.get_anomaly_statistics(
+        current_user.user_id, start_date, end_date
+    )
     return ApiResponseBuilder.success(data=statistics, message="获取异常统计成功")
 
 
@@ -83,15 +89,15 @@ def get_anomaly_statistics(
 def update_anomaly(
     anomaly_id: int,
     update_data: AnomalyUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     更新异常记录
 
     更新异常状态、处理措施、解决时间等
     """
-    anomaly = anomaly_service.update_anomaly(db, anomaly_id, update_data)
+    anomaly = service.update_anomaly(anomaly_id, update_data)
     if not anomaly:
         raise NotFoundException("异常记录不存在")
 
@@ -106,8 +112,8 @@ def update_anomaly(
 def resolve_anomaly(
     anomaly_id: int,
     action_taken: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     标记异常为已解决
@@ -115,25 +121,26 @@ def resolve_anomaly(
     记录处理措施并更新状态为已解决
     """
     update_data = AnomalyUpdate(
-        status="resolved",
-        action_taken=action_taken,
-        resolved_at=datetime.utcnow()
+        status="resolved", action_taken=action_taken, resolved_at=datetime.utcnow()
     )
 
-    anomaly = anomaly_service.update_anomaly(db, anomaly_id, update_data)
+    anomaly = service.update_anomaly(anomaly_id, update_data)
     if not anomaly:
         raise NotFoundException("异常记录不存在")
 
-    return ApiResponseBuilder.success(data={"anomaly_id": anomaly_id}, message="异常已标记为已解决")
+    return ApiResponseBuilder.success(
+        data={"anomaly_id": anomaly_id}, message="异常已标记为已解决"
+    )
 
 
 # ========== 趋势分析 ==========
 
+
 @router.post("/trends/analyze")
 def analyze_health_trend(
     request: TrendAnalysisRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     分析健康数据趋势
@@ -142,7 +149,7 @@ def analyze_health_trend(
     """
     try:
         request.user_id = current_user.user_id
-        trend = anomaly_service.analyze_health_trend(db, request)
+        trend = service.analyze_health_trend(request)
 
         if not trend:
             raise NotFoundException("未找到相关数据")
@@ -157,8 +164,8 @@ def get_recent_trends(
     metric_type: str = "heart_rate",
     period_type: str = "daily",
     days: int = 7,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     获取最近的趋势分析
@@ -173,10 +180,10 @@ def get_recent_trends(
         metric_type=metric_type,
         period_type=period_type,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
     )
 
-    trend = anomaly_service.analyze_health_trend(db, request)
+    trend = service.analyze_health_trend(request)
 
     if not trend:
         raise NotFoundException("未找到趋势数据")
@@ -186,11 +193,12 @@ def get_recent_trends(
 
 # ========== 心脏健康分析 ==========
 
+
 @router.get("/heart-health/analysis")
 def analyze_heart_health(
     device_id: int = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    service: AnomalyService = Depends(get_anomaly_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     心脏健康分析
@@ -198,7 +206,7 @@ def analyze_heart_health(
     基于心率数据进行心脏健康评估,包括静息心率、心率变异性、心律不齐检测等
     """
     try:
-        analysis = anomaly_service.analyze_heart_health(db, current_user.user_id, device_id)
+        analysis = service.analyze_heart_health(current_user.user_id, device_id)
         return ApiResponseBuilder.success(data=analysis, message="心脏健康分析成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -206,11 +214,12 @@ def analyze_heart_health(
 
 # ========== 异常检测配置 ==========
 
+
 @router.post("/config")
 def set_anomaly_detection_config(
     config: AnomalyDetectionConfig,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     设置异常检测配置
@@ -219,7 +228,7 @@ def set_anomaly_detection_config(
     """
     # 将配置保存到用户设置中(示例实现)
     # 实际应该保存到专门的配置表
-    user_config_key = f"anomaly_detection_config_{current_user.user_id}"
+    # user_config_key = f"anomaly_detection_config_{current_user.user_id}"
 
     # 简化实现:只返回配置信息
     # 实际应该保存到数据库
@@ -228,8 +237,7 @@ def set_anomaly_detection_config(
 
 @router.get("/config")
 def get_anomaly_detection_config(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     获取异常检测配置
@@ -238,19 +246,23 @@ def get_anomaly_detection_config(
     """
     # 简化实现:返回默认配置
     # 实际应该从数据库读取
-    return ApiResponseBuilder.success(data={
-        "user_id": current_user.user_id,
-        "heart_rate_min": 50,
-        "heart_rate_max": 110,
-        "heart_rate_sudden_change_threshold": 30,
-        "no_activity_threshold": 12,
-        "enable_auto_sos": True,
-        "enable_notification": True,
-        "alert_cooldown_minutes": 30
-    }, message="获取异常检测配置成功")
+    return ApiResponseBuilder.success(
+        data={
+            "user_id": current_user.user_id,
+            "heart_rate_min": 50,
+            "heart_rate_max": 110,
+            "heart_rate_sudden_change_threshold": 30,
+            "no_activity_threshold": 12,
+            "enable_auto_sos": True,
+            "enable_notification": True,
+            "alert_cooldown_minutes": 30,
+        },
+        message="获取异常检测配置成功",
+    )
 
 
 # ========== 管理员接口 ==========
+
 
 @router.get("/admin/all")
 def get_all_anomalies(
@@ -258,7 +270,7 @@ def get_all_anomalies(
     limit: int = 100,
     status: str = None,
     severity: str = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     获取所有异常记录(管理员接口)
@@ -274,40 +286,45 @@ def get_all_anomalies(
     if severity:
         query = query.filter(Anomaly.severity == severity)
 
-    anomalies = query.order_by(desc(Anomaly.detected_at)).offset(skip).limit(limit).all()
+    anomalies = (
+        query.order_by(desc(Anomaly.detected_at)).offset(skip).limit(limit).all()
+    )
 
     return ApiResponseBuilder.success(
-        data={"total": len(anomalies), "anomalies": [AnomalyResponse.from_orm(a) for a in anomalies]},
-        message="获取所有异常记录成功"
+        data={
+            "total": len(anomalies),
+            "anomalies": [AnomalyResponse.from_orm(a) for a in anomalies],
+        },
+        message="获取所有异常记录成功",
     )
 
 
 @router.get("/admin/pending-critical")
-def get_pending_critical_anomalies(
-    db: Session = Depends(get_db)
-):
+def get_pending_critical_anomalies(db: Session = Depends(get_db)):
     """
     获取待处理的危急异常(管理员接口)
 
     用于监控需要立即处理的危急异常
     """
-    critical_anomalies = db.query(Anomaly).filter(
-        Anomaly.severity == "critical",
-        Anomaly.status == "pending"
-    ).order_by(desc(Anomaly.detected_at)).limit(20).all()
+    critical_anomalies = (
+        db.query(Anomaly)
+        .filter(Anomaly.severity == "critical", Anomaly.status == "pending")
+        .order_by(desc(Anomaly.detected_at))
+        .limit(20)
+        .all()
+    )
 
     return ApiResponseBuilder.success(
-        data={"count": len(critical_anomalies), "anomalies": [AnomalyResponse.from_orm(a) for a in critical_anomalies]},
-        message="获取危急异常成功"
+        data={
+            "count": len(critical_anomalies),
+            "anomalies": [AnomalyResponse.from_orm(a) for a in critical_anomalies],
+        },
+        message="获取危急异常成功",
     )
 
 
 @router.post("/admin/{anomaly_id}/dismiss")
-def dismiss_anomaly(
-    anomaly_id: int,
-    reason: str,
-    db: Session = Depends(get_db)
-):
+def dismiss_anomaly(anomaly_id: int, reason: str, db: Session = Depends(get_db)):
     """
     忽略异常(管理员接口)
 

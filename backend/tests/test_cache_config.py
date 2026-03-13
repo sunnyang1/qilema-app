@@ -1,5 +1,5 @@
 """缓存配置模块测试"""
-import pytest
+
 from app.core.cache_config import CacheConfig, cache_key, cache_pattern
 
 
@@ -9,20 +9,35 @@ class TestCacheConfig:
     def test_ttl_constants_exist(self):
         """测试所有TTL常量存在且为正整数"""
         ttl_attrs = [
-            'TTL_USER_INFO', 'TTL_USER_LIST',
-            'TTL_DEVICE_INFO', 'TTL_DEVICE_STATUS',
-            'TTL_CHECKIN_STATS', 'TTL_CHECKIN_LIST', 'TTL_CHECKIN_STREAK',
-            'TTL_ALERT_SETTING', 'TTL_ALERT_LIST', 'TTL_ALERT_DETAIL', 'TTL_ALERT_STATS',
-            'TTL_HEALTH_RECORD', 'TTL_HEALTH_SUMMARY',
-            'TTL_EMERGENCY_CONTACT', 'TTL_EMERGENCY_CONTACTS_LIST',
-            'TTL_NOTIFICATION_LIST', 'TTL_NOTIFICATION_PREFS',
-            'TTL_ANOMALY_LIST', 'TTL_ANOMALY_STATS',
-            'TTL_SOS_HISTORY',
-            'TTL_LOCATION_HISTORY', 'TTL_LOCATION_LATEST',
-            'TTL_EMERGENCY_CENTER', 'TTL_EMERGENCY_RESOURCE',
-            'TTL_DEFAULT', 'TTL_SHORT', 'TTL_LONG'
+            "TTL_USER_INFO",
+            "TTL_USER_LIST",
+            "TTL_DEVICE_INFO",
+            "TTL_DEVICE_STATUS",
+            "TTL_CHECKIN_STATS",
+            "TTL_CHECKIN_LIST",
+            "TTL_CHECKIN_STREAK",
+            "TTL_ALERT_SETTING",
+            "TTL_ALERT_LIST",
+            "TTL_ALERT_DETAIL",
+            "TTL_ALERT_STATS",
+            "TTL_HEALTH_RECORD",
+            "TTL_HEALTH_SUMMARY",
+            "TTL_EMERGENCY_CONTACT",
+            "TTL_EMERGENCY_CONTACTS_LIST",
+            "TTL_NOTIFICATION_LIST",
+            "TTL_NOTIFICATION_PREFS",
+            "TTL_ANOMALY_LIST",
+            "TTL_ANOMALY_STATS",
+            "TTL_SOS_HISTORY",
+            "TTL_LOCATION_HISTORY",
+            "TTL_LOCATION_LATEST",
+            "TTL_EMERGENCY_CENTER",
+            "TTL_EMERGENCY_RESOURCE",
+            "TTL_DEFAULT",
+            "TTL_SHORT",
+            "TTL_LONG",
         ]
-        
+
         for attr in ttl_attrs:
             assert hasattr(CacheConfig, attr), f"Missing TTL constant: {attr}"
             value = getattr(CacheConfig, attr)
@@ -32,20 +47,37 @@ class TestCacheConfig:
     def test_prefix_constants_exist(self):
         """测试所有前缀常量存在且为非空字符串"""
         prefix_attrs = [
-            'PREFIX_USER', 'PREFIX_USER_LIST',
-            'PREFIX_DEVICE', 'PREFIX_DEVICE_STATUS',
-            'PREFIX_CHECKIN', 'PREFIX_CHECKIN_STATS', 'PREFIX_CHECKIN_STREAK',
-            'PREFIX_ALERT', 'PREFIX_ALERT_SETTING', 'PREFIX_ALERT_LIST', 
-            'PREFIX_ALERT_DETAIL', 'PREFIX_ALERT_STATS',
-            'PREFIX_HEALTH', 'PREFIX_HEALTH_RECORD', 'PREFIX_HEALTH_SUMMARY',
-            'PREFIX_EMERGENCY', 'PREFIX_EMERGENCY_CONTACT', 'PREFIX_EMERGENCY_CONTACTS',
-            'PREFIX_NOTIFICATION', 'PREFIX_NOTIFICATION_LIST', 'PREFIX_NOTIFICATION_PREFS',
-            'PREFIX_ANOMALY', 'PREFIX_ANOMALY_LIST',
-            'PREFIX_SOS', 'PREFIX_SOS_HISTORY',
-            'PREFIX_LOCATION', 'PREFIX_LOCATION_LATEST',
-            'PREFIX_EMERGENCY_CENTER', 'PREFIX_EMERGENCY_RESOURCE'
+            "PREFIX_USER",
+            "PREFIX_USER_LIST",
+            "PREFIX_DEVICE",
+            "PREFIX_DEVICE_STATUS",
+            "PREFIX_CHECKIN",
+            "PREFIX_CHECKIN_STATS",
+            "PREFIX_CHECKIN_STREAK",
+            "PREFIX_ALERT",
+            "PREFIX_ALERT_SETTING",
+            "PREFIX_ALERT_LIST",
+            "PREFIX_ALERT_DETAIL",
+            "PREFIX_ALERT_STATS",
+            "PREFIX_HEALTH",
+            "PREFIX_HEALTH_RECORD",
+            "PREFIX_HEALTH_SUMMARY",
+            "PREFIX_EMERGENCY",
+            "PREFIX_EMERGENCY_CONTACT",
+            "PREFIX_EMERGENCY_CONTACTS",
+            "PREFIX_NOTIFICATION",
+            "PREFIX_NOTIFICATION_LIST",
+            "PREFIX_NOTIFICATION_PREFS",
+            "PREFIX_ANOMALY",
+            "PREFIX_ANOMALY_LIST",
+            "PREFIX_SOS",
+            "PREFIX_SOS_HISTORY",
+            "PREFIX_LOCATION",
+            "PREFIX_LOCATION_LATEST",
+            "PREFIX_EMERGENCY_CENTER",
+            "PREFIX_EMERGENCY_RESOURCE",
         ]
-        
+
         for attr in prefix_attrs:
             assert hasattr(CacheConfig, attr), f"Missing prefix constant: {attr}"
             value = getattr(CacheConfig, attr)
@@ -138,6 +170,6 @@ class TestCacheConsistency:
             CacheConfig.PREFIX_CHECKIN,
             CacheConfig.PREFIX_ALERT,
         ]
-        
+
         for prefix in prefixes:
-            assert ':' not in prefix, f"Base prefix should not contain colon: {prefix}"
+            assert ":" not in prefix, f"Base prefix should not contain colon: {prefix}"
