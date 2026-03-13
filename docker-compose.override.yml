@@ -1,0 +1,51 @@
+# 开发环境覆盖配置
+# 使用: docker compose up
+#
+# 特性:
+# - 热重载: 使用 watch 监听源码变化
+# - 宽松的健康检查
+# - 无资源限制
+# - 详细日志
+
+services:
+  backend:
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "True"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+    restart: no
+    develop:
+      watch:
+        - path: ./backend
+          action: rebuild
+          target: /app
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  nginx:
+    deploy: {}

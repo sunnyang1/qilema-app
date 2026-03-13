@@ -1,13 +1,15 @@
-version: '3.8'
-
-# ========== 起了吗App - Docker Compose 基础配置 ==========
+# 起了吗App - Docker Compose 基础配置
 #
 # 使用说明:
-# 开发环境: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-# 测试环境: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
-# 生产环境: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# 开发环境: docker compose up
+# 生产环境: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
 #
-# ============================================
+# 最佳实践:
+# - 使用 docker compose pull 获取最新的官方镜像
+# - 使用 docker compose watch 启用文件监听热更新
+# - 使用具名卷(named volumes)持久化数据
+# - 设置 healthcheck 监测服务状态
+# - 定义 depends_on 条件约束服务启动顺序
 
 services:
   # PostgreSQL 数据库
@@ -27,12 +29,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     restart: unless-stopped
+    networks:
+      - qilema_network
+    # 资源限制配置可由 compose.prod.yml 覆盖
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1.0'
+    #       memory: 1G
 
   # Redis 缓存
   redis:
     image: redis:7-alpine
     container_name: qilema_redis
+    command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
@@ -42,13 +54,18 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 5s
     restart: unless-stopped
+    networks:
+      - qilema_network
 
   # 后端 API 服务
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      cache_from:
+        - type=gha
     container_name: qilema_backend
     ports:
       - "8000:8000"
@@ -74,23 +91,40 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - qilema_network
 
   # Nginx 反向代理
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: qilema_nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - qilema_network
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
+
+networks:
+  qilema_network:
+    driver: bridge
