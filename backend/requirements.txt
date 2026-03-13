@@ -15,7 +15,7 @@ redis==5.0.1
 # 数据验证
 pydantic==2.5.0
 pydantic-settings==2.1.0
-email-validator==2.1.0
+email-validator==2.3.0
 
 # 安全认证
 python-jose[cryptography]==3.5.0
