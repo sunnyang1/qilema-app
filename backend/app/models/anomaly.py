@@ -5,8 +5,6 @@
 """
 
 import enum
-from datetime import datetime
-from typing import List, Optional
 
 from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import Column, DateTime

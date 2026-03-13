@@ -5,23 +5,16 @@
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 
-from app.core.database import get_db
+from app.api.dependencies import get_checkin_service
 from app.core.exceptions import AlreadyCheckedInException, ValidationException
 from app.core.response_builder import ApiResponseBuilder
 from app.core.security import get_current_user
 from app.models.user import User
-from app.schemas.checkin import (
-    CheckInCreate,
-    CheckInDateQuery,
-    CheckInResponse,
-    CheckInStatsResponse,
-    CheckInStatusResponse,
-)
+from app.schemas.checkin import CheckInCreate, CheckInDateQuery, CheckInResponse
 from app.services.checkin_service import CheckInService
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["签到打卡"])
 
@@ -30,7 +23,7 @@ router = APIRouter(tags=["签到打卡"])
 async def create_checkin(
     checkin_data: CheckInCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: CheckInService = Depends(get_checkin_service),
 ):
     """
     创建签到记录
@@ -41,7 +34,7 @@ async def create_checkin(
     - **notes**: 备注信息
     """
     try:
-        checkin = CheckInService.create_checkin(db, current_user.user_id, checkin_data)
+        checkin = service.create(current_user.user_id, checkin_data)
 
         # TODO: 发送签到成功通知给紧急联系人
         # await send_checkin_notification(current_user.user_id, checkin)
@@ -59,7 +52,7 @@ async def get_checkin_history(
     start_date: Optional[str] = Query(None, description="开始日期(YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期(YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: CheckInService = Depends(get_checkin_service),
 ):
     """
     获取用户签到历史记录
@@ -73,8 +66,8 @@ async def get_checkin_history(
         start = date.fromisoformat(start_date) if start_date else None
         end = date.fromisoformat(end_date) if end_date else None
 
-        checkins = CheckInService.get_user_checkins(
-            db, current_user.user_id, days=days, start_date=start, end_date=end
+        checkins = service.get_user_checkins(
+            current_user.user_id, days=days, start_date=start, end_date=end
         )
 
         return ApiResponseBuilder.from_model(
@@ -88,7 +81,7 @@ async def get_checkin_history(
 async def get_checkin_stats(
     days: int = Query(30, ge=1, le=365, description="统计天数"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: CheckInService = Depends(get_checkin_service),
 ):
     """
     获取用户签到统计信息
@@ -101,7 +94,7 @@ async def get_checkin_stats(
     - longest_streak: 最长连续签到天数
     - checkin_rate: 签到率(%)
     """
-    stats = CheckInService.get_checkin_stats(db, current_user.user_id, days)
+    stats = service.get_checkin_stats(current_user.user_id, days)
     return ApiResponseBuilder.success(data=stats, message="获取签到统计成功")
 
 
@@ -109,7 +102,7 @@ async def get_checkin_stats(
 async def get_checkin_status(
     query: CheckInDateQuery,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: CheckInService = Depends(get_checkin_service),
 ):
     """
     查询指定日期的签到状态
@@ -122,9 +115,7 @@ async def get_checkin_status(
     """
     try:
         target_date = date.fromisoformat(query.date)
-        status = CheckInService.get_checkin_status(
-            db, current_user.user_id, target_date
-        )
+        status = service.get_checkin_status(current_user.user_id, target_date)
         return ApiResponseBuilder.success(data=status, message="获取签到状态成功")
     except ValueError as e:
         raise ValidationException(message=f"日期格式错误: {str(e)}")
@@ -132,7 +123,8 @@ async def get_checkin_status(
 
 @router.get("/today")
 async def get_today_checkin_status(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    service: CheckInService = Depends(get_checkin_service),
 ):
     """
     获取今天的签到状态
@@ -141,5 +133,5 @@ async def get_today_checkin_status(
     - is_checked_in: 今天是否已签到
     - checkin_time: 签到时间(如果已签到)
     """
-    status = CheckInService.get_checkin_status(db, current_user.user_id)
+    status = service.get_checkin_status(current_user.user_id)
     return ApiResponseBuilder.success(data=status, message="获取今日签到状态成功")

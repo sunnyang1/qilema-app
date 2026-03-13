@@ -5,10 +5,9 @@
 """
 
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
-from app.core.config import settings
 from app.core.security import (
     create_access_token,
     decode_access_token,

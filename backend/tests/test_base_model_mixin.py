@@ -6,7 +6,6 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
-import pytest
 from pydantic import BaseModel
 
 

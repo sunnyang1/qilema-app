@@ -6,8 +6,8 @@
 """
 
 from datetime import datetime, timedelta
-from typing import List
 
+from app.api.dependencies import get_anomaly_service
 from app.core.database import get_db
 from app.core.exceptions import (
     ForbiddenException,
@@ -19,16 +19,11 @@ from app.core.security import get_current_user
 from app.models.anomaly import Anomaly
 from app.models.user import User
 from app.schemas.anomaly import (
-    ActivityAnalysisRequest,
-    ActivityPatternResponse,
     AnomalyCreate,
     AnomalyDetectionConfig,
     AnomalyQuery,
     AnomalyResponse,
-    AnomalyStatistics,
     AnomalyUpdate,
-    HealthTrendResponse,
-    HeartHealthAnalysis,
     TrendAnalysisRequest,
 )
 from app.services.anomaly_service import AnomalyService
@@ -37,7 +32,6 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["异常监测"])
-anomaly_service = AnomalyService()
 
 
 # ========== 异常记录管理 ==========
@@ -46,7 +40,7 @@ anomaly_service = AnomalyService()
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_anomaly(
     anomaly_data: AnomalyCreate,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -54,14 +48,14 @@ def create_anomaly(
 
     一般由系统自动创建,也可手动创建异常记录
     """
-    anomaly = anomaly_service.create_anomaly(db, anomaly_data)
+    anomaly = service.create(anomaly_data)
     return ApiResponseBuilder.from_model(anomaly, AnomalyResponse, message="异常记录创建成功")
 
 
 @router.post("/query")
 def query_anomalies(
     query_params: AnomalyQuery,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -69,7 +63,7 @@ def query_anomalies(
 
     支持按类型、严重程度、状态、时间范围、设备筛选
     """
-    anomalies = anomaly_service.get_anomalies(db, query_params)
+    anomalies = service.get_anomalies(query_params)
     return ApiResponseBuilder.from_model(anomalies, AnomalyResponse, message="获取异常记录成功")
 
 
@@ -77,7 +71,7 @@ def query_anomalies(
 def get_anomaly_statistics(
     start_date: datetime,
     end_date: datetime,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -85,8 +79,8 @@ def get_anomaly_statistics(
 
     统计指定时间段内的异常数量、按类型分组、按严重程度分组等
     """
-    statistics = anomaly_service.get_anomaly_statistics(
-        db, current_user.user_id, start_date, end_date
+    statistics = service.get_anomaly_statistics(
+        current_user.user_id, start_date, end_date
     )
     return ApiResponseBuilder.success(data=statistics, message="获取异常统计成功")
 
@@ -95,7 +89,7 @@ def get_anomaly_statistics(
 def update_anomaly(
     anomaly_id: int,
     update_data: AnomalyUpdate,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -103,7 +97,7 @@ def update_anomaly(
 
     更新异常状态、处理措施、解决时间等
     """
-    anomaly = anomaly_service.update_anomaly(db, anomaly_id, update_data)
+    anomaly = service.update_anomaly(anomaly_id, update_data)
     if not anomaly:
         raise NotFoundException("异常记录不存在")
 
@@ -118,7 +112,7 @@ def update_anomaly(
 def resolve_anomaly(
     anomaly_id: int,
     action_taken: str,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -130,7 +124,7 @@ def resolve_anomaly(
         status="resolved", action_taken=action_taken, resolved_at=datetime.utcnow()
     )
 
-    anomaly = anomaly_service.update_anomaly(db, anomaly_id, update_data)
+    anomaly = service.update_anomaly(anomaly_id, update_data)
     if not anomaly:
         raise NotFoundException("异常记录不存在")
 
@@ -145,7 +139,7 @@ def resolve_anomaly(
 @router.post("/trends/analyze")
 def analyze_health_trend(
     request: TrendAnalysisRequest,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -155,7 +149,7 @@ def analyze_health_trend(
     """
     try:
         request.user_id = current_user.user_id
-        trend = anomaly_service.analyze_health_trend(db, request)
+        trend = service.analyze_health_trend(request)
 
         if not trend:
             raise NotFoundException("未找到相关数据")
@@ -170,7 +164,7 @@ def get_recent_trends(
     metric_type: str = "heart_rate",
     period_type: str = "daily",
     days: int = 7,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -189,7 +183,7 @@ def get_recent_trends(
         end_date=end_date,
     )
 
-    trend = anomaly_service.analyze_health_trend(db, request)
+    trend = service.analyze_health_trend(request)
 
     if not trend:
         raise NotFoundException("未找到趋势数据")
@@ -203,7 +197,7 @@ def get_recent_trends(
 @router.get("/heart-health/analysis")
 def analyze_heart_health(
     device_id: int = None,
-    db: Session = Depends(get_db),
+    service: AnomalyService = Depends(get_anomaly_service),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -212,9 +206,7 @@ def analyze_heart_health(
     基于心率数据进行心脏健康评估,包括静息心率、心率变异性、心律不齐检测等
     """
     try:
-        analysis = anomaly_service.analyze_heart_health(
-            db, current_user.user_id, device_id
-        )
+        analysis = service.analyze_heart_health(current_user.user_id, device_id)
         return ApiResponseBuilder.success(data=analysis, message="心脏健康分析成功")
     except ValueError as e:
         raise ValidationException(detail=str(e))
@@ -236,7 +228,7 @@ def set_anomaly_detection_config(
     """
     # 将配置保存到用户设置中(示例实现)
     # 实际应该保存到专门的配置表
-    user_config_key = f"anomaly_detection_config_{current_user.user_id}"
+    # user_config_key = f"anomaly_detection_config_{current_user.user_id}"
 
     # 简化实现:只返回配置信息
     # 实际应该保存到数据库

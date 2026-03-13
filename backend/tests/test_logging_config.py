@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import sys
-from io import StringIO
 
 import pytest
 

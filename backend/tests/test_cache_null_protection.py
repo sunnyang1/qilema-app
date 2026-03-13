@@ -2,9 +2,8 @@
 测试缓存穿透防护功能
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pytest
 from app.core.cache import (
     NULL_VALUE_MARKER,
     cache_result_with_null_protection,

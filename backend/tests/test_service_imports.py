@@ -1,7 +1,5 @@
 """服务导入测试"""
 
-import pytest
-
 
 def test_all_services_can_be_imported():
     """测试所有服务可以从app.services统一导入"""

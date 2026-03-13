@@ -2,8 +2,6 @@
 用户登录记录SQLAlchemy模型
 """
 
-from typing import List, Optional
-
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text

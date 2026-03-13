@@ -6,7 +6,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Optional
 
 from app.core.database import SessionLocal
 from app.core.redis import redis_manager
@@ -132,7 +132,7 @@ class CacheWarmer:
             # 获取启用了预警的配置
             alert_settings = (
                 db.query(AlertSetting)
-                .filter(AlertSetting.checkin_enabled == True)
+                .filter(AlertSetting.checkin_enabled)
                 .limit(100)
                 .all()
             )

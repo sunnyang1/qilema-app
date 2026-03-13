@@ -2,10 +2,8 @@
 测试缓存预热功能
 """
 
-from datetime import datetime
 from unittest.mock import Mock, patch
 
-import pytest
 from app.core.cache_warmer import CacheWarmer, warm_cache_on_startup
 
 

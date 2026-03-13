@@ -5,7 +5,6 @@ ApiResponseBuilder单元测试
 from datetime import datetime
 from typing import Optional
 
-import pytest
 from pydantic import BaseModel
 
 

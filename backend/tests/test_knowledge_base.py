@@ -4,9 +4,6 @@
 测试知识库文章、分类和标签的CRUD操作和搜索功能
 """
 
-from datetime import datetime
-
-import pytest
 from app.models.knowledge_base import KnowledgeArticle, KnowledgeCategory, KnowledgeTag
 from app.services.knowledge_service import (
     KnowledgeArticleService,

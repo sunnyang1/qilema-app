@@ -5,7 +5,7 @@
 import enum
 
 from app.core.database import Base
-from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship as db_relationship

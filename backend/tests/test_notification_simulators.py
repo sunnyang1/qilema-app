@@ -5,12 +5,10 @@
 """
 
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import pytest
 from app.core.notification_simulators import (
     EmailNotificationSimulator,
-    NotificationSimulator,
     PhoneNotificationSimulator,
     PushNotificationSimulator,
     SMSNotificationSimulator,

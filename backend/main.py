@@ -10,7 +10,7 @@ from app.core.database import init_db
 from app.core.error_handlers import register_exception_handlers
 from app.core.middleware import setup_middleware
 from app.core.prometheus_metrics import app_info, metrics
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded

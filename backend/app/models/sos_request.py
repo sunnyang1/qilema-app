@@ -1,8 +1,6 @@
 """SOS求助数据模型"""
 
 import enum
-from datetime import datetime
-from typing import List, Optional
 
 from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import Boolean, Column, DateTime
