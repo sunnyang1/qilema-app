@@ -1,7 +1,8 @@
 """
 设备相关的Schema验证
 """
-
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional, Union
@@ -151,7 +152,6 @@ class DeviceDataResponse(BaseModel):
 
 class DeviceThresholdCreate(BaseModel):
     """创建设备阈值"""
-
     device_id: Union[str, int] = Field(..., description="设备ID")
     heart_rate_min: Optional[int] = Field(None, ge=30, le=200)
     heart_rate_max: Optional[int] = Field(None, ge=30, le=200)

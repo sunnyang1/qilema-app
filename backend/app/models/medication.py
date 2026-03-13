@@ -229,7 +229,7 @@ class MedicationReminderSchedule(Base, BaseModelMixin):
             f"medication_item={self.medication_item_id})>"
         )
 
-    def get_times_list(self) -> List[str]:
+    def get_times_list(self) -> TypingList[str]:
         """获取用药时间列表"""
         if not self.times_of_day:
             return []

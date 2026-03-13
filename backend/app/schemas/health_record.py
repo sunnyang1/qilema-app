@@ -245,7 +245,8 @@ class HealthRecordSummary(BaseModel):
     latest_blood_oxygen: Optional[float] = None
 
     # 紧急联系人
-    emergency_contacts: Optional[List[Dict]] = None
+    emergency_contacts: Optional[List[dict]] = None
 
     # 最近设备异常
-    recent_anomalies: Optional[List[Dict]] = None
+    recent_anomalies: Optional[List[dict]] = None
+

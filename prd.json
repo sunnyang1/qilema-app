@@ -1,342 +1,167 @@
 {
-  "projectName": "服务层重构",
-  "branchName": "refactor/service-layer",
-  "complexity": "medium",
+  "project": "qilema-full-project-refactoring",
+  "branchName": "ralph/full-project-refactoring",
+  "description": "Comprehensive refactoring of the entire Qilema medical health application, including backend and frontend architecture optimization",
   "userStories": [
     {
-      "id": "1.1",
-      "title": "创建 CircuitBreakerService 熔断器服务",
-      "description": "将熔断器逻辑从 NotificationService 中提取，创建独立的 CircuitBreakerService 类，支持 Redis 持久化和线程安全",
+      "id": "US-001",
+      "title": "优化后端项目结构",
+      "description": "分析当前后端目录结构并创建标准的Python项目布局",
       "acceptanceCriteria": [
-        "创建 CircuitBreakerService 类",
-        "包含熔断器状态检查、失败记录、成功重置方法",
-        "支持 Redis 持久化",
-        "线程安全"
+        "分析backend目录的当前结构",
+        "创建标准的Python项目布局（config/, models/, services/, routes/等）",
+        "分离配置、模型、服务、路由等模块",
+        "添加适当的__init__.py文件",
+        "确保导入路径清晰一致",
+        "运行pytest确保现有功能正常"
       ],
-      "priority": "high",
-      "estimatedMinutes": 30,
-      "passes": true
+      "priority": 1,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "1.2",
-      "title": "创建 NotificationSenderService 发送服务",
-      "description": "将通知发送逻辑独立为服务，包含重试机制、降级策略，支持多种通知渠道",
+      "id": "US-002",
+      "title": "实现依赖注入和接口抽象",
+      "description": "创建服务抽象层和依赖注入容器",
       "acceptanceCriteria": [
-        "创建 NotificationSenderService 类",
-        "包含重试机制、降级策略",
-        "支持 PUSH、SMS、PHONE、EMAIL 渠道",
-        "使用 CircuitBreakerService"
+        "创建服务抽象层（接口）",
+        "实现依赖注入容器",
+        "解耦具体实现和接口",
+        "提高代码的可测试性",
+        "支持多环境配置",
+        "编写单元测试验证依赖注入功能"
       ],
-      "priority": "high",
-      "estimatedMinutes": 40,
-      "passes": true
+      "priority": 1,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "1.3",
-      "title": "创建 NotificationTemplateService 模板服务",
-      "description": "将通知模板管理独立为服务，包含模板 CRUD、模板渲染功能",
+      "id": "US-003",
+      "title": "优化数据库模型和迁移",
+      "description": "分析现有数据库模型并优化模型关系",
       "acceptanceCriteria": [
-        "创建 NotificationTemplateService 类",
-        "包含模板 CRUD、模板渲染功能",
-        "为未来迁移到数据库做准备"
+        "分析现有数据库模型",
+        "优化模型关系和外键约束",
+        "创建数据库迁移脚本",
+        "添加索引优化查询性能",
+        "实现模型验证和约束",
+        "运行现有测试确保数据完整性"
       ],
-      "priority": "medium",
-      "estimatedMinutes": 30,
-      "passes": true
+      "priority": 2,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "1.4",
-      "title": "创建 NotificationStatsService 统计服务",
-      "description": "将通知统计功能独立为服务，包含各类统计查询方法",
+      "id": "US-004",
+      "title": "重构API路由和中间件",
+      "description": "统一API路由结构并实现认证中间件",
       "acceptanceCriteria": [
-        "创建 NotificationStatsService 类",
-        "包含各类统计查询方法",
-        "支持日期范围筛选"
+        "统一API路由结构",
+        "实现认证和授权中间件",
+        "添加请求验证和错误处理",
+        "优化响应格式和状态码",
+        "实现API版本控制",
+        "测试所有API端点正常工作"
       ],
-      "priority": "medium",
-      "estimatedMinutes": 30,
-      "passes": true
+      "priority": 2,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "1.5",
-      "title": "重构 NotificationService 为门面模式",
-      "description": "将 NotificationService 重构为门面模式，委托具体任务给子服务，保持 API 向后兼容",
+      "id": "US-005",
+      "title": "实现服务层和业务逻辑分离",
+      "description": "将业务逻辑从控制器分离到服务层",
       "acceptanceCriteria": [
-        "重构后的 NotificationService 只保留协调逻辑",
-        "委托具体任务给子服务",
-        "保持 API 向后兼容"
+        "将业务逻辑从控制器分离到服务层",
+        "创建统一的异常处理机制",
+        "实现事务管理",
+        "添加日志记录和监控",
+        "优化性能关键路径",
+        "编写服务层单元测试"
       ],
-      "priority": "high",
-      "estimatedMinutes": 40,
-      "passes": true
+      "priority": 3,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "1.6",
-      "title": "更新 API 层使用新的服务结构",
-      "description": "更新 notifications API 路由使用新的服务结构，使用依赖注入获取服务",
+      "id": "US-006",
+      "title": "添加后端单元测试",
+      "description": "创建测试基础架构并编写完整测试套件",
       "acceptanceCriteria": [
-        "所有 API 路由正常工作",
-        "使用依赖注入获取服务",
-        "所有测试通过"
+        "创建测试基础架构",
+        "编写模型测试",
+        "编写服务层测试",
+        "编写API端点测试",
+        "实现测试数据工厂",
+        "测试覆盖率>80%"
       ],
-      "priority": "high",
-      "estimatedMinutes": 30,
-      "passes": true
+      "priority": 3,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "1.7",
-      "title": "为重构后的服务编写单元测试",
-      "description": "为 CircuitBreakerService、NotificationSenderService 等新服务编写单元测试",
+      "id": "US-007",
+      "title": "实现配置管理",
+      "description": "创建多环境配置系统和配置验证",
       "acceptanceCriteria": [
-        "每个新服务都有对应的测试文件",
-        "测试覆盖率 > 80%",
-        "包含熔断器、重试、降级等边界情况测试"
+        "创建多环境配置系统",
+        "实现配置验证",
+        "添加敏感信息加密",
+        "支持Docker环境变量",
+        "创建配置文档",
+        "测试不同环境配置加载"
       ],
-      "priority": "high",
-      "estimatedMinutes": 40,
-      "passes": true
+      "priority": 4,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "2.1",
-      "title": "制定服务类设计规范文档",
-      "description": "创建 SERVICE_DESIGN_GUIDE.md，明确实例方法模式规范和依赖注入使用指南",
+      "id": "US-008",
+      "title": "优化性能和缓存",
+      "description": "分析性能瓶颈并实现Redis缓存",
       "acceptanceCriteria": [
-        "创建 SERVICE_DESIGN_GUIDE.md",
-        "明确实例方法模式规范",
-        "包含依赖注入使用指南"
+        "分析性能瓶颈",
+        "实现Redis缓存",
+        "添加查询优化",
+        "实现连接池",
+        "添加性能监控",
+        "性能测试通过"
       ],
-      "priority": "medium",
-      "estimatedMinutes": 20,
-      "passes": true
+      "priority": 4,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "2.2",
-      "title": "重构 UserService 为实例方法模式",
-      "description": "将 UserService 所有方法改为实例方法，构造函数接收 db: Session",
+      "id": "US-009",
+      "title": "实现健康检查和监控",
+      "description": "添加健康检查端点和监控仪表板",
       "acceptanceCriteria": [
-        "所有方法改为实例方法",
-        "构造函数接收 db: Session",
-        "更新所有调用方"
+        "添加健康检查端点",
+        "实现指标收集",
+        "添加错误追踪",
+        "创建监控仪表板",
+        "实现告警机制",
+        "验证监控功能正常"
       ],
-      "priority": "medium",
-      "estimatedMinutes": 30,
-      "passes": true
+      "priority": 5,
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "2.3",
-      "title": "重构 CheckInService 为实例方法模式",
-      "description": "将 CheckInService 所有方法改为实例方法，更新所有调用方",
+      "id": "US-010",
+      "title": "创建部署和CI/CD配置",
+      "description": "优化Docker配置并实现CI/CD流水线",
       "acceptanceCriteria": [
-        "所有方法改为实例方法",
-        "更新所有调用方",
-        "测试通过"
+        "优化Dockerfile",
+        "创建docker-compose配置",
+        "实现GitHub Actions CI",
+        "添加自动化测试和部署",
+        "创建部署文档",
+        "CI/CD流水线运行成功"
       ],
-      "priority": "medium",
-      "estimatedMinutes": 25,
-      "passes": true
-    },
-    {
-      "id": "2.4",
-      "title": "重构 SosService 为实例方法模式",
-      "description": "将 SosService 所有方法改为实例方法，更新所有调用方",
-      "acceptanceCriteria": [
-        "所有方法改为实例方法",
-        "更新所有调用方",
-        "测试通过"
-      ],
-      "priority": "medium",
-      "estimatedMinutes": 25,
-      "passes": true
-    },
-    {
-      "id": "2.5",
-      "title": "重构其他服务类为实例方法模式",
-      "description": "重构所有剩余服务类为实例方法模式，更新所有调用方",
-      "acceptanceCriteria": [
-        "重构所有剩余服务类",
-        "更新所有调用方",
-        "测试通过"
-      ],
-      "priority": "medium",
-      "estimatedMinutes": 40,
-      "passes": true
-    },
-    {
-      "id": "2.6",
-      "title": "更新 API 层调用方式",
-      "description": "更新所有 API 路由使用新的服务调用方式，使用依赖注入获取服务实例",
-      "acceptanceCriteria": [
-        "所有 API 路由使用新的服务调用方式",
-        "使用依赖注入获取服务实例",
-        "所有测试通过"
-      ],
-      "priority": "medium",
-      "estimatedMinutes": 30,
-      "passes": true
-    },
-    {
-      "id": "3.1",
-      "title": "服务类构造函数接收依赖",
-      "description": "重构服务类通过构造函数接收 db、其他服务依赖，支持测试时的依赖替换",
-      "acceptanceCriteria": [
-        "服务类通过构造函数接收依赖",
-        "支持测试时的依赖替换"
-      ],
-      "priority": "medium",
-      "estimatedMinutes": 30,
-      "passes": true
-    },
-    {
-      "id": "3.2",
-      "title": "更新 Container provider 配置",
-      "description": "更新 Container 配置使用新的服务类签名，支持单例和工厂模式",
-      "acceptanceCriteria": [
-        "Container 配置使用新的服务类签名",
-        "支持单例和工厂模式"
-      ],
-      "priority": "medium",
-      "estimatedMinutes": 20,
-      "passes": true
-    },
-    {
-      "id": "3.3",
-      "title": "创建 get_service() 依赖注入函数",
-      "description": "创建通用的依赖注入函数，在 API 路由中使用",
-      "acceptanceCriteria": [
-        "创建通用的依赖注入函数",
-        "在 API 路由中使用"
-      ],
-      "priority": "medium",
-      "estimatedMinutes": 20,
-      "passes": true
-    },
-    {
-      "id": "3.4",
-      "title": "更新 API 路由使用 DI",
-      "description": "所有 API 路由使用依赖注入，移除直接实例化服务的代码",
-      "acceptanceCriteria": [
-        "所有 API 路由使用依赖注入",
-        "移除直接实例化服务的代码"
-      ],
-      "priority": "medium",
-      "estimatedMinutes": 30,
-      "passes": true
-    },
-    {
-      "id": "3.5",
-      "title": "移除全局状态",
-      "description": "所有全局状态改为 DI 管理，确保线程安全",
-      "acceptanceCriteria": [
-        "所有全局状态改为 DI 管理",
-        "确保线程安全"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 20,
-      "passes": true
-    },
-    {
-      "id": "4.1",
-      "title": "优化模型关联加载策略",
-      "description": "优化模型关联加载策略，高频关联使用 lazy='dynamic'",
-      "acceptanceCriteria": [
-        "高频关联使用 lazy='dynamic'",
-        "低频关联使用 lazy='select'",
-        "添加文档说明"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 30,
-      "passes": true
-    },
-    {
-      "id": "4.2",
-      "title": "添加查询优化索引",
-      "description": "分析慢查询日志，添加必要的数据库索引",
-      "acceptanceCriteria": [
-        "分析慢查询日志",
-        "添加必要的数据库索引",
-        "验证查询性能提升"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 20,
-      "passes": true
-    },
-    {
-      "id": "4.3",
-      "title": "优化 to_dict() 序列化性能",
-      "description": "优化序列化算法，支持选择性字段序列化",
-      "acceptanceCriteria": [
-        "优化序列化算法",
-        "支持选择性字段序列化",
-        "基准测试验证性能"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 30,
-      "passes": true
-    },
-    {
-      "id": "4.4",
-      "title": "添加选择性关联加载方法",
-      "description": "添加 eager_load() 方法，支持按需加载关联",
-      "acceptanceCriteria": [
-        "添加 eager_load() 方法",
-        "支持按需加载关联",
-        "文档和示例"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 20,
-      "passes": true
-    },
-    {
-      "id": "5.1",
-      "title": "创建 CacheMixin 缓存混合类",
-      "description": "提取通用缓存逻辑到 CacheMixin，服务类可以混入使用",
-      "acceptanceCriteria": [
-        "提取通用缓存逻辑到 CacheMixin",
-        "服务类可以混入使用",
-        "统一缓存键生成逻辑"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 20,
-      "passes": true
-    },
-    {
-      "id": "5.2",
-      "title": "创建 QueryBuilder 查询构建器",
-      "description": "创建 QueryBuilder 支持分页、排序、过滤，支持动态条件构建",
-      "acceptanceCriteria": [
-        "支持分页、排序、过滤",
-        "支持动态条件构建",
-        "类型安全"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 30,
-      "passes": true
-    },
-    {
-      "id": "5.3",
-      "title": "统一缓存失效逻辑",
-      "description": "所有服务类使用统一的缓存失效方法，移除重复代码",
-      "acceptanceCriteria": [
-        "所有服务类使用统一的缓存失效方法",
-        "移除重复代码",
-        "测试通过"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 20,
-      "passes": true
-    },
-    {
-      "id": "5.4",
-      "title": "重构重复查询模式",
-      "description": "识别并提取重复查询模式，使用 QueryBuilder 重构",
-      "acceptanceCriteria": [
-        "识别并提取重复查询模式",
-        "使用 QueryBuilder 重构",
-        "测试通过"
-      ],
-      "priority": "low",
-      "estimatedMinutes": 20,
-      "passes": true
+      "priority": 5,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
