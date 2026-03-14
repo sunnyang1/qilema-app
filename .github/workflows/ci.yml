@@ -128,7 +128,7 @@ jobs:
 
       - name: Setup pnpm
         if: steps.check.outputs.exists == 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v3
         with:
           version: 9
 
@@ -166,7 +166,7 @@ jobs:
 
       - name: Setup pnpm
         if: steps.check.outputs.exists == 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v3
         with:
           version: 9
 
