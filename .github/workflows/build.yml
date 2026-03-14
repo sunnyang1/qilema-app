@@ -106,9 +106,20 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '0'
 
+      - name: Check SARIF file exists
+        id: check-sarif
+        run: |
+          if [ -f trivy-backend.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ trivy-backend.sarif found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ trivy-backend.sarif not found"
+          fi
+
       - name: Upload scan results
         uses: github/codeql-action/upload-sarif@v4
-        if: success() && hashFiles('trivy-backend.sarif') != ''
+        if: steps.check-sarif.outputs.exists == 'true'
         with:
           sarif_file: trivy-backend.sarif
           category: trivy-backend
@@ -169,9 +180,20 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '0'
 
+      - name: Check SARIF file exists
+        id: check-sarif
+        run: |
+          if [ -f trivy-nginx.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ trivy-nginx.sarif found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ trivy-nginx.sarif not found"
+          fi
+
       - name: Upload scan results
         uses: github/codeql-action/upload-sarif@v4
-        if: success() && hashFiles('trivy-nginx.sarif') != ''
+        if: steps.check-sarif.outputs.exists == 'true'
         with:
           sarif_file: trivy-nginx.sarif
           category: trivy-nginx
