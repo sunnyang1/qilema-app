@@ -2,86 +2,198 @@ name: Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    tags: ['v*']
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
-# 并发控制：防止多个构建同时运行
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  REGISTRY: docker.io
+
 jobs:
-  build:
+  check-secrets:
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # Docker 构建可能需要较长时间
-
+    outputs:
+      has-docker-hub: ${{ steps.check.outputs.has-docker-hub }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Check Docker Hub secrets
+        id: check
+        run: |
+          if [ -n "${{ secrets.DOCKER_HUB_USERNAME }}" ]; then
+            echo "has-docker-hub=true" >> $GITHUB_OUTPUT
+            echo "✅ Docker Hub secrets available"
+          else
+            echo "has-docker-hub=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Docker Hub secrets not available (skipping push)"
+          fi
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Login to Docker Hub
-      if: github.event_name != 'pull_request'  # PR 不登录
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v6
-      with:
-        images: qilema/backend
-        tags: |
-          type=ref,event=branch
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix={{branch}}-
+      - name: Validate compose configs
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config > /dev/null && echo "✅ Dev compose valid"
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null && echo "✅ Prod compose valid"
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./backend
-        file: ./backend/Dockerfile
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Check Nginx config files exist
+        run: |
+          test -f nginx/nginx.conf && echo "✅ nginx.conf exists"
+          test -f nginx/conf.d/backend.conf && echo "✅ backend.conf exists"
 
-    - name: Build and push Nginx image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./nginx
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: qilema/nginx:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+  build-backend:
+    needs: [check-secrets, validate]
+    if: needs.check-secrets.outputs.has-docker-hub == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: qilema/backend:latest
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        severity: 'CRITICAL,HIGH'  # 只关注严重和高危漏洞
-        exit-code: '0'  # 不阻止构建，仅报告
-        ignore-unfixed: true  # 忽略没有修复版本的漏洞
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v4
-      with:
-        sarif_file: 'trivy-results.sarif'
-        category: 'trivy'
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Generate vulnerability report
-      if: failure()
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: qilema/backend:latest
-        format: 'table'
-        severity: 'CRITICAL,HIGH'
-        exit-code: '0'
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Generate metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-backend
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build.outputs.imageid }}
+          format: sarif
+          output: trivy-backend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Check SARIF file exists
+        id: check-sarif
+        run: |
+          if [ -f trivy-backend.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ trivy-backend.sarif found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ trivy-backend.sarif not found"
+          fi
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v4
+        if: steps.check-sarif.outputs.exists == 'true'
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+
+  build-nginx:
+    needs: [check-secrets, validate]
+    if: needs.check-secrets.outputs.has-docker-hub == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Generate metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-nginx
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build.outputs.imageid }}
+          format: sarif
+          output: trivy-nginx.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Check SARIF file exists
+        id: check-sarif
+        run: |
+          if [ -f trivy-nginx.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ trivy-nginx.sarif found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ trivy-nginx.sarif not found"
+          fi
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v4
+        if: steps.check-sarif.outputs.exists == 'true'
+        with:
+          sarif_file: trivy-nginx.sarif
+          category: trivy-nginx

@@ -2,176 +2,176 @@ name: Deploy
 
 on:
   push:
-    branches: [ main ]
-    tags:
-      - 'v*'
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
-# 部署并发控制：确保同一时间只有一个部署运行
 concurrency:
-  group: deployment-${{ github.ref }}
-  cancel-in-progress: false  # 部署不能取消，必须顺序执行
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BACKEND_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-backend
+  NGINX_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-nginx
 
 jobs:
-  deploy-staging:
-    if: github.ref == 'refs/heads/main'
+  determine-env:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    outputs:
+      environment: ${{ steps.env.outputs.target }}
+      version: ${{ steps.env.outputs.version }}
+    steps:
+      - id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "target=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "target=production" >> $GITHUB_OUTPUT
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "target=staging" >> $GITHUB_OUTPUT
+            echo "version=main" >> $GITHUB_OUTPUT
+          fi
+
+  pre-deploy:
+    runs-on: ubuntu-latest
+    needs: determine-env
+    timeout-minutes: 15
+    outputs:
+      backup-id: ${{ steps.backup.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Create backup
+        id: backup
+        if: needs.determine-env.outputs.environment == 'production'
+        run: |
+          BACKUP_ID=$(date +%Y%m%d_%H%M%S)
+          echo "id=$BACKUP_ID" >> $GITHUB_OUTPUT
+          
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          set -e
+          BACKUP_PATH="/backups/pre-deploy-${{ steps.backup.outputs.id }}"
+          mkdir -p $BACKUP_PATH
+          cd ${{ secrets.APP_PATH }}
+          docker compose exec -T postgres pg_dump -U qilema qilema_prod | gzip > $BACKUP_PATH/db.sql.gz
+          echo "✅ Backup created"
+          EOF
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [determine-env, pre-deploy]
     environment:
-      name: staging
-      url: https://staging.api.qilema.com
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
-
-    - name: Deploy to Staging
-      run: |
-        echo "Deploying to staging environment..."
-        # TODO: 添加实际部署命令
-        # 例如: kubectl apply -f k8s/staging/
-        # 或: ansible-playbook deploy.yml --limit staging
-        # 或: aws ecs update-service --cluster staging --service qilema-backend --force-new-deployment
-        echo "Staging deployment completed (placeholder)"
-
-    - name: Run database migrations
-      run: |
-        echo "Running database migrations..."
-        # TODO: 添加数据库迁移命令
-        # 例如: python scripts/migrate.py --env staging
-        # 或: kubectl exec deployment/qilema-backend -- python manage.py migrate
-        echo "Database migrations completed (placeholder)"
-
-    - name: Health check
-      run: |
-        echo "Performing health check..."
-        # TODO: 添加健康检查
-        # 例如: curl -f https://staging.api.qilema.com/health || exit 1
-        # 或: kubectl rollout status deployment/qilema-backend --timeout=300s
-        echo "Health check passed (placeholder)"
-
-    - name: Notify deployment status
-      if: always() && secrets.SLACK_WEBHOOK != ''
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        text: |
-          Staging deployment ${{ job.status }}
-          Branch: ${{ github.ref }}
-          Commit: ${{ github.sha }}
-          Author: ${{ github.actor }}
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-
-  deploy-production:
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    environment:
-      name: production
-      url: https://api.qilema.com
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
-
-    - name: Create database backup
-      run: |
-        echo "Creating database backup before deployment..."
-        # TODO: 添加备份命令
-        # 例如: aws rds create-db-snapshot --db-instance-identifier qilema-prod --db-snapshot-identifier pre-deploy-$(date +%Y%m%d-%H%M%S)
-        # 或: pg_dump $DATABASE_URL | aws s3 cp - s3://qilema-backups/pre-deploy-$(date +%Y%m%d_%H%M%S).sql
-        echo "Database backup created (placeholder)"
-
-    - name: Deploy to Production
-      run: |
-        echo "Deploying to production environment..."
-        # TODO: 添加实际部署命令
-        # 例如: kubectl apply -f k8s/production/
-        # 或: ansible-playbook deploy.yml --limit production
-        # 或: aws ecs update-service --cluster production --service qilema-backend --force-new-deployment
-        echo "Production deployment completed (placeholder)"
-
-    - name: Run database migrations
-      run: |
-        echo "Running database migrations..."
-        # TODO: 添加数据库迁移命令
-        # 例如: python scripts/migrate.py --env production
-        echo "Database migrations completed (placeholder)"
-
-    - name: Health check
-      run: |
-        echo "Performing health check..."
-        # TODO: 添加健康检查
-        # 例如: curl -f https://api.qilema.com/health || exit 1
-        echo "Health check passed (placeholder)"
-
-    - name: Create post-deployment backup
-      if: success()
-      run: |
-        echo "Creating post-deployment backup..."
-        # TODO: 添加备份命令
-        echo "Post-deployment backup created (placeholder)"
-
-    - name: Notify deployment status
-      if: always() && secrets.SLACK_WEBHOOK != ''
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        text: |
-          Production deployment ${{ job.status }}
-          Tag: ${{ github.ref }}
-          Commit: ${{ github.sha }}
-          Author: ${{ github.actor }}
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-
-  rollback-production:
-    if: failure() && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    needs: deploy-production
+      name: ${{ needs.determine-env.outputs.environment }}
+      url: ${{ needs.determine-env.outputs.environment == 'staging' && 'https://staging.api.qilema.com' || 'https://api.qilema.com' }}
     timeout-minutes: 30
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Rollback production
-      run: |
-        echo "Rolling back production environment..."
-        # TODO: 添加回滚命令
-        # 例如: helm rollback qilema
-        # 或: kubectl rollout undo deployment/qilema-backend
-        echo "Production rollback completed (placeholder)"
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_HOST }}
 
-    - name: Restore database
-      run: |
-        echo "Restoring database from backup..."
-        # TODO: 添加数据库恢复命令
-        # 例如: aws s3 cp s3://qilema-backups/pre-deploy-xxx.sql - | psql $DATABASE_URL
-        echo "Database restore completed (placeholder)"
+      - name: Deploy
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          set -e
+          
+          ENV=${{ needs.determine-env.outputs.environment }}
+          VERSION=${{ needs.determine-env.outputs.version }}
+          
+          echo "🚀 Deploying $VERSION to $ENV"
+          cd ${{ secrets.APP_PATH }}
+          
+          # Update code
+          git fetch origin
+          if [ "$ENV" = "staging" ]; then
+            git checkout origin/main
+          else
+            git checkout $VERSION
+          fi
+          
+          # Pull images
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+          
+          # Start DB first
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres redis
+          sleep 5
+          
+          # Run migrations
+          docker compose exec -T backend python -m alembic upgrade head || true
+          
+          # Deploy app
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d backend nginx
+          
+          # Health check
+          sleep 10
+          for i in {1..30}; do
+            if docker compose exec -T backend curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Deployed successfully"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          
+          docker system prune -f
+          EOF
 
-    - name: Notify rollback
-      if: secrets.SLACK_WEBHOOK != ''
-      uses: 8398a7/action-slack@v3
-      with:
-        status: 'failure'
-        text: |
-          Production rollback initiated
-          Tag: ${{ github.ref }}
-          Commit: ${{ github.sha }}
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+      - name: Smoke test
+        run: |
+          URL=${{ needs.determine-env.outputs.environment == 'staging' && 'https://staging.api.qilema.com' || 'https://api.qilema.com' }}
+          curl -f $URL/health || exit 1
+          echo "✅ Smoke test passed"
+
+  rollback:
+    runs-on: ubuntu-latest
+    needs: [determine-env, pre-deploy, deploy]
+    if: failure() && needs.determine-env.outputs.environment == 'production'
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Rollback
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          set -e
+          BACKUP_PATH="/backups/pre-deploy-${{ needs.pre-deploy.outputs.backup-id }}"
+          cd ${{ secrets.APP_PATH }}
+          
+          docker compose down || true
+          gunzip < $BACKUP_PATH/db.sql.gz | docker compose exec -T postgres psql -U qilema || true
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+          
+          sleep 10
+          for i in {1..30}; do
+            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Rollback successful"
+              break
+            fi
+            sleep 2
+          done
+          EOF

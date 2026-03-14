@@ -40,3 +40,152 @@
 
 ## 当前工作
 开始阶段 4.1: 分析 User 模型关联关系
+
+---
+
+## CI/CD 流程整合 [COMPLETE] ✅
+
+日期: 2026-03-13
+
+### 已完成
+
+1. **Docker Compose 文件整合** (6 → 3)
+   - ✅ 保留: `docker-compose.yml` (基础配置)
+   - ✅ 保留: `docker-compose.dev.yml` (开发环境 - 已合并 override)
+   - ✅ 保留: `docker-compose.prod.yml` (生产环境)
+   - ⛔ 弃用: `docker-compose.override.yml` (功能合并到 dev)
+   - ⛔ 弃用: `docker-compose.staging.yml` (使用 prod + env vars)
+   - ⛔ 弃用: `docker-compose.test.yml` (使用基础配置)
+
+2. **Workflow 文件整合** (15 → 4)
+   - ✅ `ci.yml` - 代码检查、测试、lint
+   - ✅ `build.yml` - 构建镜像、安全扫描
+   - ✅ `deploy.yml` - 部署到 staging/production
+   - ✅ `pr-checks.yml` - PR 标题检查、依赖审查
+   - ⛔ 弃用: 11 个旧 workflow 文件 (添加 deprecation 注释)
+
+3. **文档更新**
+   - ✅ 更新 `AGENTS.md` - 添加 CI/CD 流程说明
+   - ✅ 更新 `DOCKER_COMPOSE_GUIDE.md` - 简化使用指南
+
+### 文件变更统计
+
+| 类型 | 之前 | 之后 | 减少 |
+|------|------|------|------|
+| docker-compose | 6 | 3 | 50% |
+| workflow | 15 | 4 | 73% |
+| **总计** | **21** | **7** | **67%** |
+
+### 验证清单
+- [x] docker-compose.yml 语法检查
+- [x] docker-compose.dev.yml 语法检查
+- [x] docker-compose.prod.yml 语法检查
+- [x] ci.yml 语法检查
+- [x] build.yml 语法检查
+- [x] deploy.yml 语法检查
+- [x] pr-checks.yml 语法检查
+
+### 后续建议
+1. 逐步移除已弃用的 docker-compose 文件
+2. 逐步移除已弃用的 workflow 文件
+3. 更新团队文档和 wiki
+4. 培训团队使用新的简化命令
+
+---
+
+## 项目全面清理和整理 [COMPLETE] ✅
+
+日期: 2026-03-14
+
+### 清理内容
+
+1. **删除缓存和临时文件**
+   - ✅ 删除所有 `__pycache__/` 目录
+   - ✅ 删除所有 `.pytest_cache/` 目录
+   - ✅ 删除日志文件 (deploy.log, build.log, docker-install.log)
+   - ✅ 删除后端日志 (backend/logs/*.log)
+   - ✅ 删除二进制工具 (container-structure-test-linux-amd64)
+
+2. **更新 .gitignore**
+   - ✅ 添加容器结构测试工具忽略
+   - ✅ 添加大文件和压缩文件忽略
+   - ✅ 添加 OS 文件忽略
+
+3. **文档结构重组** (24 → 2 根目录文件)
+   - ✅ 创建 `docs/` 目录结构
+     - `docs/deployment/` - 部署文档
+     - `docs/cicd/` - CI/CD 文档
+     - `docs/development/` - 开发文档
+     - `docs/architecture/` - 架构文档
+   - ✅ 整合 8 个部署文档到 `docs/deployment/`
+   - ✅ 整合 6 个 CI/CD 文档到 `docs/cicd/`
+   - ✅ 保留根目录只有 `README.md` 和 `AGENTS.md`
+
+4. **脚本位置整理**
+   - ✅ 创建 `scripts/deploy/` 目录
+   - ✅ 创建 `scripts/maintenance/` 目录
+   - ✅ 移动 `deploy-local.sh` → `scripts/deploy/local.sh`
+   - ✅ 移动 `install-docker.sh` → `scripts/deploy/docker-install.sh`
+   - ✅ 移动 `stop-local.sh` → `scripts/maintenance/stop-local.sh`
+
+5. **删除重复文件**
+   - ✅ 删除 `mobile/AGENTS.md` (重复)
+
+### 清理统计
+
+| 项目 | 清理前 | 清理后 | 改善 |
+|------|--------|--------|------|
+| 根目录 Markdown | 24 个 | 2 个 | **-92%** |
+| 根目录脚本 | 3 个 | 0 个 | **-100%** |
+| Workflow 文件 | 17 个 | 4 个有效 | **-76%** |
+| Docker Compose | 6 个 | 3 个有效 | **-50%** |
+| 缓存/日志文件 | 10+ | 0 | **-100%** |
+| 二进制工具 | 15MB | 0 | **-15MB** |
+
+### 新的项目结构
+
+```
+qilema-app/
+├── README.md                 # 项目主文档
+├── AGENTS.md                 # AI Agent 知识库
+├── LICENSE
+├── .gitignore
+├── .env.example
+├── docker-compose.yml        # Docker Compose 基础
+├── docker-compose.dev.yml    # 开发环境
+├── docker-compose.prod.yml   # 生产环境
+├── package.json
+│
+├── .github/
+│   └── workflows/            # 4个核心 workflow
+│       ├── ci.yml
+│       ├── build.yml
+│       ├── deploy.yml
+│       └── pr-checks.yml
+│
+├── backend/                  # 后端代码
+├── mobile/                   # 移动端代码
+├── nginx/                    # Nginx 配置
+├── scripts/                  # 运维脚本
+├── docs/                     # 项目文档
+├── k8s/                      # Kubernetes
+├── tests/                    # 集成测试
+└── tasks/                    # 任务/计划
+```
+
+### 文档导航
+
+| 文档位置 | 内容 |
+|----------|------|
+| [docs/deployment/](docs/deployment/) | 部署指南、服务器设置、Secrets |
+| [docs/cicd/](docs/cicd/) | CI/CD 工作流、GitHub Actions |
+| [docs/development/](docs/development/) | 开发指南、本地设置 |
+| [docs/architecture/](docs/architecture/) | 系统架构、设计文档 |
+
+### 验证清单
+- [x] 所有文档已迁移到 docs/
+- [x] 根目录只保留 README.md 和 AGENTS.md
+- [x] 脚本已移动到 scripts/
+- [x] 缓存和日志文件已删除
+- [x] .gitignore 已更新
+- [x] 重复文件已删除

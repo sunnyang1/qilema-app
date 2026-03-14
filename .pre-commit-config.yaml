@@ -1,8 +1,8 @@
-# 起了吗App - Git 预提交钩子配置
-# 安装: pip install pre-commit && pre-commit install
+# Qilema App - Git Pre-commit Hooks Configuration
+# Install: pip install pre-commit && pre-commit install
 
 repos:
-  # 检查敏感信息
+  # Detect secrets and sensitive information
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
@@ -10,7 +10,13 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: package.lock.json|yarn.lock|pnpm-lock.yaml
 
-  # 检查大型文件
+  # Scan for leaked credentials and API keys
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+
+  # Check for large files
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
@@ -22,16 +28,33 @@ repos:
         args: ['--allow-multiple-documents']
       - id: end-of-file-fixer
       - id: trailing-whitespace
+      - id: debug-statements
+      - id: mixed-line-ending
 
-  # Python 代码格式化
+  # Python formatting
   - repo: https://github.com/psf/black
-    rev: 23.12.1  # Python 3.8 兼容版本
+    rev: 23.12.1
     hooks:
       - id: black
+        language_version: python3.12
 
-  # Python 导入排序
+  # Python import sorting
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
     hooks:
       - id: isort
         args: ['--profile', 'black']
+
+  # Python linting
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args: ['--max-line-length=120', '--extend-ignore=E203,W503']
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.32.0
+    hooks:
+      - id: yamllint
+        args: ['-d', '{extends: relaxed, rules: {line-length: {max: 120}}}']

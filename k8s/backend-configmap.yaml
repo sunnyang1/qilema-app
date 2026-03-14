@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: qilema
+data:
+  ENVIRONMENT: "production"
+  DEBUG: "False"
+  LOG_LEVEL: "INFO"
+  DATABASE_URL: "postgresql://qilema:qilema_password_change_in_prod@postgres:5432/qilema"
+  REDIS_URL: "redis://redis:6379/0"
