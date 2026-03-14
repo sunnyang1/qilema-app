@@ -107,8 +107,8 @@ jobs:
           exit-code: '0'
 
       - name: Upload scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: success() && hashFiles('trivy-backend.sarif') != ''
         with:
           sarif_file: trivy-backend.sarif
           category: trivy-backend
@@ -170,8 +170,8 @@ jobs:
           exit-code: '0'
 
       - name: Upload scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: success() && hashFiles('trivy-nginx.sarif') != ''
         with:
           sarif_file: trivy-nginx.sarif
           category: trivy-nginx
