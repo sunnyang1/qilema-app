@@ -13,10 +13,24 @@ concurrency:
 
 env:
   REGISTRY: docker.io
-  BACKEND_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-backend
-  NGINX_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-nginx
 
 jobs:
+  check-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has-docker-hub: ${{ steps.check.outputs.has-docker-hub }}
+    steps:
+      - name: Check Docker Hub secrets
+        id: check
+        run: |
+          if [ -n "${{ secrets.DOCKER_HUB_USERNAME }}" ]; then
+            echo "has-docker-hub=true" >> $GITHUB_OUTPUT
+            echo "✅ Docker Hub secrets available"
+          else
+            echo "has-docker-hub=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Docker Hub secrets not available (skipping push)"
+          fi
+
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -31,20 +45,14 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.dev.yml config > /dev/null && echo "✅ Dev compose valid"
           docker compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null && echo "✅ Prod compose valid"
 
-      # Note: Nginx config validation disabled - requires 'backend' host to be resolvable
-      # which is not available in CI environment without Docker Compose network
-      # - name: Validate Nginx config
-      #   run: |
-      #     docker run --rm -v $(pwd)/nginx:/etc/nginx:ro nginx:alpine nginx -t
-      #     echo "✅ Nginx config valid"
-      
       - name: Check Nginx config files exist
         run: |
           test -f nginx/nginx.conf && echo "✅ nginx.conf exists"
           test -f nginx/conf.d/backend.conf && echo "✅ backend.conf exists"
 
   build-backend:
-    needs: validate
+    needs: [check-secrets, validate]
+    if: needs.check-secrets.outputs.has-docker-hub == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -70,7 +78,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.BACKEND_IMAGE }}
+          images: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-backend
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -106,7 +114,8 @@ jobs:
           category: trivy-backend
 
   build-nginx:
-    needs: validate
+    needs: [check-secrets, validate]
+    if: needs.check-secrets.outputs.has-docker-hub == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -132,7 +141,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.NGINX_IMAGE }}
+          images: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-nginx
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
