@@ -35,21 +35,28 @@ jobs:
             revert
           requireScope: false
 
-  dependency-review:
+  # Note: Dependency review requires GitHub Advanced Security or public repo with Dependency graph enabled
+  # See: https://github.com/sunnyang1/qilema-app/settings/security_analysis
+  # dependency-review:
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 10
+  #   permissions:
+  #     contents: read
+  #     security-events: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Dependency review
+  #       uses: actions/dependency-review-action@v4
+  #       with:
+  #         fail-on-severity: high
+  #         comment-summary-in-pr: true
+  #         allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Python-2.0, Unlicense
+
+  python-security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
-      security-events: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Dependency review
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: true
-          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Python-2.0, Unlicense
 
       - name: Python security check
         uses: actions/setup-python@v5
