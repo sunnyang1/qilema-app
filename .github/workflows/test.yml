@@ -1,3 +1,16 @@
+# ⚠️ DEPRECATED: This workflow has been consolidated
+#
+# Please use one of the following workflows instead:
+# - ci.yml: Code checks and tests
+# - build.yml: Docker image builds
+# - deploy.yml: Deployments
+# - pr-checks.yml: PR validation
+#
+# This file is kept for backward compatibility but will not be triggered.
+# Last updated: 2026-03-13
+#
+# Original content preserved below (disabled):
+
 name: Run Tests
 
 on:

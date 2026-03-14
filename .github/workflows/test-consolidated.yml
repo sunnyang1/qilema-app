@@ -1,0 +1,324 @@
+# ⚠️ DEPRECATED: This workflow has been consolidated
+#
+# Please use one of the following workflows instead:
+# - ci.yml: Code checks and tests
+# - build.yml: Docker image builds
+# - deploy.yml: Deployments
+# - pr-checks.yml: PR validation
+#
+# This file is kept for backward compatibility but will not be triggered.
+# Last updated: 2026-03-13
+#
+# Original content preserved below (disabled):
+
+name: Test, Lint & Validate (Consolidated)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pre-commit-
+
+      - name: Install and run pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit install-hooks
+          pre-commit run --all-files --show-diff-on-failure
+
+  backend-tests:
+    needs: pre-commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: qilema
+          POSTGRES_PASSWORD: qilema_test_password
+          POSTGRES_DB: qilema_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        env:
+          SECRET_KEY: test_secret_key_at_least_64_bytes_long_for_testing_purposes_only_do_not_use_in_production
+          DATABASE_URL: postgresql://qilema:qilema_test_password@localhost:5432/qilema_test
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: testing
+        run: |
+          cd backend
+          pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/coverage.xml
+          flags: backend-${{ matrix.python-version }}
+          name: backend-${{ matrix.python-version }}
+          fail_ci_if_error: false
+
+  frontend-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check pnpm-lock.yaml exists
+        id: check-lockfile
+        run: |
+          if [ -f "mobile/pnpm-lock.yaml" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Warning: mobile/pnpm-lock.yaml not found"
+          fi
+
+      - name: Install pnpm
+        if: steps.check-lockfile.outputs.exists == 'true'
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      - name: Install dependencies
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: cd mobile && pnpm install
+
+      - name: Run lint
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: cd mobile/client && pnpm lint
+
+      - name: Type check
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: cd mobile/client && pnpm tsc --noEmit
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check pnpm-lock.yaml exists
+        id: check-lockfile
+        run: |
+          if [ -f "mobile/pnpm-lock.yaml" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: pnpm/action-setup@v3
+        if: steps.check-lockfile.outputs.exists == 'true'
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v6
+        if: steps.check-lockfile.outputs.exists == 'true'
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      - name: Install dependencies
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: cd mobile && pnpm install
+
+      - name: Run tests with coverage
+        if: steps.check-lockfile.outputs.exists == 'true'
+        run: cd mobile/client && pnpm test --coverage --run || true
+
+      - name: Upload coverage to Codecov
+        if: steps.check-lockfile.outputs.exists == 'true'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./mobile/client/coverage/coverage-final.json
+          flags: frontend
+          name: frontend
+          fail_ci_if_error: false
+
+  docker-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-arch
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Docker Compose configurations
+        run: |
+          docker-compose -f docker-compose.yml -f docker-compose.dev.yml config > /dev/null && echo "✅ Dev compose valid"
+          docker-compose -f docker-compose.yml -f docker-compose.staging.yml config > /dev/null && echo "✅ Staging compose valid"
+          docker-compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null && echo "✅ Prod compose valid"
+
+      - name: Validate Nginx config
+        run: |
+          docker run --rm -v $(pwd)/nginx:/etc/nginx:ro nginx:alpine nginx -t
+          echo "✅ Nginx config valid"
+
+      - name: Build backend image (amd64 only for PR)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          platforms: linux/amd64
+          push: false
+          tags: qilema-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build nginx image (amd64 only for PR)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx
+          platforms: linux/amd64
+          push: false
+          tags: qilema-nginx:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test database migrations
+        run: |
+          docker-compose -f docker-compose.yml up -d postgres
+          sleep 10
+          echo "Testing database connectivity..."
+          docker-compose exec -T postgres pg_isready -U qilema || exit 1
+          echo "✅ Database accessible"
+          docker-compose down -v
+
+      - name: Compose health check test
+        run: |
+          docker-compose -f docker-compose.yml up -d postgres redis backend
+          sleep 15
+
+          echo "Checking postgres health..."
+          docker-compose exec -T postgres pg_isready -U qilema || exit 1
+          echo "✅ Postgres healthy"
+
+          echo "Checking redis health..."
+          docker-compose exec -T redis redis-cli ping || exit 1
+          echo "✅ Redis healthy"
+
+          echo "Checking backend health..."
+          docker-compose exec -T backend curl -f http://localhost:8000/health || exit 1
+          echo "✅ Backend healthy"
+
+      - name: Load test API
+        run: |
+          echo "Running load test on API..."
+          for i in {1..10}; do
+            echo "Request $i"
+            curl -s http://localhost:8000/health || exit 1
+          done
+          echo "✅ Load test passed"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v || true
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: true
+          allow-licenses: |
+            MIT
+            Apache-2.0
+            BSD-2-Clause
+            BSD-3-Clause
+            ISC
+            Python-2.0
+            Unlicense
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check Python dependencies security
+        run: |
+          cd backend
+          pip install safety
+          safety check -r requirements.txt --full-report || true

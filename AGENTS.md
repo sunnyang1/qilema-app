@@ -94,6 +94,53 @@ def _invalidate_user_caches(self, user_id: str, phone: Optional[str] = None):
 
 ---
 
+## CI/CD 流程 (Consolidated)
+
+### 文件结构
+
+```
+.github/workflows/
+├── ci.yml          # 代码检查、测试、lint
+├── build.yml       # 构建镜像、安全扫描
+├── deploy.yml      # 部署到 staging/production
+└── pr-checks.yml   # PR 标题检查、依赖审查
+
+docker-compose.yml          # 基础服务定义
+docker-compose.dev.yml      # 开发环境覆盖
+docker-compose.prod.yml     # 生产环境覆盖
+```
+
+### 使用方式
+
+**开发环境**:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+**生产环境**:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+### Workflow 触发规则
+
+| Workflow | 触发条件 | 说明 |
+|----------|----------|------|
+| ci.yml | PR, push to main/develop | 运行测试、lint |
+| build.yml | PR, push to main, tag v* | 构建镜像、安全扫描 |
+| deploy.yml | push to main, tag v*, manual | 部署 staging/production |
+| pr-checks.yml | PR opened/edited | 标题检查、依赖审查 |
+
+### 已弃用文件
+
+以下文件已标记弃用，将在未来版本中移除：
+- `docker-compose.override.yml` → 使用 `docker-compose.dev.yml`
+- `docker-compose.staging.yml` → 使用 `docker-compose.prod.yml` + env vars
+- `docker-compose.test.yml` → 使用 `docker-compose.yml`
+- `build-consolidated.yml`, `deploy-consolidated.yml`, etc. → 使用新 workflow
+
+---
+
 ## CI/CD 最佳实践
 
 ### GitHub Actions Workflow 配置

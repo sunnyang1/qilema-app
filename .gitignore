@@ -88,3 +88,20 @@ dump/
 
 # CodeBuddy internal
 .codebuddy/
+
+# Container structure test tool
+container-structure-test-*
+
+# Large binary files
+*.tar.gz
+*.zip
+*.rar
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,3 +1,11 @@
+# ⚠️ DEPRECATED: 此文件已弃用
+#
+# 功能已合并到 docker-compose.dev.yml
+# 请使用: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# 保留此文件仅为向后兼容，将在未来版本中移除
+# 最后更新: 2026-03-13
+
 # 开发环境覆盖配置
 # 使用: docker compose up
 #

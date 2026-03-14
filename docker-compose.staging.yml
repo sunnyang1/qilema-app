@@ -1,3 +1,14 @@
+# ⚠️ DEPRECATED: 此文件已弃用
+#
+# 测试/预发布环境请使用 docker-compose.prod.yml 配合 .env 文件
+# 端口和配置可通过环境变量覆盖
+#
+# 示例:
+#   BACKEND_PORT=8001 REDIS_PORT=6380 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+#
+# 保留此文件仅为向后兼容，将在未来版本中移除
+# 最后更新: 2026-03-13
+
 version: '3.8'
 
 services:

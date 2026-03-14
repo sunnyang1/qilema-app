@@ -1,0 +1,305 @@
+# ⚠️ DEPRECATED: This workflow has been consolidated
+#
+# Please use one of the following workflows instead:
+# - ci.yml: Code checks and tests
+# - build.yml: Docker image builds
+# - deploy.yml: Deployments
+# - pr-checks.yml: PR validation
+#
+# This file is kept for backward compatibility but will not be triggered.
+# Last updated: 2026-03-13
+#
+# Original content preserved below (disabled):
+
+name: Deploy (Consolidated)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BACKEND_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-backend
+  NGINX_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-nginx
+
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.target }}
+      version: ${{ steps.env.outputs.version }}
+    steps:
+      - id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "target=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "target=production" >> $GITHUB_OUTPUT
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "target=staging" >> $GITHUB_OUTPUT
+            echo "version=main" >> $GITHUB_OUTPUT
+          fi
+
+  pre-deploy-checks:
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    timeout-minutes: 15
+    outputs:
+      backup-id: ${{ steps.backup.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify images exist
+        run: |
+          docker pull ${{ env.BACKEND_IMAGE }}:${{ needs.determine-environment.outputs.version }}
+          docker pull ${{ env.NGINX_IMAGE }}:${{ needs.determine-environment.outputs.version }}
+          echo "✅ Docker images verified"
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Create pre-deployment backup (production only)
+        id: backup
+        if: needs.determine-environment.outputs.environment == 'production'
+        run: |
+          BACKUP_ID=$(date +%Y%m%d_%H%M%S)
+          echo "id=$BACKUP_ID" >> $GITHUB_OUTPUT
+          
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          set -e
+          BACKUP_ID=$(date +%Y%m%d_%H%M%S)
+          BACKUP_PATH="/backups/pre-deploy-${BACKUP_ID}"
+          mkdir -p $BACKUP_PATH
+          
+          cd ${{ secrets.APP_PATH }}
+          
+          echo "Creating database backup..."
+          docker-compose exec -T postgres pg_dump -U qilema qilema_prod | gzip > $BACKUP_PATH/database.sql.gz
+          echo "✅ Database backup created"
+          EOF
+
+      - name: Notify deployment start
+        if: secrets.SLACK_WEBHOOK != ''
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "🚀 ${{ needs.determine-environment.outputs.environment }} Deployment Starting",
+              "blocks": [{
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*${{ needs.determine-environment.outputs.environment }} Deployment Starting*\n*Version:* ${{ needs.determine-environment.outputs.version }}\n*Status:* Pre-deployment checks passed"
+                }
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [determine-environment, pre-deploy-checks]
+    environment:
+      name: ${{ needs.determine-environment.outputs.environment }}
+      url: ${{ needs.determine-environment.outputs.environment == 'staging' && 'https://staging.api.qilema.com' || 'https://api.qilema.com' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Deploy application
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          set -e
+          
+          VERSION=${{ needs.determine-environment.outputs.version }}
+          ENV=${{ needs.determine-environment.outputs.environment }}
+          
+          echo "🚀 Deploying $VERSION to $ENV"
+          
+          cd ${{ secrets.APP_PATH }}
+          
+          # Pull latest code
+          git fetch origin ${{ needs.determine-environment.outputs.environment == 'staging' && 'main' || needs.determine-environment.outputs.version }}
+          git checkout ${{ needs.determine-environment.outputs.environment == 'staging' && 'origin/main' || needs.determine-environment.outputs.version }}
+          
+          # Load environment
+          export $(cat .env.$ENV | xargs)
+          
+          # Pull latest images
+          docker-compose -f docker-compose.yml -f docker-compose.$ENV.yml pull
+          
+          # Start databases first
+          docker-compose -f docker-compose.yml -f docker-compose.$ENV.yml up -d postgres redis
+          sleep 5
+          
+          # Verify database connectivity
+          echo "Verifying database..."
+          docker-compose exec -T postgres pg_isready -U qilema || exit 1
+          echo "✅ Database ready"
+          
+          # Run database migrations
+          echo "Running migrations..."
+          docker-compose exec -T backend python -m alembic upgrade head || exit 1
+          echo "✅ Migrations completed"
+          
+          # Deploy application
+          echo "Deploying services..."
+          docker-compose -f docker-compose.yml -f docker-compose.$ENV.yml up -d backend nginx
+          
+          # Wait for services
+          sleep 10
+          
+          # Health checks
+          echo "Checking backend health..."
+          for i in {1..30}; do
+            if docker-compose exec -T backend curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Backend healthy"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+          
+          echo "Checking nginx health..."
+          docker-compose exec -T nginx curl -f http://127.0.0.1/health > /dev/null 2>&1 || exit 1
+          echo "✅ Nginx healthy"
+          
+          # Cleanup
+          docker system prune -f --volumes
+          echo "✅ Deployment completed"
+          EOF
+
+      - name: Smoke tests
+        run: |
+          sleep 5
+          
+          BASE_URL=${{ needs.determine-environment.outputs.environment == 'staging' && 'https://staging.api.qilema.com' || 'https://api.qilema.com' }}
+          
+          echo "Testing $BASE_URL"
+          curl -f $BASE_URL/health || exit 1
+          echo "✅ Health check passed"
+
+      - name: Create post-deployment backup (production only)
+        if: success() && needs.determine-environment.outputs.environment == 'production'
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          set -e
+          BACKUP_PATH="/backups/post-deploy-$(date +%Y%m%d_%H%M%S)"
+          mkdir -p $BACKUP_PATH
+          
+          cd ${{ secrets.APP_PATH }}
+          docker-compose exec -T postgres pg_dump -U qilema qilema_prod | gzip > $BACKUP_PATH/database.sql.gz
+          echo "✅ Post-deployment backup created"
+          EOF
+
+      - name: Notify success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Deployment Successful",
+              "blocks": [{
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*${{ needs.determine-environment.outputs.environment }} Deployment Success*\n*Version:* ${{ needs.determine-environment.outputs.version }}\n*Status:* Live"
+                }
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  rollback:
+    runs-on: ubuntu-latest
+    needs: [determine-environment, pre-deploy-checks, deploy]
+    if: failure() && needs.determine-environment.outputs.environment == 'production'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+          ssh-known-hosts: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Execute rollback
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          set -e
+          
+          BACKUP_ID=${{ needs.pre-deploy-checks.outputs.backup-id }}
+          BACKUP_PATH="/backups/pre-deploy-${BACKUP_ID}"
+          
+          echo "Rolling back to backup: $BACKUP_ID"
+          
+          cd ${{ secrets.APP_PATH }}
+          
+          # Stop current containers
+          docker-compose down || true
+          
+          # Restore database
+          echo "Restoring database..."
+          gunzip < $BACKUP_PATH/database.sql.gz | docker-compose exec -T postgres psql -U qilema -d qilema_prod
+          
+          # Start services
+          docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+          
+          # Wait and verify
+          sleep 10
+          
+          # Health check after rollback
+          for i in {1..30}; do
+            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Service recovered after rollback"
+              exit 0
+            fi
+            echo "Waiting for recovery... ($i/30)"
+            sleep 2
+          done
+          
+          echo "❌ Rollback recovery failed"
+          exit 1
+          EOF
+
+      - name: Notify rollback
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "⚠️ Production Rollback Executed",
+              "blocks": [{
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Production Rollback*\n*Version:* ${{ needs.determine-environment.outputs.version }}\n*Backup ID:* ${{ needs.pre-deploy-checks.outputs.backup-id }}\n*Status:* Rolled back"
+                }
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

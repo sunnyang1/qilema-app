@@ -1,54 +1,66 @@
-# 依赖审查 - 检查依赖项中的已知漏洞
-name: Dependency Review
+# ⚠️ DEPRECATED: This workflow has been consolidated
+#
+# Please use pr-checks.yml instead, which includes:
+# - PR title validation
+# - Dependency review
+# - Python security checks
+#
+# This file is kept for backward compatibility but will not be triggered.
+# Last updated: 2026-03-13
+#
+# Original content preserved below (disabled):
 
-on:
-  pull_request:
-    branches: [ main, develop ]
-
-# 并发控制
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
-  security-events: write
-
-jobs:
-  dependency-review:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Dependency Review
-      uses: actions/dependency-review-action@v4
-      with:
-        # 对已知漏洞失败
-        fail-on-severity: high
-        # 显示扫描的依赖数量
-        show-openssf-scorecard: true
-        # 评论 PR 显示结果
-        comment-summary-in-pr: true
-        # 允许授权许可
-        allow-licenses: |
-          MIT
-          Apache-2.0
-          BSD-2-Clause
-          BSD-3-Clause
-          ISC
-          Python-2.0
-          Unlicense
-
-    - name: Scan Python dependencies
-      run: |
-        cd backend
-        pip install safety
-        safety check -r requirements.txt --full-report || true
-
-    - name: Check for outdated dependencies
-      run: |
-        cd backend
-        pip list --outdated --format=columns || true
+# DISABLED 依赖审查 - 检查依赖项中的已知漏洞
+# DISABLED name: Dependency Review
+# DISABLED 
+# DISABLED on:
+# DISABLED   pull_request:
+# DISABLED     branches: [ main, develop ]
+# DISABLED 
+# DISABLED # 并发控制
+# DISABLED concurrency:
+# DISABLED   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+# DISABLED   cancel-in-progress: true
+# DISABLED 
+# DISABLED permissions:
+# DISABLED   contents: read
+# DISABLED   security-events: write
+# DISABLED 
+# DISABLED jobs:
+# DISABLED   dependency-review:
+# DISABLED     runs-on: ubuntu-latest
+# DISABLED     timeout-minutes: 10
+# DISABLED 
+# DISABLED     steps:
+# DISABLED     - name: Checkout code
+# DISABLED       uses: actions/checkout@v4
+# DISABLED 
+# DISABLED     - name: Dependency Review
+# DISABLED       uses: actions/dependency-review-action@v4
+# DISABLED       with:
+# DISABLED         # 对已知漏洞失败
+# DISABLED         fail-on-severity: high
+# DISABLED         # 显示扫描的依赖数量
+# DISABLED         show-openssf-scorecard: true
+# DISABLED         # 评论 PR 显示结果
+# DISABLED         comment-summary-in-pr: true
+# DISABLED         # 允许授权许可
+# DISABLED         allow-licenses: |
+# DISABLED           MIT
+# DISABLED           Apache-2.0
+# DISABLED           BSD-2-Clause
+# DISABLED           BSD-3-Clause
+# DISABLED           ISC
+# DISABLED           Python-2.0
+# DISABLED           Unlicense
+# DISABLED 
+# DISABLED     - name: Scan Python dependencies
+# DISABLED       run: |
+# DISABLED         cd backend
+# DISABLED         pip install safety
+# DISABLED         safety check -r requirements.txt --full-report || true
+# DISABLED 
+# DISABLED     - name: Check for outdated dependencies
+# DISABLED       run: |
+# DISABLED         cd backend
+# DISABLED         pip list --outdated --format=columns || true

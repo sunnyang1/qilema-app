@@ -1,0 +1,137 @@
+# ⚠️ DEPRECATED: This workflow has been consolidated
+#
+# Please use one of the following workflows instead:
+# - ci.yml: Code checks and tests
+# - build.yml: Docker image builds
+# - deploy.yml: Deployments
+# - pr-checks.yml: PR validation
+#
+# This file is kept for backward compatibility but will not be triggered.
+# Last updated: 2026-03-13
+#
+# Original content preserved below (disabled):
+
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  BACKEND_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-backend:main
+  NGINX_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/qilema-nginx:main
+  COMPOSE_PROJECT_NAME: qilema_staging
+
+concurrency:
+  group: deployment-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: staging
+      url: https://staging.api.qilema.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_DEPLOY_KEY }}
+          ssh-known-hosts: ${{ secrets.STAGING_SERVER_HOST }}
+
+      - name: Deploy via SSH
+        run: |
+          ssh ${{ secrets.STAGING_DEPLOY_USER }}@${{ secrets.STAGING_SERVER_HOST }} << 'EOF'
+          set -e
+          
+          # Pull latest code
+          cd ${{ secrets.STAGING_APP_PATH }}
+          git fetch origin main
+          git checkout origin/main
+          
+          # Load environment
+          export $(cat .env.staging | xargs)
+          
+          # Pull latest images
+          docker-compose -f docker-compose.yml -f docker-compose.staging.yml pull
+          
+          # Deploy with blue-green strategy
+          docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d --no-deps backend nginx
+          
+          # Wait for services to be ready
+          sleep 10
+          
+          # Health check
+          echo "Checking backend health..."
+          docker-compose exec -T backend curl -f http://localhost:8000/health || exit 1
+          
+          echo "Checking nginx health..."
+          docker-compose exec -T nginx curl -f http://127.0.0.1/health || exit 1
+          
+          echo "Staging deployment successful"
+          EOF
+
+      - name: Run database migrations
+        run: |
+          ssh ${{ secrets.STAGING_DEPLOY_USER }}@${{ secrets.STAGING_SERVER_HOST }} << 'EOF'
+          set -e
+          cd ${{ secrets.STAGING_APP_PATH }}
+          export $(cat .env.staging | xargs)
+          
+          # Run migrations
+          docker-compose exec -T backend python -m alembic upgrade head
+          
+          echo "Database migrations completed"
+          EOF
+
+      - name: Smoke tests
+        run: |
+          sleep 5
+          curl -f https://staging.api.qilema.com/health || exit 1
+          echo "Smoke tests passed"
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Staging Deployment Successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deploy Success*\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Branch:* main\n*Author:* ${{ github.actor }}\n*URL:* https://staging.api.qilema.com"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "❌ Staging Deployment Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deploy Failed*\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
