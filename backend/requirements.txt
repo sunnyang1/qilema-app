@@ -7,7 +7,7 @@ uvicorn[standard]==0.41.0
 slowapi==0.1.9
 
 # 数据库
-sqlalchemy==2.0.23
+sqlalchemy==2.0.48
 psycopg2-binary==2.9.9
 
 # Redis
