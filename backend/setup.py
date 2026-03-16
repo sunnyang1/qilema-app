@@ -30,7 +30,7 @@ setup(
             "black==24.10.0",
             "isort==5.13.2",
             "flake8==7.1.1",
-            "mypy==1.13.0",
+            "mypy==1.19.1",
             "pre-commit==3.7.1",
         ],
         "prod": [
