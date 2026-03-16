@@ -21,7 +21,7 @@ email-validator==2.3.0
 # 安全认证
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.22
+python-multipart==0.0.20
 
 # 测试
 pytest==7.4.3
