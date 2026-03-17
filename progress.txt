@@ -154,13 +154,18 @@
 
 日期: 2026-03-17
 
-### 已完成模型重构 (3/9)
+### 已完成模型重构 (8/9)
 
 | 模型 | 状态 | 提交 |
 |------|------|------|
 | User | ✅ | `75c4cd0` |
 | CheckIn | ✅ | `c2e94d3` |
 | SOSRequest | ✅ | `ebef9de` |
+| Notification | ✅ | `66782d4` |
+| HealthRecord | ✅ | `4549c90` |
+| Device | ✅ | `4549c90` |
+| EmergencyContact | ✅ | `4549c90` |
+| Alert | ✅ | `4549c90` |
 
 ### 集成验证结果 ✅
 
@@ -178,14 +183,17 @@
 2. **test_database_migration.py**: 缺少迁移脚本
    - 状态: 已存在的测试问题，非重构导致
 
-### 待重构模型 (6个)
+### 待重构模型 (1个批次)
 
-- [ ] Notification
-- [ ] HealthRecord
-- [ ] Device
-- [ ] EmergencyContact
-- [ ] Alert
-- [ ] 其他模型 (Medication, Anomaly等)
+- [ ] 其他模型 (Medication, Anomaly, 等)
+  - Medication
+  - Anomaly
+  - DeviceData
+  - EmergencyCenter
+  - KnowledgeBase
+  - LoginRecord
+  - UserSetting
+  - 等
 
 ---
 
