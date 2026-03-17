@@ -32,7 +32,7 @@ class LoginRecordResponse(BaseModel):
     logged_out_at: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class LoginRecordQuery(BaseModel):
@@ -117,7 +117,7 @@ class UserFeedbackResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FeedbackQuery(BaseModel):
@@ -185,7 +185,7 @@ class HelpArticleResponse(BaseModel):
     published_at: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class HelpArticleQuery(BaseModel):
@@ -237,7 +237,7 @@ class FAQResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FAQQuery(BaseModel):
@@ -321,7 +321,7 @@ class UserSettingResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ========== 账户安全相关 ==========

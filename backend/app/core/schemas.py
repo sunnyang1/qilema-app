@@ -109,7 +109,7 @@ class PaginationResponse(BaseModel):
     total_pages: int = Field(..., description="总页数", ge=1)
 
 
-class ListResponse(Generic[T], BaseModel):
+class ListResponse(BaseModel, Generic[T]):
     """
     通用列表响应
     """

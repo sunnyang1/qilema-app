@@ -101,7 +101,7 @@ class NotificationResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class NotificationQuery(BaseModel):
@@ -188,7 +188,7 @@ class NotificationTemplateResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ========== 通知偏好设置相关 ==========
@@ -266,7 +266,7 @@ class NotificationPreferenceResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ========== 通知发送请求 ==========

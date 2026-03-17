@@ -1,0 +1,44 @@
+{
+  "projectName": "修复代码问题",
+  "branchName": "fix/code-issues",
+  "complexity": "medium",
+  "userStories": [
+    {
+      "id": "US-1",
+      "title": "修复 notification_service 导入问题",
+      "description": "修复 notification_service.py 中的 NameError 和导入问题",
+      "acceptanceCriteria": [
+        "from app.services.notification_service import NotificationService 成功",
+        "无 NameError 错误"
+      ],
+      "priority": "P0",
+      "estimatedMinutes": 10,
+      "passes": true
+    },
+    {
+      "id": "US-2",
+      "title": "修复 schemas.py Pydantic 警告",
+      "description": "修复 ListResponse 的继承顺序警告",
+      "acceptanceCriteria": [
+        "class ListResponse(BaseModel, Generic[T]) 顺序正确",
+        "无 GenericBeforeBaseModelWarning 警告"
+      ],
+      "priority": "P1",
+      "estimatedMinutes": 3,
+      "passes": true
+    },
+    {
+      "id": "US-3",
+      "title": "迁移 orm_mode 到 from_attributes",
+      "description": "批量迁移所有 orm_mode = True 到 from_attributes = True",
+      "acceptanceCriteria": [
+        "backend/app/schemas/notification.py 已修复",
+        "backend/app/schemas/user_setting.py 已修复",
+        "backend/app/api/example_modern.py 已修复"
+      ],
+      "priority": "P1",
+      "estimatedMinutes": 5,
+      "passes": true
+    }
+  ]
+}

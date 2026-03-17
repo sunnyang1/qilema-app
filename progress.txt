@@ -82,6 +82,35 @@
 
 ---
 
+## 代码问题修复 [COMPLETE] ✅
+
+日期: 2026-03-17
+
+### 修复内容
+
+#### 1. notification_service.py 结构问题 [FIXED] ✅
+- 问题: 循环导入 + 未定义类型 (NotificationServiceConfig, SendNotificationRequest)
+- 解决方案: 简化文件，仅保留重新导出 facade 服务
+- 验证: `from app.services.notification_service import NotificationService` 成功
+
+#### 2. schemas.py Pydantic 警告 [FIXED] ✅
+- 问题: `class ListResponse(Generic[T], BaseModel)` 继承顺序错误
+- 解决方案: 改为 `class ListResponse(BaseModel, Generic[T])`
+- 验证: 无 `GenericBeforeBaseModelWarning` 警告
+
+#### 3. orm_mode 迁移 [FIXED] ✅
+- 问题: 8 处使用已弃用的 `orm_mode = True`
+- 文件: notification.py (3处), user_setting.py (5处)
+- 解决方案: 批量替换为 `from_attributes = True`
+- 验证: 所有模块可正常导入
+
+### 变更统计
+- 文件数: 4 个
+- 删除: -856 行 (移除有问题的 NotificationServiceLegacy 类)
+- 修改: +19 行
+
+---
+
 ## 当前工作
 开始阶段 4.1: 分析 User 模型关联关系
 
