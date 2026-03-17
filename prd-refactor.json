@@ -1,0 +1,85 @@
+{
+  "projectName": "项目全面重构",
+  "branchName": "refactor/sqlalchemy2-modernization",
+  "complexity": "complex",
+  "userStories": [
+    {
+      "id": "US-1",
+      "title": "重构核心模型到 SQLAlchemy 2.x",
+      "description": "将 User, CheckIn, SOSRequest, Notification, HealthRecord, Device, EmergencyContact, Alert 模型迁移到 SQLAlchemy 2.x",
+      "acceptanceCriteria": [
+        "使用 Mapped[] 类型注解",
+        "使用 mapped_column() 替代 Column()",
+        "关联关系使用 Mapped[List[T]]",
+        "保留现有数据库结构"
+      ],
+      "priority": "P0",
+      "estimatedMinutes": 90,
+      "passes": false,
+      "subTasks": [
+        {"id": "US-1-1", "title": "重构 User 模型", "file": "app/models/user.py", "time": 10},
+        {"id": "US-1-2", "title": "重构 CheckIn 模型", "file": "app/models/checkin.py", "time": 10},
+        {"id": "US-1-3", "title": "重构 SOSRequest 模型", "file": "app/models/sos_request.py", "time": 10},
+        {"id": "US-1-4", "title": "重构 Notification 模型", "file": "app/models/notification_model.py", "time": 10},
+        {"id": "US-1-5", "title": "重构 HealthRecord 模型", "file": "app/models/health_record.py", "time": 10},
+        {"id": "US-1-6", "title": "重构 Device 模型", "file": "app/models/device.py", "time": 10},
+        {"id": "US-1-7", "title": "重构 EmergencyContact 模型", "file": "app/models/emergency_contact.py", "time": 10},
+        {"id": "US-1-8", "title": "重构 Alert 模型", "file": "app/models/alert.py", "time": 10},
+        {"id": "US-1-9", "title": "重构剩余模型", "file": "multiple", "time": 30}
+      ]
+    },
+    {
+      "id": "US-2",
+      "title": "更新服务层依赖注入",
+      "description": "修复服务层导入问题，统一使用依赖注入",
+      "acceptanceCriteria": [
+        "所有服务可正常导入",
+        "无循环导入问题",
+        "使用预定义的 Annotated 类型"
+      ],
+      "priority": "P0",
+      "estimatedMinutes": 20,
+      "passes": false
+    },
+    {
+      "id": "US-3",
+      "title": "更新 API 层路由",
+      "description": "将 API 路由迁移到 Annotated 模式",
+      "acceptanceCriteria": [
+        "使用 DbSession 替代 Session = Depends(get_db)",
+        "使用预定义服务依赖类型",
+        "所有路由可正常注册"
+      ],
+      "priority": "P1",
+      "estimatedMinutes": 30,
+      "passes": false
+    },
+    {
+      "id": "US-4",
+      "title": "创建模型层测试",
+      "description": "为核心模型创建单元测试",
+      "acceptanceCriteria": [
+        "User 模型测试",
+        "CheckIn 模型测试",
+        "SOSRequest 模型测试",
+        "测试覆盖率 >80%"
+      ],
+      "priority": "P0",
+      "estimatedMinutes": 30,
+      "passes": false
+    },
+    {
+      "id": "US-5",
+      "title": "验证和回归测试",
+      "description": "运行完整测试套件验证重构",
+      "acceptanceCriteria": [
+        "所有模块可导入",
+        "pytest 通过率 100%",
+        "无弃用警告"
+      ],
+      "priority": "P0",
+      "estimatedMinutes": 15,
+      "passes": false
+    }
+  ]
+}
