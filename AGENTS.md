@@ -94,6 +94,55 @@ chub get sqlalchemy/orm --lang py
 
 ---
 
+## 代码问题修复记录 (2026-03-17)
+
+### 问题 1: 循环导入和未定义类型
+**文件**: `app/services/notification_service.py`
+
+**问题**: 
+- 循环导入 (`anomaly_service` → `notification_service` → `anomaly_service`)
+- `NotificationServiceConfig` 未定义
+- `SendNotificationRequest` 未定义
+
+**解决方案**:
+```python
+# 简化文件，仅保留重新导出
+from app.services.notification.notification_facade import NotificationService
+
+__all__ = ["NotificationService", ...]
+```
+
+### 问题 2: Pydantic v2 继承顺序警告
+**文件**: `app/core/schemas.py`
+
+**问题**:
+```python
+# 错误顺序
+class ListResponse(Generic[T], BaseModel):  # Warning!
+```
+
+**解决方案**:
+```python
+# 正确顺序: BaseModel 必须在 Generic 之前
+class ListResponse(BaseModel, Generic[T]):  # OK
+```
+
+### 问题 3: 已弃用的 orm_mode
+**文件**: `app/schemas/notification.py`, `app/schemas/user_setting.py`
+
+**问题**:
+```python
+class Config:
+    orm_mode = True  # Pydantic v2 已弃用
+```
+
+**解决方案**:
+```python
+model_config = {"from_attributes": True}  # Pydantic v2 推荐
+```
+
+---
+
 ## 服务层重构 - 最佳实践
 
 ### 阶段4: 模型层优化
