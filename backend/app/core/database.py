@@ -1,14 +1,25 @@
 """
-数据库连接和会话管理
+数据库连接和会话管理 (SQLAlchemy 2.x 风格)
+
+参考 SQLAlchemy 2.0 迁移指南:
+https://docs.sqlalchemy.org/en/20/changelog/migration_20.html
 """
 
 from typing import Optional
 
 from app.core.config import settings
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
+
+
+class Base(DeclarativeBase):
+    """SQLAlchemy 2.x 声明式基类
+    
+    使用 DeclarativeBase 替代 declarative_base() 函数
+    这是 SQLAlchemy 2.0 推荐的方式
+    """
+    pass
 
 
 def get_engine(
@@ -68,14 +79,18 @@ def get_engine(
 engine = get_engine()
 
 # 创建会话工厂
+# SQLAlchemy 2.x: sessionmaker 返回 Session 类
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# 创建基类
-Base = declarative_base()
 
 
 def get_db():
-    """获取数据库会话(依赖注入使用)"""
+    """获取数据库会话(依赖注入使用)
+    
+    用法:
+        @router.get("/items")
+        def get_items(db: Session = Depends(get_db)):
+            ...
+    """
     db = SessionLocal()
     try:
         yield db
@@ -83,8 +98,13 @@ def get_db():
         db.close()
 
 
-def get_db_session():
-    """获取数据库会话(直接使用)"""
+def get_db_session() -> Session:
+    """获取数据库会话(直接使用)
+    
+    用法:
+        with get_db_session() as session:
+            result = session.query(...)
+    """
     return SessionLocal()
 
 

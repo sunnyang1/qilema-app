@@ -2,9 +2,12 @@
 API层依赖注入模块
 
 提供通用的依赖注入函数，简化API路由的依赖管理
+
+遵循 FastAPI 0.135.x 规范，使用 Annotated[..., Depends(...)] 模式
+参考: https://fastapi.tiangolo.com/tutorial/dependencies/
 """
 
-from typing import Generator, TypeVar
+from typing import Annotated, TypeVar
 
 from app.core.container import get_container
 from app.core.database import get_db
@@ -29,24 +32,28 @@ from sqlalchemy.orm import Session
 # 类型变量用于泛型服务
 cT = TypeVar("T")
 
-
 # ========== 数据库会话依赖 ==========
 
 
-def get_db_session() -> Generator[Session, None, None]:
+def get_db_session() -> Session:
     """
     获取数据库会话的生成器
 
     Yields:
         Session: 数据库会话
     """
-    yield from get_db()
+    # 使用 next() 从生成器获取值
+    return next(get_db())
+
+
+# 标准数据库会话依赖，使用 Annotated 模式
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 # ========== 服务依赖工厂函数 ==========
 
 
-def get_user_service(db: Session = Depends(get_db_session)) -> UserService:
+def get_user_service(db: DbSession) -> UserService:
     """
     获取用户服务实例
 
@@ -59,7 +66,11 @@ def get_user_service(db: Session = Depends(get_db_session)) -> UserService:
     return UserService(db)
 
 
-def get_checkin_service(db: Session = Depends(get_db_session)) -> CheckInService:
+# 使用 Annotated 模式的用户服务依赖
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+
+def get_checkin_service(db: DbSession) -> CheckInService:
     """
     获取签到服务实例
 
@@ -72,7 +83,11 @@ def get_checkin_service(db: Session = Depends(get_db_session)) -> CheckInService
     return CheckInService(db)
 
 
-def get_sos_service(db: Session = Depends(get_db_session)) -> SOSService:
+# 使用 Annotated 模式的签到服务依赖
+CheckInServiceDep = Annotated[CheckInService, Depends(get_checkin_service)]
+
+
+def get_sos_service(db: DbSession) -> SOSService:
     """
     获取SOS服务实例
 
@@ -85,8 +100,12 @@ def get_sos_service(db: Session = Depends(get_db_session)) -> SOSService:
     return SOSService(db)
 
 
+# 使用 Annotated 模式的SOS服务依赖
+SOSServiceDep = Annotated[SOSService, Depends(get_sos_service)]
+
+
 def get_emergency_contact_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> EmergencyContactService:
     """
     获取紧急联系人服务实例
@@ -100,8 +119,14 @@ def get_emergency_contact_service(
     return EmergencyContactService(db)
 
 
+# 使用 Annotated 模式的紧急联系人服务依赖
+EmergencyContactServiceDep = Annotated[
+    EmergencyContactService, Depends(get_emergency_contact_service)
+]
+
+
 def get_emergency_resource_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> EmergencyResourceService:
     """
     获取急救资源服务实例
@@ -115,8 +140,14 @@ def get_emergency_resource_service(
     return EmergencyResourceService(db)
 
 
+# 使用 Annotated 模式的急救资源服务依赖
+EmergencyResourceServiceDep = Annotated[
+    EmergencyResourceService, Depends(get_emergency_resource_service)
+]
+
+
 def get_health_record_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> HealthRecordService:
     """
     获取健康档案服务实例
@@ -130,7 +161,13 @@ def get_health_record_service(
     return HealthRecordService(db)
 
 
-def get_device_service(db: Session = Depends(get_db_session)) -> DeviceService:
+# 使用 Annotated 模式的健康档案服务依赖
+HealthRecordServiceDep = Annotated[
+    HealthRecordService, Depends(get_health_record_service)
+]
+
+
+def get_device_service(db: DbSession) -> DeviceService:
     """
     获取设备服务实例
 
@@ -143,7 +180,11 @@ def get_device_service(db: Session = Depends(get_db_session)) -> DeviceService:
     return DeviceService(db)
 
 
-def get_alert_service(db: Session = Depends(get_db_session)) -> AlertService:
+# 使用 Annotated 模式的设备服务依赖
+DeviceServiceDep = Annotated[DeviceService, Depends(get_device_service)]
+
+
+def get_alert_service(db: DbSession) -> AlertService:
     """
     获取预警服务实例
 
@@ -156,8 +197,12 @@ def get_alert_service(db: Session = Depends(get_db_session)) -> AlertService:
     return AlertService(db)
 
 
+# 使用 Annotated 模式的预警服务依赖
+AlertServiceDep = Annotated[AlertService, Depends(get_alert_service)]
+
+
 def get_medication_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> MedicationService:
     """
     获取用药服务实例
@@ -171,8 +216,12 @@ def get_medication_service(
     return MedicationService(db)
 
 
+# 使用 Annotated 模式的用药服务依赖
+MedicationServiceDep = Annotated[MedicationService, Depends(get_medication_service)]
+
+
 def get_medication_schedule_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> "MedicationScheduleService":
     """
     获取用药计划服务实例
@@ -188,8 +237,14 @@ def get_medication_schedule_service(
     return MedicationScheduleService(db)
 
 
+# 使用 Annotated 模式的用药计划服务依赖
+MedicationScheduleServiceDep = Annotated[
+    "MedicationScheduleService", Depends(get_medication_schedule_service)
+]
+
+
 def get_medication_reminder_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> "MedicationReminderService":
     """
     获取用药提醒服务实例
@@ -205,8 +260,14 @@ def get_medication_reminder_service(
     return MedicationReminderService(db)
 
 
+# 使用 Annotated 模式的用药提醒服务依赖
+MedicationReminderServiceDep = Annotated[
+    "MedicationReminderService", Depends(get_medication_reminder_service)
+]
+
+
 def get_medication_log_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> "MedicationLogService":
     """
     获取服药记录服务实例
@@ -222,7 +283,13 @@ def get_medication_log_service(
     return MedicationLogService(db)
 
 
-def get_anomaly_service(db: Session = Depends(get_db_session)) -> AnomalyService:
+# 使用 Annotated 模式的服药记录服务依赖
+MedicationLogServiceDep = Annotated[
+    "MedicationLogService", Depends(get_medication_log_service)
+]
+
+
+def get_anomaly_service(db: DbSession) -> AnomalyService:
     """
     获取异常检测服务实例
 
@@ -235,7 +302,11 @@ def get_anomaly_service(db: Session = Depends(get_db_session)) -> AnomalyService
     return AnomalyService(db)
 
 
-def get_aed_service(db: Session = Depends(get_db_session)) -> AEDService:
+# 使用 Annotated 模式的异常检测服务依赖
+AnomalyServiceDep = Annotated[AnomalyService, Depends(get_anomaly_service)]
+
+
+def get_aed_service(db: DbSession) -> AEDService:
     """
     获取AED服务实例
 
@@ -248,8 +319,12 @@ def get_aed_service(db: Session = Depends(get_db_session)) -> AEDService:
     return AEDService(db)
 
 
+# 使用 Annotated 模式的AED服务依赖
+AEDServiceDep = Annotated[AEDService, Depends(get_aed_service)]
+
+
 def get_emergency_center_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> EmergencyCenterService:
     """
     获取急救中心服务实例
@@ -263,8 +338,14 @@ def get_emergency_center_service(
     return EmergencyCenterService(db)
 
 
+# 使用 Annotated 模式的急救中心服务依赖
+EmergencyCenterServiceDep = Annotated[
+    EmergencyCenterService, Depends(get_emergency_center_service)
+]
+
+
 def get_knowledge_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> KnowledgeBaseService:
     """
     获取知识库服务实例
@@ -278,8 +359,14 @@ def get_knowledge_service(
     return KnowledgeBaseService(db)
 
 
+# 使用 Annotated 模式的知识库服务依赖
+KnowledgeBaseServiceDep = Annotated[
+    KnowledgeBaseService, Depends(get_knowledge_service)
+]
+
+
 def get_health_report_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> HealthReportService:
     """
     获取健康报告服务实例
@@ -293,8 +380,14 @@ def get_health_report_service(
     return HealthReportService(db)
 
 
+# 使用 Annotated 模式的健康报告服务依赖
+HealthReportServiceDep = Annotated[
+    HealthReportService, Depends(get_health_report_service)
+]
+
+
 def get_notification_service(
-    db: Session = Depends(get_db_session),
+    db: DbSession,
 ) -> NotificationService:
     """
     获取通知服务实例
@@ -306,6 +399,12 @@ def get_notification_service(
         NotificationService: 通知服务实例
     """
     return NotificationService(db)
+
+
+# 使用 Annotated 模式的通知服务依赖
+NotificationServiceDep = Annotated[
+    NotificationService, Depends(get_notification_service)
+]
 
 
 # ========== 从容器获取服务的便捷函数 ==========

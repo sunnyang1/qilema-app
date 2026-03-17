@@ -17,11 +17,18 @@
     >>> from app.services.notification_service import NotificationService
 """
 
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
+
 # 为了保持向后兼容，重新导出新的门面服务
 from app.services.notification import (
     CircuitBreakerService,
     NotificationSenderService,
-    NotificationService,
+    NotificationService as NotificationFacade,
     NotificationStatsService,
     NotificationTemplate,
     NotificationTemplateService,
@@ -29,11 +36,20 @@ from app.services.notification import (
 from app.services.base_service import BaseService
 from app.core.cache_config import CacheConfig
 from app.core.cache import cache_result, invalidate_cache
+from app.core.notification_simulators import (
+    create_push_simulator,
+    create_sms_simulator,
+    create_phone_simulator,
+    create_email_simulator,
+)
+from app.models.notification_model import Notification, NotificationPreference
+from app.models.emergency_contact import EmergencyContact
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 
-class NotificationService(BaseService[Notification]):
+class NotificationServiceLegacy(BaseService[Notification]):
     """消息通知服务
     
     继承BaseService获得统一的CRUD和缓存能力
@@ -848,6 +864,9 @@ class NotificationService(BaseService[Notification]):
         finally:
             db.close()
 
+# 向后兼容：NotificationService 指向新的门面服务
+NotificationService = NotificationFacade
+
 __all__ = [
     "CircuitBreakerService",
     "NotificationSenderService",
@@ -855,4 +874,5 @@ __all__ = [
     "NotificationTemplate",
     "NotificationStatsService",
     "NotificationService",
+    "NotificationServiceLegacy",
 ]

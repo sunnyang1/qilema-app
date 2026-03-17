@@ -6,7 +6,7 @@
 
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import List
+from typing import List as TypingList
 
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin

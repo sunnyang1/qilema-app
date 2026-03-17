@@ -4,10 +4,10 @@
 提供统一的查询构建功能，支持分页、排序、过滤
 """
 
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
-from sqlalchemy import asc, desc, func
-from sqlalchemy.orm import Query, Session
+from sqlalchemy import asc, desc, func, distinct
+from sqlalchemy.orm import Query, Session, joinedload, selectinload
 
 T = TypeVar("T")
 
@@ -314,8 +314,152 @@ class QueryBuilder:
         Returns:
             bool: 是否有记录
         """
-        # 使用 count() 更高效，避免获取完整记录
-        return self.query.count() > 0
+        # 使用 exists() 更高效，避免获取完整记录
+        from sqlalchemy.sql import exists as sa_exists
+        return self.query.session.query(
+            sa_exists().where(self.query.whereclause)
+        ).scalar() if self.query.whereclause else self.query.count() > 0
+
+    def group_by(self, *field_names: str) -> "QueryBuilder":
+        """
+        添加 GROUP BY 条件
+
+        Args:
+            *field_names: 字段名列表
+
+        Returns:
+            QueryBuilder: 自身，支持链式调用
+        """
+        columns = []
+        for field_name in field_names:
+            if self.model_class and hasattr(self.model_class, field_name):
+                columns.append(getattr(self.model_class, field_name))
+        if columns:
+            self.query = self.query.group_by(*columns)
+        return self
+
+    def distinct(self, *field_names: str) -> "QueryBuilder":
+        """
+        添加 DISTINCT 条件
+
+        Args:
+            *field_names: 字段名列表（可选，为空时对整个查询去重）
+
+        Returns:
+            QueryBuilder: 自身，支持链式调用
+        """
+        if field_names and self.model_class:
+            columns = [
+                getattr(self.model_class, f) for f in field_names
+                if hasattr(self.model_class, f)
+            ]
+            if columns:
+                self.query = self.query.distinct(*columns)
+        else:
+            self.query = self.query.distinct()
+        return self
+
+    def with_entities(self, *entities: Any) -> "QueryBuilder":
+        """
+        指定查询的实体/列
+
+        Args:
+            *entities: 要查询的实体或列
+
+        Returns:
+            QueryBuilder: 自身，支持链式调用
+        """
+        self.query = self.query.with_entities(*entities)
+        return self
+
+    def eager_load(self, *relations: str) -> "QueryBuilder":
+        """
+        添加 eager loading（自动选择 joinedload 或 selectinload）
+
+        Args:
+            *relations: 关联关系属性名列表
+
+        Returns:
+            QueryBuilder: 自身，支持链式调用
+
+        Example:
+            >>> builder.eager_load("emergency_contacts", "health_record")
+        """
+        if not self.model_class:
+            return self
+
+        for relation in relations:
+            if hasattr(self.model_class, relation):
+                rel_attr = getattr(self.model_class, relation)
+                # 根据关系类型选择合适的加载策略
+                # 多对一/一对一使用 joinedload，一对多使用 selectinload
+                prop = getattr(rel_attr, 'property', None)
+                if prop and hasattr(prop, 'uselist'):
+                    if prop.uselist:
+                        self.query = self.query.options(selectinload(rel_attr))
+                    else:
+                        self.query = self.query.options(joinedload(rel_attr))
+                else:
+                    self.query = self.query.options(joinedload(rel_attr))
+        return self
+
+    def only_columns(self, *column_names: str) -> "QueryBuilder":
+        """
+        只查询指定列（优化大数据量查询）
+
+        Args:
+            *column_names: 列名列表
+
+        Returns:
+            QueryBuilder: 自身，支持链式调用
+
+        Example:
+            >>> builder.only_columns("id", "name", "phone")
+        """
+        if self.model_class:
+            columns = [
+                getattr(self.model_class, c) for c in column_names
+                if hasattr(self.model_class, c)
+            ]
+            if columns:
+                self.query = self.query.with_entities(*columns)
+        return self
+
+    def aggregate(self, agg_func: str, field_name: str, label: str = None) -> "QueryBuilder":
+        """
+        添加聚合函数
+
+        Args:
+            agg_func: 聚合函数名 ('count', 'sum', 'avg', 'min', 'max')
+            field_name: 字段名
+            label: 结果标签（别名）
+
+        Returns:
+            QueryBuilder: 自身，支持链式调用
+
+        Example:
+            >>> builder.aggregate('count', 'id', 'total')
+            >>> builder.aggregate('sum', 'amount', 'total_amount')
+        """
+        if not self.model_class or not hasattr(self.model_class, field_name):
+            return self
+
+        column = getattr(self.model_class, field_name)
+        func_map = {
+            'count': func.count,
+            'sum': func.sum,
+            'avg': func.avg,
+            'min': func.min,
+            'max': func.max,
+        }
+
+        if agg_func in func_map:
+            agg_column = func_map[agg_func](column)
+            if label:
+                agg_column = agg_column.label(label)
+            self.query = self.query.with_entities(agg_column)
+
+        return self
 
     def scalar(self) -> Optional[Any]:
         """
@@ -406,3 +550,93 @@ def paginate(
     total = query.count()
     items = query.offset((page - 1) * per_page).limit(per_page).all()
     return PaginationResult(items, total, page, per_page)
+
+
+class BatchQueryBuilder:
+    """
+    批量查询构建器
+
+    用于高效处理大批量数据查询，支持分批获取
+
+    Example:
+        >>> batch = BatchQueryBuilder(db.query(User), batch_size=1000)
+        >>> for records in batch.iter_batches():
+        ...     process_records(records)
+    """
+
+    def __init__(self, query: Query, batch_size: int = 1000):
+        """
+        初始化批量查询构建器
+
+        Args:
+            query: SQLAlchemy Query 对象
+            batch_size: 每批数量
+        """
+        self.query = query
+        self.batch_size = batch_size
+        self._total = None
+
+    def iter_batches(self):
+        """
+        分批迭代查询结果
+
+        Yields:
+            List[T]: 每批记录列表
+        """
+        offset = 0
+        while True:
+            batch = self.query.offset(offset).limit(self.batch_size).all()
+            if not batch:
+                break
+            yield batch
+            offset += self.batch_size
+
+    def iter_records(self):
+        """
+        逐条迭代查询结果（内部使用分批）
+
+        Yields:
+            T: 单条记录
+        """
+        for batch in self.iter_batches():
+            for record in batch:
+                yield record
+
+    @property
+    def total(self) -> int:
+        """
+        获取总记录数（缓存）
+
+        Returns:
+            int: 总记录数
+        """
+        if self._total is None:
+            self._total = self.query.count()
+        return self._total
+
+    def __iter__(self):
+        """使对象可迭代"""
+        return iter(self.iter_records())
+
+
+def query_to_dict(
+    query: Query,
+    model_class: Type = None,
+    include_relations: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    将查询构建器的配置转换为字典（用于缓存键生成）
+
+    Args:
+        query: 查询对象
+        model_class: 模型类
+        include_relations: 包含的关联关系
+
+    Returns:
+        Dict: 查询配置字典
+    """
+    return {
+        "model": model_class.__name__ if model_class else None,
+        "str": str(query.statement.compile(compile_kwargs={"literal_binds": True})),
+        "relations": include_relations or [],
+    }

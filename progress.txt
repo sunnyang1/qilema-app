@@ -25,16 +25,60 @@
 
 ---
 
-## 阶段 5: 代码复用优化 [TODO]
+## 阶段 5: 代码复用优化 [COMPLETE] ✅
 
-### 5.1 创建 CacheMixin 缓存混合类 [TODO]
-提取通用缓存逻辑到 CacheMixin
+日期: 2026-03-17
 
-### 5.2 创建 QueryBuilder 查询构建器 [TODO]
-创建 QueryBuilder 支持分页、排序、过滤
+### 5.1 创建 CacheMixin 缓存混合类 [COMPLETE] ✅
+- ✅ 新增 CacheMixin 类，提供统一缓存管理
+- ✅ 新增 CacheWarmer 类，支持缓存预热
+- ✅ 批量缓存操作: `_mget()`, `_mset()`
+- ✅ 灵活缓存装饰器: `cache_decorator()`
 
-### 5.3 统一缓存失效逻辑 [TODO]
-所有服务类使用统一的缓存失效方法
+### 5.2 创建 QueryBuilder 查询构建器 [COMPLETE] ✅
+- ✅ 新增 QueryBuilder 类，支持链式调用
+- ✅ 新增 BatchQueryBuilder 类，支持批量查询
+- ✅ 新增查询方法: `group_by()`, `distinct()`, `only_columns()`, `eager_load()`, `aggregate()`
+- ✅ 便捷分页函数: `paginate()`
+
+### 5.3 统一缓存失效逻辑 [COMPLETE] ✅
+- ✅ BaseService 集成 QueryBuilder
+- ✅ 新增批量操作方法: `create_batch()`, `update_batch()`, `delete_batch()`
+- ✅ 新增事务管理上下文: `transaction()`
+
+### 新增文件
+- `app/core/ENHANCEMENTS.md` - 核心库增强文档
+- `app/models/example_modern.py` - SQLAlchemy 2.x 示例模型
+- `app/api/example_modern.py` - FastAPI 0.135.x 示例 API
+
+---
+
+## API/SDK 合规性升级 [COMPLETE] ✅
+
+日期: 2026-03-17
+
+### 使用 get-api-docs skill 检查并升级
+
+### 已完成升级
+1. **SQLAlchemy 2.x** - `app/core/database.py`
+   - 使用 `DeclarativeBase` 替代 `declarative_base()`
+   - 符合 SQLAlchemy 2.0 规范
+
+2. **FastAPI 0.135.x** - `main.py`, `app/api/dependencies.py`
+   - 使用 `lifespan` 上下文管理器替代 `@app.on_event`
+   - 使用 `Annotated[..., Depends(...)]` 模式
+
+3. **Pydantic v2** - 已验证合规
+   - 正确使用 `@field_validator`, `@model_validator`
+   - 正确使用 `model_config = {"from_attributes": True}`
+
+4. **Express.js 5.x** - 已验证合规
+   - 正确使用中间件配置
+
+### 新增文档
+- `MIGRATION_GUIDE.md` - 完整迁移指南
+- `API_COMPLIANCE_REPORT.md` - 合规性检查报告
+- `MIGRATION_SUMMARY.md` - 迁移总结
 
 ---
 

@@ -6,7 +6,10 @@
 
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+import time
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
+from functools import wraps
+from datetime import datetime
 
 from app.core.cache import cache_result, get_cached, invalidate_cache
 from app.core.cache_config import CacheConfig
@@ -301,3 +304,222 @@ class CacheMixin:
         """
         pattern = self._make_pattern("*")
         return self._invalidate_pattern(pattern)
+
+    def _mget(self, keys: List[str]) -> Dict[str, Any]:
+        """
+        批量从缓存获取数据
+
+        Args:
+            keys: 缓存键列表
+
+        Returns:
+            Dict[str, Any]: 缓存键到数据的映射
+        """
+        results = {}
+        for key in keys:
+            data = self._get(key)
+            if data is not None:
+                results[key] = data
+        return results
+
+    def _mset(
+        self,
+        mapping: Dict[str, Any],
+        ttl: Optional[int] = None,
+    ) -> Dict[str, bool]:
+        """
+        批量写入缓存
+
+        Args:
+            mapping: 缓存键到数据的映射
+            ttl: 过期时间（秒）
+
+        Returns:
+            Dict[str, bool]: 每个键的写入结果
+        """
+        results = {}
+        for key, value in mapping.items():
+            results[key] = self._set(key, value, ttl)
+        return results
+
+    def cache_batch_entities(
+        self,
+        entities: List[Tuple[str, Any]],
+        ttl: Optional[int] = None,
+    ) -> Dict[str, bool]:
+        """
+        批量缓存实体
+
+        Args:
+            entities: (entity_id, entity) 元组列表
+            ttl: 过期时间
+
+        Returns:
+            Dict[str, bool]: 每个实体的缓存结果
+        """
+        mapping = {}
+        for entity_id, entity in entities:
+            key = self._make_key(entity_id)
+            mapping[key] = entity
+        return self._mset(mapping, ttl)
+
+    def get_cached_batch(self, entity_ids: List[str]) -> Dict[str, Any]:
+        """
+        批量获取缓存的实体
+
+        Args:
+            entity_ids: 实体ID列表
+
+        Returns:
+            Dict[str, Any]: entity_id 到数据的映射
+        """
+        keys = [self._make_key(eid) for eid in entity_ids]
+        data = self._mget(keys)
+        # 将键转换回 entity_id
+        result = {}
+        prefix_len = len(self.cache_prefix) + 1  # prefix:
+        for key, value in data.items():
+            entity_id = key[prefix_len:]
+            result[entity_id] = value
+        return result
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        获取缓存统计信息
+
+        Returns:
+            Dict: 统计信息
+        """
+        # 这里可以扩展为从 Redis 获取真实统计信息
+        return {
+            "prefix": self.cache_prefix,
+            "default_ttl": self.cache_ttl,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    def cache_decorator(
+        self,
+        key_func: Optional[Callable] = None,
+        ttl: Optional[int] = None,
+        skip_none: bool = True,
+    ):
+        """
+        更灵活的缓存装饰器
+
+        Args:
+            key_func: 自定义缓存键生成函数，接收相同的参数
+            ttl: 过期时间
+            skip_none: 是否跳过缓存 None 值
+
+        Returns:
+            装饰器函数
+
+        Example:
+            >>> @cache_decorator(key_func=lambda self, user_id: f"user:{user_id}")
+            ... def get_user(self, user_id: str):
+            ...     return self.db.query(User).filter(...).first()
+        """
+        def decorator(func: Callable) -> Callable:
+            @wraps(func)
+            def wrapper(*args, **kwargs) -> Any:
+                # 生成缓存键
+                if key_func:
+                    try:
+                        cache_key = key_func(*args, **kwargs)
+                    except Exception as e:
+                        logger.warning(f"自定义缓存键生成失败: {e}")
+                        cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+                else:
+                    cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+
+                full_key = self._make_key(cache_key)
+
+                # 尝试从缓存获取
+                cached = self._get(full_key)
+                if cached is not None:
+                    return cached
+
+                # 执行函数
+                result = func(*args, **kwargs)
+
+                # 写入缓存
+                if result is not None or not skip_none:
+                    self._set(full_key, result, ttl)
+
+                return result
+            return wrapper
+        return decorator
+
+
+class CacheWarmer:
+    """
+    缓存预热器
+
+    用于系统启动时预热关键数据缓存
+
+    Example:
+        >>> warmer = CacheWarmer(redis_client)
+        >>> warmer.add_task("users", lambda: db.query(User).all())
+        >>> warmer.add_task("settings", lambda: db.query(Setting).all())
+        >>> await warmer.warm_all()
+    """
+
+    def __init__(self):
+        """初始化缓存预热器"""
+        self.tasks: Dict[str, Callable] = {}
+        self.results: Dict[str, Any] = {}
+
+    def add_task(self, name: str, fetch_func: Callable, priority: int = 0):
+        """
+        添加预热任务
+
+        Args:
+            name: 任务名称
+            fetch_func: 获取数据的函数
+            priority: 优先级（数字越小优先级越高）
+        """
+        self.tasks[name] = {
+            "func": fetch_func,
+            "priority": priority,
+        }
+
+    async def warm_all(self) -> Dict[str, Any]:
+        """
+        执行所有预热任务
+
+        Returns:
+            Dict: 任务结果
+        """
+        # 按优先级排序
+        sorted_tasks = sorted(self.tasks.items(), key=lambda x: x[1]["priority"])
+
+        for name, task in sorted_tasks:
+            try:
+                start = time.time()
+                result = task["func"]()
+                self.results[name] = {
+                    "success": True,
+                    "count": len(result) if hasattr(result, "__len__") else 1,
+                    "duration": time.time() - start,
+                }
+                logger.info(f"缓存预热完成: {name}, 耗时: {self.results[name]['duration']:.2f}s")
+            except Exception as e:
+                self.results[name] = {
+                    "success": False,
+                    "error": str(e),
+                }
+                logger.error(f"缓存预热失败: {name}, 错误: {e}")
+
+        return self.results
+
+    def get_result(self, name: str) -> Optional[Dict]:
+        """
+        获取任务结果
+
+        Args:
+            name: 任务名称
+
+        Returns:
+            任务结果或 None
+        """
+        return self.results.get(name)

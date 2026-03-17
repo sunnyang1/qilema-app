@@ -70,4 +70,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # 使用 tini 作为 PID 1，处理信号转发
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--access-log"]
+CMD ["/opt/venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--access-log"]

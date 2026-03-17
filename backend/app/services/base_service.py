@@ -4,15 +4,16 @@
 提供通用的CRUD操作和缓存管理机制
 """
 
+from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar
 
 from app.core.cache import cache_result, get_cached, invalidate_cache
+from app.core.query_builder import QueryBuilder, paginate
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 ModelType = TypeVar("ModelType")
-
 
 class BaseService(Generic[ModelType]):
     """
@@ -280,3 +281,259 @@ class BaseService(Generic[ModelType]):
             pattern: 缓存键模式
         """
         invalidate_cache(f"{cls.cache_prefix}:list:{pattern}")
+
+    @classmethod
+    def get_query_builder(cls, db: Session) -> QueryBuilder:
+        """
+        获取查询构建器
+
+        Args:
+            db: 数据库会话
+
+        Returns:
+            QueryBuilder: 配置好的查询构建器
+        """
+        return QueryBuilder(db.query(cls.model_class), cls.model_class)
+
+    @classmethod
+    def get_by_ids(
+        cls,
+        db: Session,
+        ids: List[Any],
+        pk_column: str = "id"
+    ) -> List[ModelType]:
+        """
+        根据多个ID获取记录（批量查询优化）
+
+        Args:
+            db: 数据库会话
+            ids: ID列表
+            pk_column: 主键列名
+
+        Returns:
+            记录列表
+        """
+        if not ids:
+            return []
+
+        if hasattr(cls.model_class, pk_column):
+            column = getattr(cls.model_class, pk_column)
+            return db.query(cls.model_class).filter(column.in_(ids)).all()
+        return []
+
+    @classmethod
+    def create_batch(
+        cls,
+        db: Session,
+        records: List[Dict[str, Any]],
+        batch_size: int = 1000
+    ) -> List[ModelType]:
+        """
+        批量创建记录
+
+        Args:
+            db: 数据库会话
+            records: 记录数据列表
+            batch_size: 每批处理数量
+
+        Returns:
+            创建的记录列表
+        """
+        if not records:
+            return []
+
+        instances = []
+        for i, data in enumerate(records):
+            instance = cls.model_class(**data)
+            db.add(instance)
+            instances.append(instance)
+
+            # 分批提交
+            if (i + 1) % batch_size == 0:
+                db.commit()
+                for inst in instances[-batch_size:]:
+                    db.refresh(inst)
+
+        # 提交剩余
+        if len(records) % batch_size != 0:
+            db.commit()
+            for inst in instances[len(records) - (len(records) % batch_size):]:
+                db.refresh(inst)
+
+        # 缓存新记录
+        for instance in instances:
+            if hasattr(instance, "to_dict"):
+                pk_value = getattr(instance, "id", None)
+                if pk_value:
+                    cache_key = f"{cls.cache_prefix}:id:{pk_value}"
+                    cache_result(cache_key, instance.to_dict(), ttl=cls.cache_ttl)
+
+        return instances
+
+    @classmethod
+    def update_batch(
+        cls,
+        db: Session,
+        updates: List[Dict[str, Any]],
+        pk_column: str = "id",
+        batch_size: int = 1000
+    ) -> int:
+        """
+        批量更新记录
+
+        Args:
+            db: 数据库会话
+            updates: 更新数据列表，每项包含 id 和更新字段
+            pk_column: 主键列名
+            batch_size: 每批处理数量
+
+        Returns:
+            更新的记录数
+        """
+        if not updates:
+            return 0
+
+        updated_count = 0
+        pk_values = []
+
+        for i, data in enumerate(updates):
+            pk_value = data.get(pk_column)
+            if not pk_value:
+                continue
+
+            instance = cls.get_by_id(db, pk_value, pk_column)
+            if not instance:
+                continue
+
+            # 更新字段
+            for field, value in data.items():
+                if field != pk_column and hasattr(instance, field):
+                    setattr(instance, field, value)
+
+            # 更新时间戳
+            if hasattr(instance, "updated_at"):
+                instance.updated_at = datetime.utcnow()
+
+            pk_values.append(pk_value)
+            updated_count += 1
+
+            # 分批提交
+            if (i + 1) % batch_size == 0:
+                db.commit()
+
+        # 提交剩余
+        if updates and len(updates) % batch_size != 0:
+            db.commit()
+
+        # 清除缓存
+        for pk_value in pk_values:
+            cls.invalidate_record_cache(pk_value, pk_column)
+
+        return updated_count
+
+    @classmethod
+    def delete_batch(
+        cls,
+        db: Session,
+        ids: List[Any],
+        pk_column: str = "id",
+        batch_size: int = 1000
+    ) -> int:
+        """
+        批量删除记录
+
+        Args:
+            db: 数据库会话
+            ids: ID列表
+            pk_column: 主键列名
+            batch_size: 每批处理数量
+
+        Returns:
+            删除的记录数
+        """
+        if not ids:
+            return 0
+
+        deleted_count = 0
+
+        for i in range(0, len(ids), batch_size):
+            batch_ids = ids[i:i + batch_size]
+
+            if hasattr(cls.model_class, pk_column):
+                column = getattr(cls.model_class, pk_column)
+                result = db.query(cls.model_class).filter(
+                    column.in_(batch_ids)
+                ).delete(synchronize_session=False)
+                deleted_count += result
+
+                # 清除缓存
+                for pk_value in batch_ids:
+                    cls.invalidate_record_cache(pk_value, pk_column)
+
+            db.commit()
+
+        return deleted_count
+
+    @classmethod
+    def paginated_list(
+        cls,
+        db: Session,
+        page: int = 1,
+        per_page: int = 20,
+        order_by: str = None,
+        order_desc: bool = True,
+        **filters
+    ):
+        """
+        获取分页列表（使用 QueryBuilder）
+
+        Args:
+            db: 数据库会话
+            page: 页码
+            per_page: 每页数量
+            order_by: 排序字段
+            order_desc: 是否降序
+            **filters: 过滤条件
+
+        Returns:
+            PaginationResult: 分页结果
+        """
+        query = db.query(cls.model_class)
+
+        # 应用过滤条件
+        for field_name, field_value in filters.items():
+            if field_value is not None and hasattr(cls.model_class, field_name):
+                query = query.filter(
+                    getattr(cls.model_class, field_name) == field_value
+                )
+
+        # 排序
+        if order_by and hasattr(cls.model_class, order_by):
+            order_column = getattr(cls.model_class, order_by)
+            if order_desc:
+                query = query.order_by(desc(order_column))
+            else:
+                query = query.order_by(asc(order_column))
+
+        return paginate(query, page, per_page)
+
+    @staticmethod
+    @contextmanager
+    def transaction(db: Session):
+        """
+        事务管理上下文管理器
+
+        Args:
+            db: 数据库会话
+
+        Usage:
+            >>> with BaseService.transaction(db):
+            ...     service.create_record(db, {...})
+            ...     service.update_record(db, 1, {...})
+        """
+        try:
+            yield db
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
