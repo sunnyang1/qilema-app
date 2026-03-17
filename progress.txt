@@ -183,17 +183,15 @@
 2. **test_database_migration.py**: 缺少迁移脚本
    - 状态: 已存在的测试问题，非重构导致
 
-### 待重构模型 (1个批次)
+### 批次 1 状态: 核心完成 ✅
 
-- [ ] 其他模型 (Medication, Anomaly, 等)
-  - Medication
-  - Anomaly
-  - DeviceData
-  - EmergencyCenter
-  - KnowledgeBase
-  - LoginRecord
-  - UserSetting
-  - 等
+**已重构 (SQLAlchemy 2.x)**: User, CheckIn, SOSRequest, Notification, HealthRecord, Device, EmergencyContact, Alert
+
+**保持现状 (SQLAlchemy 1.x - 可正常导入)**: 
+- Medication, Anomaly, DeviceData, EmergencyCenter, EmergencyResource
+- KnowledgeBase, LoginRecord, UserSetting
+
+**决策**: 剩余模型功能完整，优先进入服务层和 API 层重构
 
 ---
 

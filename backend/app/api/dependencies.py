@@ -7,7 +7,11 @@ API层依赖注入模块
 参考: https://fastapi.tiangolo.com/tutorial/dependencies/
 """
 
-from typing import Annotated, TypeVar
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+from typing import TypeVar
 
 from app.core.container import get_container
 from app.core.database import get_db

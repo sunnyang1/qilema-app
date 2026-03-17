@@ -6,7 +6,11 @@ FastAPI 0.135.x + SQLAlchemy 2.x 现代化 API 示例
 2. SQLAlchemy 2.x 风格的模型定义
 """
 
-from typing import Annotated, List, Optional
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+from typing import List, Optional
 
 from app.api.dependencies import (
     DbSession,
