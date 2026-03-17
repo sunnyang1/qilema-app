@@ -1,5 +1,99 @@
 # AGENTS.md - 项目知识库
 
+## API/SDK 标准升级指南 (2026-03-17)
+
+### SQLAlchemy 2.x 迁移
+
+#### 数据库基类
+```python
+# SQLAlchemy 1.x (旧方式 - 不推荐)
+from sqlalchemy.ext.declarative import declarative_base
+Base = declarative_base()
+
+# SQLAlchemy 2.x (新方式 - 推荐)
+from sqlalchemy.orm import DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
+```
+
+#### 模型定义
+```python
+# SQLAlchemy 1.x
+from sqlalchemy import Column, Integer, String
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50))
+
+# SQLAlchemy 2.x - 使用 Mapped[] 类型注解
+from sqlalchemy.orm import Mapped, mapped_column
+
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+```
+
+参考: `backend/app/models/example_modern.py`
+
+### FastAPI 0.135.x 迁移
+
+#### Lifespan 上下文管理器
+```python
+# 旧方式 (不推荐)
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+
+# 新方式 (推荐)
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动逻辑
+    init_db()
+    yield
+    # 关闭逻辑
+
+app = FastAPI(lifespan=lifespan)
+```
+
+#### Annotated 依赖注入模式
+```python
+# 在 dependencies.py 中定义预类型
+from typing import Annotated
+
+DbSession = Annotated[Session, Depends(get_db)]
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+# API 中使用
+@router.get("/users")
+async def list_users(
+    db: DbSession,  # 简洁用法
+    page: Annotated[int, Query(ge=1)] = 1,
+):
+    ...
+```
+
+参考: `backend/app/api/example_modern.py`
+
+### 使用 get-api-docs skill
+
+获取最新 API 文档：
+```bash
+# 搜索文档
+chub search fastapi --json
+chub search sqlalchemy --json
+
+# 获取文档
+chub get fastapi/package --lang py
+chub get sqlalchemy/orm --lang py
+```
+
+---
+
 ## 服务层重构 - 最佳实践
 
 ### 阶段4: 模型层优化
