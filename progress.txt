@@ -150,8 +150,47 @@
 
 ---
 
+## SQLAlchemy 2.x 重构进展 [IN PROGRESS]
+
+日期: 2026-03-17
+
+### 已完成模型重构 (3/9)
+
+| 模型 | 状态 | 提交 |
+|------|------|------|
+| User | ✅ | `75c4cd0` |
+| CheckIn | ✅ | `c2e94d3` |
+| SOSRequest | ✅ | `ebef9de` |
+
+### 集成验证结果 ✅
+
+- 模型导入: ✅ 通过
+- 模型实例化: ✅ 通过
+- 模型关系: ✅ 通过
+- 序列化方法: ✅ 通过
+- AlertService 测试: ✅ 20/20 通过
+
+### 发现的其他问题 (已修复)
+
+1. **alert_service.py**: `get_alerts` 方法签名错误 (缺少 `self`)
+   - 修复提交: `b4282aa`
+
+2. **test_database_migration.py**: 缺少迁移脚本
+   - 状态: 已存在的测试问题，非重构导致
+
+### 待重构模型 (6个)
+
+- [ ] Notification
+- [ ] HealthRecord
+- [ ] Device
+- [ ] EmergencyContact
+- [ ] Alert
+- [ ] 其他模型 (Medication, Anomaly等)
+
+---
+
 ## 当前工作
-开始阶段 4.1: 分析 User 模型关联关系
+继续批次 1: 重构剩余模型到 SQLAlchemy 2.x
 
 ---
 
