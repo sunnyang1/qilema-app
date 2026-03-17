@@ -111,6 +111,45 @@
 
 ---
 
+## Superpowers 重构计划 [CREATED] ✅
+
+日期: 2026-03-17
+
+### 计划概述
+使用 Superpowers 框架制定项目全面重构计划
+
+**复杂度评估**: 复杂 (10+ 功能点，多技术栈)  
+**任务粒度**: 1-3分钟/任务  
+**总预估**: 约 3 小时
+
+### 重构目标
+1. 模型层: SQLAlchemy 1.x → 2.x
+2. 服务层: 统一使用 BaseService + CacheMixin + QueryBuilder
+3. API 层: Depends() → Annotated[..., Depends()]
+4. 测试: 覆盖率 >80%
+
+### 批次规划
+
+| 批次 | 内容 | 预估时间 |
+|------|------|----------|
+| 批次 1 | 核心模型重构 (9个子任务) | 90分钟 |
+| 批次 2 | 服务层更新 (2个子任务) | 20分钟 |
+| 批次 3 | API 层更新 (6个子任务) | 30分钟 |
+| 批次 4 | 测试创建 (3个子任务) | 30分钟 |
+| 批次 5 | 验证和回归 (2个子任务) | 15分钟 |
+
+### 文档创建
+- ✅ REFACTOR_PLAN.md - 主计划文档
+- ✅ tasks/prd-refactor-project.md - PRD
+- ✅ tasks/refactor-batch-1-models.md - 模型重构
+- ✅ tasks/refactor-batch-2-services.md - 服务更新
+- ✅ tasks/refactor-batch-3-api.md - API 更新
+- ✅ tasks/refactor-batch-4-tests.md - 测试创建
+- ✅ tasks/refactor-batch-5-verify.md - 验证回归
+- ✅ prd-refactor.json - 任务追踪
+
+---
+
 ## 当前工作
 开始阶段 4.1: 分析 User 模型关联关系
 
