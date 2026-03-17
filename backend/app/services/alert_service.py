@@ -249,7 +249,7 @@ class AlertService(BaseService[Alert]):
         return count
 
     
-    def get_alerts(db: Session, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> Tuple[List[Alert], int]:
+    def get_alerts(self, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> Tuple[List[Alert], int]:
         """获取用户预警列表"""
         # 尝试从缓存获取
         cache_key = CacheConfig.make_key(
