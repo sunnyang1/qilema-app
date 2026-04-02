@@ -104,7 +104,7 @@ jobs:
           pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           file: ./backend/coverage.xml
           flags: backend
@@ -188,7 +188,7 @@ jobs:
 
       - name: Upload coverage
         if: steps.check.outputs.exists == 'true'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: ./mobile/client/coverage/coverage-final.json
           flags: frontend
