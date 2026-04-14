@@ -2,28 +2,28 @@
 签到打卡API路由
 
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
 from datetime import date
 from typing import Optional
 
-from app.api.dependencies import get_checkin_service
+from fastapi import APIRouter, Query
+
+from app.api.dependencies import CheckInServiceDep, CurrentUserDep
+from app.api.openapi_tags import TAG_CHECKIN_MONITOR
 from app.core.exceptions import AlreadyCheckedInException, ValidationException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
-from app.models.user import User
 from app.schemas.checkin import CheckInCreate, CheckInDateQuery, CheckInResponse
-from app.services.checkin_service import CheckInService
-from fastapi import APIRouter, Depends, Query
 
-router = APIRouter(tags=["签到打卡"])
+router = APIRouter(tags=[TAG_CHECKIN_MONITOR])
 
 
 @router.post("/")
 async def create_checkin(
     checkin_data: CheckInCreate,
-    current_user: User = Depends(get_current_user),
-    service: CheckInService = Depends(get_checkin_service),
+    current_user: CurrentUserDep,
+    service: CheckInServiceDep,
 ):
     """
     创建签到记录
@@ -48,11 +48,11 @@ async def create_checkin(
 
 @router.get("/history")
 async def get_checkin_history(
+    current_user: CurrentUserDep,
+    service: CheckInServiceDep,
     days: int = Query(30, ge=1, le=365, description="查询天数"),
     start_date: Optional[str] = Query(None, description="开始日期(YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期(YYYY-MM-DD)"),
-    current_user: User = Depends(get_current_user),
-    service: CheckInService = Depends(get_checkin_service),
 ):
     """
     获取用户签到历史记录
@@ -79,9 +79,9 @@ async def get_checkin_history(
 
 @router.get("/stats")
 async def get_checkin_stats(
+    current_user: CurrentUserDep,
+    service: CheckInServiceDep,
     days: int = Query(30, ge=1, le=365, description="统计天数"),
-    current_user: User = Depends(get_current_user),
-    service: CheckInService = Depends(get_checkin_service),
 ):
     """
     获取用户签到统计信息
@@ -101,8 +101,8 @@ async def get_checkin_stats(
 @router.post("/status")
 async def get_checkin_status(
     query: CheckInDateQuery,
-    current_user: User = Depends(get_current_user),
-    service: CheckInService = Depends(get_checkin_service),
+    current_user: CurrentUserDep,
+    service: CheckInServiceDep,
 ):
     """
     查询指定日期的签到状态
@@ -123,8 +123,8 @@ async def get_checkin_status(
 
 @router.get("/today")
 async def get_today_checkin_status(
-    current_user: User = Depends(get_current_user),
-    service: CheckInService = Depends(get_checkin_service),
+    current_user: CurrentUserDep,
+    service: CheckInServiceDep,
 ):
     """
     获取今天的签到状态

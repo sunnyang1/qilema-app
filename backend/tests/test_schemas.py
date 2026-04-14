@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 import pytest
+
 from app.core.schemas import (
     BaseSchema,
     ErrorResponse,

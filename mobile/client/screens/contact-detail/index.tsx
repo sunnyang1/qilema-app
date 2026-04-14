@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking } from 'react-native';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { useFocusEffect } from 'expo-router';
-import { apiClient } from '@/utils/api';
+import { contactsService, EmergencyContact } from '@/services/contacts';
 import { Screen } from '@/components/Screen';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,19 +11,8 @@ import { useTheme } from '@/hooks/useTheme';
 import Toast from 'react-native-toast-message';
 
 interface ContactDetailParams {
+  /** 数据库主键 id（与列表项 `contact.id` 一致，字符串形式） */
   contactId: string;
-}
-
-interface EmergencyContact {
-  id: number;
-  contact_id: string;
-  name: string;
-  phone: string;
-  relationship: string;
-  is_primary: boolean;
-  priority: number;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export default function ContactDetailScreen() {
@@ -41,7 +30,7 @@ export default function ContactDetailScreen() {
     if (!contactId) {
       Toast.show({
         type: 'error',
-        text1: '错误',
+        text1: '参数错误',
         text2: '缺少联系人 ID',
         visibilityTime: 3000,
       });
@@ -50,13 +39,9 @@ export default function ContactDetailScreen() {
 
     try {
       setLoading(true);
-      /**
-       * 服务端文件：backend/app/api/contacts.py
-       * 接口：GET /api/v1/contacts/{contact_id}
-       * Path 参数：contact_id: number
-       */
-      const response = await apiClient.get<EmergencyContact>(`/api/v1/contacts/${contactId}`);
-      setContactData(response.data);
+      /** GET /api/v1/contacts/{id}（数据库主键），见 contactsService */
+      const data = await contactsService.getContact(contactId);
+      setContactData(data);
     } catch (error: any) {
       console.error('获取联系人详情失败:', error);
       Toast.show({
@@ -85,15 +70,10 @@ export default function ContactDetailScreen() {
           onPress: async () => {
             try {
               setDeleting(true);
-              /**
-               * 服务端文件：backend/app/api/contacts.py
-               * 接口：DELETE /api/v1/contacts/{contact_id}
-               * Path 参数：contact_id: number
-               */
-              await apiClient.delete(`/api/v1/contacts/${contactId}`);
+              await contactsService.deleteContact(contactId);
               Toast.show({
                 type: 'success',
-                text1: '已删除',
+                text1: '删除成功',
                 text2: '紧急联系人已删除',
                 visibilityTime: 3000,
               });
@@ -119,25 +99,18 @@ export default function ContactDetailScreen() {
   const handleCallContact = useCallback(async () => {
     if (!contactData) return;
 
-    try {
-      const response = await apiClient.post('/api/v1/sos/call-contact', {
-        contact_id: contactData.contact_id,
-      });
-      Toast.show({
-        type: 'success',
-        text1: '正在拨打',
-        text2: `正在拨打 ${contactData.name} 的电话`,
-        visibilityTime: 3000,
-      });
-    } catch (error: any) {
-      console.error('拨打联系人电话失败:', error);
+    const tel = `tel:${contactData.phone.replace(/\s/g, '')}`;
+    const supported = await Linking.canOpenURL(tel);
+    if (!supported) {
       Toast.show({
         type: 'error',
-        text1: '拨打失败',
-        text2: error.response?.data?.message || error.message || '无法拨打电话',
+        text1: '无法拨号',
+        text2: '当前环境不支持系统拨号',
         visibilityTime: 3000,
       });
+      return;
     }
+    await Linking.openURL(tel);
   }, [contactData]);
 
   // 编辑联系人
@@ -172,7 +145,7 @@ export default function ContactDetailScreen() {
               <View style={[styles.avatar, { backgroundColor: theme.primary + '20' }]}>
                 <FontAwesome6 name="user" size={32} color={theme.primary} />
               </View>
-              {contactData.is_primary && (
+              {contactData.isDefault && (
                 <View style={[styles.primaryBadge, { backgroundColor: theme.primary }]}>
                   <ThemedText variant="caption" color={theme.buttonPrimaryText} style={styles.primaryBadgeText}>
                     主要联系人
@@ -240,7 +213,7 @@ export default function ContactDetailScreen() {
               </View>
             </View>
 
-            {contactData.created_at && (
+            {contactData.createdAt ? (
               <View style={styles.detailRow}>
                 <View style={styles.detailIcon}>
                   <FontAwesome6 name="calendar" size={20} color={theme.primary} />
@@ -250,11 +223,11 @@ export default function ContactDetailScreen() {
                     添加时间
                   </ThemedText>
                   <ThemedText variant="body" style={styles.detailValue}>
-                    {new Date(contactData.created_at).toLocaleString('zh-CN')}
+                    {new Date(contactData.createdAt).toLocaleString('zh-CN')}
                   </ThemedText>
                 </View>
               </View>
-            )}
+            ) : null}
           </ThemedView>
         )}
 

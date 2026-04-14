@@ -7,6 +7,7 @@
 from datetime import datetime
 
 import pytest
+
 from app.schemas.health_record import (
     AllergyResponse,
     HealthRecordCreate,

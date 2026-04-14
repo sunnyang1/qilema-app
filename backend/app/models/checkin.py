@@ -4,12 +4,14 @@
 记录用户的每日签到记录,用于确认用户安全状态
 """
 
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
+
+from app.models.base_mixin import BaseModelMixin
 
 from ..core.database import Base
 
@@ -25,6 +27,10 @@ class CheckIn(Base, BaseModelMixin):
     # 复合索引: 用户ID + 签到日期(确保每天只能签到一次)
     __table_args__ = (
         Index("ix_checkins_user_date", "user_id", "checkin_date", unique=True),
+        Index(
+            "idx_checkins_user_created", "user_id", "created_at"
+        ),  # For user checkin history queries
+        Index("idx_checkins_status", "status"),  # For filtering by status
     )
 
     # 主键
@@ -59,11 +65,53 @@ class CheckIn(Base, BaseModelMixin):
         String(10), nullable=False, default="manual"
     )
 
+    # 状态: 'active', 'missed', 'late' 等
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+
+    # 创建时间
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
     # 备注信息
     notes: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
-    # 关联用户
-    user: Mapped["User"] = relationship("User", back_populates="checkins")
+    # 关联用户 - CheckIn.user is frequently accessed, use lazy='joined' for immediate loading
+    user: Mapped["User"] = relationship(
+        "User", back_populates="checkins", lazy="joined"
+    )
+
+    @validates("checkin_date")
+    def validate_checkin_date(self, key: str, date: str) -> str:
+        """验证签到日期格式 (YYYY-MM-DD)"""
+        if not date:
+            raise ValueError("签到日期不能为空")
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+            raise ValueError(f"无效的日期格式: {date}, 期望格式: YYYY-MM-DD")
+        return date
+
+    @validates("checkin_method")
+    def validate_checkin_method(self, key: str, method: str) -> str:
+        """验证签到方式"""
+        valid_methods = {"manual", "auto", "device", "app"}
+        if method not in valid_methods:
+            raise ValueError(f"无效的签到方式: {method}, 必须是: {valid_methods}")
+        return method
+
+    @validates("status")
+    def validate_status(self, key: str, status: str) -> str:
+        """验证签到状态"""
+        valid_statuses = {"active", "missed", "late", "early", "disabled"}
+        if status not in valid_statuses:
+            raise ValueError(f"无效的状态: {status}, 必须是: {valid_statuses}")
+        return status
+
+    @validates("notes")
+    def validate_notes(self, key: str, notes: Optional[str]) -> Optional[str]:
+        """验证备注长度"""
+        if notes and len(notes) > 200:
+            raise ValueError("备注长度不能超过200个字符")
+        return notes
 
     def __repr__(self) -> str:
         return (

@@ -13,8 +13,8 @@
 ## 3. 用户故事
 
 ### US-1: 修复 notification_service 导入问题
-**作为** 开发者  
-**我需要** 能够正常导入 notification_service 模块  
+**作为** 开发者
+**我需要** 能够正常导入 notification_service 模块
 **以便** 使用通知服务功能
 
 **验收标准**:
@@ -24,8 +24,8 @@
 **预估**: 10分钟
 
 ### US-2: 修复 schemas.py Pydantic 警告
-**作为** 开发者  
-**我需要** 消除 Pydantic v2 的继承顺序警告  
+**作为** 开发者
+**我需要** 消除 Pydantic v2 的继承顺序警告
 **以便** 代码符合最新规范
 
 **验收标准**:
@@ -35,8 +35,8 @@
 **预估**: 3分钟
 
 ### US-3: 迁移 orm_mode 到 from_attributes
-**作为** 开发者  
-**我需要** 将所有 `orm_mode = True` 迁移到 `from_attributes = True`  
+**作为** 开发者
+**我需要** 将所有 `orm_mode = True` 迁移到 `from_attributes = True`
 **以便** 符合 Pydantic v2 规范
 
 **验收标准**:

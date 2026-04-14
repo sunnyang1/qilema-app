@@ -7,6 +7,7 @@
 from datetime import datetime, timedelta
 
 import pytest
+
 from app.models.user import User
 from app.schemas.device import (
     DeviceBind,

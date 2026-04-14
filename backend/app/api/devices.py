@@ -7,15 +7,16 @@
 
 from datetime import datetime
 
-from app.api.dependencies import get_device_service
+from fastapi import APIRouter, status
+
+from app.api.dependencies import CurrentAdminDep, CurrentUserDep, DeviceServiceDep
+from app.api.openapi_tags import TAG_DEVICE_IOT
 from app.core.exceptions import (
     DeviceNotFoundException,
     ThresholdNotFoundException,
     ValidationException,
 )
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
-from app.models.user import User
 from app.schemas.device import (
     DeviceBind,
     DeviceDataQuery,
@@ -28,10 +29,8 @@ from app.schemas.device import (
     DeviceThresholdUpdate,
     DeviceUpdate,
 )
-from app.services.device_service import DeviceService
-from fastapi import APIRouter, Depends, status
 
-router = APIRouter(tags=["设备管理"])
+router = APIRouter(tags=[TAG_DEVICE_IOT])
 
 
 # ========== 设备绑定管理 ==========
@@ -40,8 +39,8 @@ router = APIRouter(tags=["设备管理"])
 @router.post("/bind", status_code=status.HTTP_201_CREATED)
 def bind_device(
     device_data: DeviceBind,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     绑定智能设备
@@ -58,8 +57,8 @@ def bind_device(
 @router.post("/{device_id}/unbind", status_code=status.HTTP_200_OK)
 def unbind_device(
     device_id: str,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     解绑智能设备
@@ -75,9 +74,9 @@ def unbind_device(
 
 @router.get("")
 def get_user_devices(
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
     include_inactive: bool = False,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
 ):
     """
     获取当前用户的设备列表
@@ -91,8 +90,8 @@ def get_user_devices(
 @router.get("/{device_id}")
 def get_device(
     device_id: str,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     获取设备详细信息
@@ -107,8 +106,8 @@ def get_device(
 def update_device(
     device_id: str,
     device_data: DeviceUpdate,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     更新设备信息
@@ -126,8 +125,8 @@ def update_device(
 def update_device_status(
     device_id: str,
     status_data: DeviceStatusUpdate,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     更新设备状态
@@ -153,8 +152,8 @@ def update_device_status(
 )
 def upload_device_data(
     data: DeviceDataUpload,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     上传设备生理数据
@@ -171,8 +170,8 @@ def upload_device_data(
 @router.post("/data/query")
 def query_device_data(
     query_params: DeviceDataQuery,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     查询设备数据
@@ -191,8 +190,8 @@ def get_device_statistics(
     data_type: str,
     start_time: datetime,
     end_time: datetime,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     获取设备数据统计
@@ -219,8 +218,8 @@ def get_device_statistics(
 @router.post("/thresholds", status_code=status.HTTP_201_CREATED)
 def create_threshold(
     threshold_data: DeviceThresholdCreate,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     创建设备异常阈值配置
@@ -244,8 +243,8 @@ def create_threshold(
 @router.get("/{device_id}/threshold", response_model=DeviceThresholdResponse)
 def get_threshold(
     device_id: str,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     获取设备异常阈值配置
@@ -266,8 +265,8 @@ def get_threshold(
 def update_threshold(
     device_id: str,
     threshold_data: DeviceThresholdUpdate,
-    current_user: User = Depends(get_current_user),
-    service: DeviceService = Depends(get_device_service),
+    current_user: CurrentUserDep,
+    service: DeviceServiceDep,
 ):
     """
     更新设备异常阈值配置
@@ -291,8 +290,9 @@ def update_threshold(
 
 @router.get("/admin/check-offline")
 def check_offline_devices(
+    admin: CurrentAdminDep,  # 添加管理员权限检查
+    service: DeviceServiceDep,
     offline_threshold_minutes: int = 60,
-    service: DeviceService = Depends(get_device_service),
 ):
     """
     检查离线设备(管理员接口)
@@ -309,7 +309,8 @@ def check_offline_devices(
 
 @router.get("/admin/alerts")
 def get_device_alerts(
-    service: DeviceService = Depends(get_device_service),
+    admin: CurrentAdminDep,  # 添加管理员权限检查
+    service: DeviceServiceDep,
 ):
     """
     获取设备异常预警列表(管理员接口)

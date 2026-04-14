@@ -4,21 +4,22 @@ FastAPI 0.135.x + SQLAlchemy 2.x 现代化 API 示例
 展示如何正确使用：
 1. Annotated[..., Depends(...)] 模式
 2. SQLAlchemy 2.x 风格的模型定义
+
+未纳入 app/api/routes.py，非生产路由；归属说明见仓库 docs/PHASE2_DOMAIN_BOUNDARIES.md（R-W4）。
 """
 
 try:
     from typing import Annotated
 except ImportError:
     from typing_extensions import Annotated
+
 from typing import List, Optional
 
-from app.api.dependencies import (
-    DbSession,
-    UserServiceDep,
-)
-from app.schemas.user import UserResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from app.api.dependencies import DbSession, UserServiceDep
+from app.schemas.user import UserResponse
 
 router = APIRouter(prefix="/example", tags=["示例"])
 
@@ -28,32 +29,23 @@ router = APIRouter(prefix="/example", tags=["示例"])
 
 class UserCreateRequest(BaseModel):
     """创建用户请求 (Pydantic v2 风格)"""
-    
+
     phone: str = Field(
-        ..., 
+        ...,
         pattern=r"^1[3-9]\d{9}$",  # Pydantic v2: regex -> pattern
         description="手机号",
-        examples=["13800138000"]  # Pydantic v2: example -> examples
+        examples=["13800138000"],  # Pydantic v2: example -> examples
     )
-    password: str = Field(
-        ..., 
-        min_length=6, 
-        max_length=20, 
-        description="密码"
-    )
-    nickname: Optional[str] = Field(
-        None, 
-        max_length=50, 
-        description="昵称"
-    )
-    
+    password: str = Field(..., min_length=6, max_length=20, description="密码")
+    nickname: Optional[str] = Field(None, max_length=50, description="昵称")
+
     # Pydantic v2: Config 类改为 model_config
     model_config = {
         "json_schema_extra": {
             "example": {
                 "phone": "13800138000",
                 "password": "secure_password",
-                "nickname": "张三"
+                "nickname": "张三",
             }
         }
     }
@@ -61,12 +53,12 @@ class UserCreateRequest(BaseModel):
 
 class UserListResponse(BaseModel):
     """用户列表响应"""
-    
+
     items: List[UserResponse]
     total: int
     page: int
     per_page: int
-    
+
     model_config = {"from_attributes": True}  # Pydantic v2: orm_mode -> from_attributes
 
 
@@ -88,14 +80,14 @@ async def list_users(
 ):
     """
     获取用户列表 - 展示 Annotated[..., Depends(...)] 模式
-    
+
     Args:
         db: 数据库会话（通过 Annotated 依赖注入）
         user_service: 用户服务（通过 Annotated 依赖注入）
         page: 页码
         per_page: 每页数量
         keyword: 搜索关键词
-    
+
     Returns:
         UserListResponse: 用户列表响应
     """
@@ -107,7 +99,7 @@ async def list_users(
         order_by="created_at",
         order_desc=True,
     )
-    
+
     return UserListResponse(
         items=[UserResponse.model_validate(user) for user in pagination.items],
         total=pagination.total,
@@ -128,19 +120,19 @@ async def get_user(
 ):
     """
     获取单个用户信息
-    
+
     Args:
         user_id: 用户ID
         db: 数据库会话
         user_service: 用户服务
-    
+
     Returns:
         UserResponse: 用户详情
     """
     user = user_service.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    
+
     # Pydantic v2: from_orm -> model_validate
     return UserResponse.model_validate(user)
 
@@ -158,12 +150,12 @@ async def create_user(
 ):
     """
     创建新用户
-    
+
     Args:
         request: 创建用户请求
         db: 数据库会话
         user_service: 用户服务
-    
+
     Returns:
         UserResponse: 创建的用户
     """
@@ -171,7 +163,7 @@ async def create_user(
     existing = user_service.get_by_phone(db, request.phone)
     if existing:
         raise HTTPException(status_code=400, detail="手机号已存在")
-    
+
     # 创建用户
     user = user_service.create_user(
         db=db,
@@ -179,7 +171,7 @@ async def create_user(
         password=request.password,
         nickname=request.nickname,
     )
-    
+
     return UserResponse.model_validate(user)
 
 

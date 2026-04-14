@@ -3,9 +3,10 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base_mixin import BaseModelMixin
 
 from ..core.database import Base
 
@@ -17,6 +18,10 @@ class HealthRecord(Base, BaseModelMixin):
     """健康档案主表 (SQLAlchemy 2.x)"""
 
     __tablename__ = "health_records"
+
+    __table_args__ = (
+        Index("idx_health_records_user_id", "user_id"),  # For user health record lookup
+    )
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True, comment="健康档案ID"
@@ -30,12 +35,8 @@ class HealthRecord(Base, BaseModelMixin):
     )
 
     # 基础信息
-    real_name: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="真实姓名"
-    )
-    gender: Mapped[str] = mapped_column(
-        String(10), nullable=False, comment="性别:男/女/其他"
-    )
+    real_name: Mapped[str] = mapped_column(String(50), nullable=False, comment="真实姓名")
+    gender: Mapped[str] = mapped_column(String(10), nullable=False, comment="性别:男/女/其他")
     blood_type: Mapped[Optional[str]] = mapped_column(String(5), comment="血型")
     height: Mapped[Optional[float]] = mapped_column(Float, comment="身高(cm)")
     weight: Mapped[Optional[float]] = mapped_column(Float, comment="体重(kg)")
@@ -88,24 +89,28 @@ class HealthRecord(Base, BaseModelMixin):
     )
 
     # 关联关系
-    user: Mapped["User"] = relationship("User", back_populates="health_record")
+    # One-to-one with User - HealthRecord always needs user info
+    user: Mapped["User"] = relationship(
+        "User", back_populates="health_record", lazy="joined"
+    )
+    # Medical histories, medications, allergies - medium frequency
     medical_histories: Mapped[List["MedicalHistory"]] = relationship(
         "MedicalHistory",
         back_populates="health_record",
         cascade="all, delete-orphan",
-        lazy="dynamic",
+        lazy="select",
     )
     medications: Mapped[List["Medication"]] = relationship(
         "Medication",
         back_populates="health_record",
         cascade="all, delete-orphan",
-        lazy="dynamic",
+        lazy="select",
     )
     allergies: Mapped[List["Allergy"]] = relationship(
         "Allergy",
         back_populates="health_record",
         cascade="all, delete-orphan",
-        lazy="dynamic",
+        lazy="select",
     )
 
     def to_dict(
@@ -119,6 +124,12 @@ class MedicalHistory(Base):
     """病史记录表 (SQLAlchemy 2.x)"""
 
     __tablename__ = "medical_histories"
+
+    __table_args__ = (
+        Index(
+            "idx_medical_histories_health_record_id", "health_record_id"
+        ),  # For health record lookup
+    )
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True, comment="病史ID"
@@ -134,16 +145,10 @@ class MedicalHistory(Base):
     disease_name: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="疾病名称"
     )
-    diagnosis_date: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, comment="诊断日期"
-    )
+    diagnosis_date: Mapped[Optional[datetime]] = mapped_column(DateTime, comment="诊断日期")
     description: Mapped[Optional[str]] = mapped_column(Text, comment="详细描述")
-    severity: Mapped[Optional[str]] = mapped_column(
-        String(20), comment="严重程度"
-    )
-    is_chronic: Mapped[int] = mapped_column(
-        Integer, default=0, comment="是否慢性病"
-    )
+    severity: Mapped[Optional[str]] = mapped_column(String(20), comment="严重程度")
+    is_chronic: Mapped[int] = mapped_column(Integer, default=0, comment="是否慢性病")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, comment="创建时间"
@@ -182,6 +187,12 @@ class Medication(Base):
 
     __tablename__ = "medications"
 
+    __table_args__ = (
+        Index(
+            "idx_medications_health_record_id", "health_record_id"
+        ),  # For health record lookup
+    )
+
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True, comment="用药ID"
     )
@@ -193,22 +204,12 @@ class Medication(Base):
         comment="健康档案ID",
     )
 
-    drug_name: Mapped[str] = mapped_column(
-        String(100), nullable=False, comment="药品名称"
-    )
+    drug_name: Mapped[str] = mapped_column(String(100), nullable=False, comment="药品名称")
     dosage: Mapped[Optional[str]] = mapped_column(String(50), comment="剂量")
-    frequency: Mapped[Optional[str]] = mapped_column(
-        String(50), comment="用药频率"
-    )
-    start_date: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, comment="开始用药日期"
-    )
-    end_date: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, comment="结束用药日期"
-    )
-    is_current: Mapped[int] = mapped_column(
-        Integer, default=1, comment="是否正在使用"
-    )
+    frequency: Mapped[Optional[str]] = mapped_column(String(50), comment="用药频率")
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, comment="开始用药日期")
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, comment="结束用药日期")
+    is_current: Mapped[int] = mapped_column(Integer, default=1, comment="是否正在使用")
     notes: Mapped[Optional[str]] = mapped_column(Text, comment="备注")
 
     created_at: Mapped[datetime] = mapped_column(
@@ -248,6 +249,12 @@ class Allergy(Base):
 
     __tablename__ = "allergies"
 
+    __table_args__ = (
+        Index(
+            "idx_allergies_health_record_id", "health_record_id"
+        ),  # For health record lookup
+    )
+
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True, comment="过敏ID"
     )
@@ -259,15 +266,11 @@ class Allergy(Base):
         comment="健康档案ID",
     )
 
-    allergen: Mapped[str] = mapped_column(
-        String(100), nullable=False, comment="过敏原"
-    )
+    allergen: Mapped[str] = mapped_column(String(100), nullable=False, comment="过敏原")
     allergic_reaction: Mapped[Optional[str]] = mapped_column(
         String(200), comment="过敏反应"
     )
-    severity: Mapped[Optional[str]] = mapped_column(
-        String(20), comment="严重程度"
-    )
+    severity: Mapped[Optional[str]] = mapped_column(String(20), comment="严重程度")
     discovered_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime, comment="发现日期"
     )

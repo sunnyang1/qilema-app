@@ -9,18 +9,18 @@ FastAPI应用主入口 (FastAPI 0.135.x 规范)
 import logging
 from contextlib import asynccontextmanager
 
-from app.api import api_router
-from app.core.config import settings, setup_logging
-from app.core.database import init_db
-from app.core.error_handlers import register_exception_handlers
-from app.core.middleware import setup_middleware
-from app.core.prometheus_metrics import app_info, metrics
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from app.api import api_router
+from app.core.config import settings, setup_logging
+from app.core.database import init_db
+from app.core.error_handlers import register_exception_handlers
+from app.core.middleware import setup_middleware
+from app.core.prometheus_metrics import app_info, metrics
 
 # 创建速率限制器
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
@@ -30,9 +30,9 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 async def lifespan(app: FastAPI):
     """
     FastAPI 0.135.x 推荐的 Lifespan 上下文管理器
-    
+
     替代已弃用的 @app.on_event("startup") / @app.on_event("shutdown")
-    
+
     在应用启动时执行初始化，在应用关闭时执行清理
     """
     # ===== 启动逻辑 =====
@@ -89,6 +89,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
+    expose_headers=settings.CORS_EXPOSE_HEADERS,
 )
 
 # 设置自定义中间件（异常处理、请求日志、请求ID）
@@ -102,6 +103,18 @@ app.include_router(api_router)
 
 # 注册Prometheus metrics端点
 app.add_route("/metrics", metrics)
+
+
+@app.get("/api/versions", tags=["meta"])
+async def api_versions():
+    """列出当前支持的 API 版本（US-004）。"""
+    return {
+        "current": "v1",
+        "prefix": settings.API_V1_PREFIX,
+        "versions": [
+            {"name": "v1", "status": "current", "path": settings.API_V1_PREFIX},
+        ],
+    }
 
 
 @app.get("/")

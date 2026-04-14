@@ -3,29 +3,30 @@
 
 提供药品管理、用药计划、服药记录等接口
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
 from datetime import date, timedelta
 from typing import Optional
 
-from app.api.dependencies import (
-    get_medication_log_service,
-    get_medication_reminder_service,
-    get_medication_schedule_service,
-    get_medication_service,
-)
-from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
-from app.models.user import User
-from app.services.medication_service import (
-    MedicationLogService,
-    MedicationReminderService,
-    MedicationScheduleService,
-    MedicationService,
-)
-from fastapi import APIRouter, Depends, HTTPException
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
-router = APIRouter(tags=["用药提醒"])
+from fastapi import APIRouter, HTTPException
+
+from app.api.dependencies import (
+    CurrentUserDep,
+    MedicationLogServiceDep,
+    MedicationReminderServiceDep,
+    MedicationScheduleServiceDep,
+    MedicationServiceDep,
+)
+from app.api.openapi_tags import TAG_HEALTH_RECORD
+from app.core.response_builder import ApiResponseBuilder
+
+router = APIRouter(tags=[TAG_HEALTH_RECORD])
 
 
 # ============== 药品管理 ==============
@@ -33,9 +34,9 @@ router = APIRouter(tags=["用药提醒"])
 
 @router.get("/")
 async def get_medications(
+    medication_service: MedicationServiceDep,
+    current_user: CurrentUserDep,
     only_active: bool = True,
-    medication_service: MedicationService = Depends(get_medication_service),
-    current_user: User = Depends(get_current_user),
 ):
     """获取用户的药品列表"""
     medications = medication_service.get_user_medications(
@@ -49,8 +50,8 @@ async def get_medications(
 @router.post("/")
 async def create_medication(
     medication_data: dict,
-    medication_service: MedicationService = Depends(get_medication_service),
-    current_user: User = Depends(get_current_user),
+    medication_service: MedicationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """创建药品信息"""
     medication = medication_service.create_medication(
@@ -62,8 +63,8 @@ async def create_medication(
 @router.get("/{medication_id}")
 async def get_medication(
     medication_id: int,
-    medication_service: MedicationService = Depends(get_medication_service),
-    current_user: User = Depends(get_current_user),
+    medication_service: MedicationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """获取药品详情"""
     medication = medication_service.get_by_id(medication_id)
@@ -76,8 +77,8 @@ async def get_medication(
 async def update_medication(
     medication_id: int,
     update_data: dict,
-    medication_service: MedicationService = Depends(get_medication_service),
-    current_user: User = Depends(get_current_user),
+    medication_service: MedicationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """更新药品信息"""
     medication = medication_service.update_medication(
@@ -91,8 +92,8 @@ async def update_medication(
 @router.delete("/{medication_id}")
 async def delete_medication(
     medication_id: int,
-    medication_service: MedicationService = Depends(get_medication_service),
-    current_user: User = Depends(get_current_user),
+    medication_service: MedicationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """删除药品"""
     success = medication_service.delete_medication(medication_id, current_user.user_id)
@@ -106,12 +107,10 @@ async def delete_medication(
 
 @router.get("/schedules/")
 async def get_schedules(
+    schedule_service: MedicationScheduleServiceDep,
+    current_user: CurrentUserDep,
     medication_id: Optional[int] = None,
     only_active: bool = True,
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    current_user: User = Depends(get_current_user),
 ):
     """获取用药计划列表"""
     if medication_id:
@@ -130,10 +129,8 @@ async def get_schedules(
 @router.post("/schedules/")
 async def create_schedule(
     schedule_data: dict,
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    current_user: User = Depends(get_current_user),
+    schedule_service: MedicationScheduleServiceDep,
+    current_user: CurrentUserDep,
 ):
     """创建用药计划"""
     schedule = schedule_service.create_schedule(current_user.user_id, schedule_data)
@@ -143,10 +140,8 @@ async def create_schedule(
 @router.get("/schedules/{schedule_id}")
 async def get_schedule(
     schedule_id: int,
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    current_user: User = Depends(get_current_user),
+    schedule_service: MedicationScheduleServiceDep,
+    current_user: CurrentUserDep,
 ):
     """获取用药计划详情"""
     schedule = schedule_service.get_by_id(schedule_id)
@@ -159,10 +154,8 @@ async def get_schedule(
 async def update_schedule(
     schedule_id: int,
     update_data: dict,
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    current_user: User = Depends(get_current_user),
+    schedule_service: MedicationScheduleServiceDep,
+    current_user: CurrentUserDep,
 ):
     """更新用药计划"""
     schedule = schedule_service.update_schedule(
@@ -176,10 +169,8 @@ async def update_schedule(
 @router.post("/schedules/{schedule_id}/pause")
 async def pause_schedule(
     schedule_id: int,
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    current_user: User = Depends(get_current_user),
+    schedule_service: MedicationScheduleServiceDep,
+    current_user: CurrentUserDep,
 ):
     """暂停用药计划"""
     schedule = schedule_service.pause_schedule(schedule_id, current_user.user_id)
@@ -191,10 +182,8 @@ async def pause_schedule(
 @router.post("/schedules/{schedule_id}/resume")
 async def resume_schedule(
     schedule_id: int,
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    current_user: User = Depends(get_current_user),
+    schedule_service: MedicationScheduleServiceDep,
+    current_user: CurrentUserDep,
 ):
     """恢复用药计划"""
     schedule = schedule_service.resume_schedule(schedule_id, current_user.user_id)
@@ -206,10 +195,8 @@ async def resume_schedule(
 @router.delete("/schedules/{schedule_id}")
 async def delete_schedule(
     schedule_id: int,
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    current_user: User = Depends(get_current_user),
+    schedule_service: MedicationScheduleServiceDep,
+    current_user: CurrentUserDep,
 ):
     """删除用药计划"""
     success = schedule_service.delete_schedule(schedule_id, current_user.user_id)
@@ -223,12 +210,10 @@ async def delete_schedule(
 
 @router.get("/reminders/")
 async def get_reminders(
+    reminder_service: MedicationReminderServiceDep,
+    current_user: CurrentUserDep,
     reminder_date: Optional[date] = None,
     status: Optional[str] = None,
-    reminder_service: MedicationReminderService = Depends(
-        get_medication_reminder_service
-    ),
-    current_user: User = Depends(get_current_user),
 ):
     """获取用药提醒列表"""
     from app.models.medication import ReminderStatus
@@ -250,10 +235,8 @@ async def get_reminders(
 
 @router.get("/reminders/today")
 async def get_today_reminders(
-    reminder_service: MedicationReminderService = Depends(
-        get_medication_reminder_service
-    ),
-    current_user: User = Depends(get_current_user),
+    reminder_service: MedicationReminderServiceDep,
+    current_user: CurrentUserDep,
 ):
     """获取今日提醒"""
     reminders = reminder_service.get_today_reminders(current_user.user_id)
@@ -267,11 +250,11 @@ async def get_today_reminders(
 
 @router.get("/logs/")
 async def get_logs(
+    log_service: MedicationLogServiceDep,
+    current_user: CurrentUserDep,
     medication_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    log_service: MedicationLogService = Depends(get_medication_log_service),
-    current_user: User = Depends(get_current_user),
 ):
     """获取服药记录"""
     logs = log_service.get_user_logs(
@@ -285,8 +268,8 @@ async def get_logs(
 @router.post("/logs/taken")
 async def record_taken(
     data: dict,
-    log_service: MedicationLogService = Depends(get_medication_log_service),
-    current_user: User = Depends(get_current_user),
+    log_service: MedicationLogServiceDep,
+    current_user: CurrentUserDep,
 ):
     """记录已服药"""
     medication_id = data.get("medication_id")
@@ -306,8 +289,8 @@ async def record_taken(
 @router.post("/logs/skipped")
 async def record_skipped(
     data: dict,
-    log_service: MedicationLogService = Depends(get_medication_log_service),
-    current_user: User = Depends(get_current_user),
+    log_service: MedicationLogServiceDep,
+    current_user: CurrentUserDep,
 ):
     """记录跳过服药"""
     medication_id = data.get("medication_id")
@@ -325,11 +308,11 @@ async def record_skipped(
 
 @router.get("/logs/stats")
 async def get_adherence_stats(
+    log_service: MedicationLogServiceDep,
+    current_user: CurrentUserDep,
     medication_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    log_service: MedicationLogService = Depends(get_medication_log_service),
-    current_user: User = Depends(get_current_user),
 ):
     """获取服药依从性统计"""
     stats = log_service.get_adherence_stats(
@@ -343,15 +326,11 @@ async def get_adherence_stats(
 
 @router.get("/dashboard")
 async def get_dashboard(
-    medication_service: MedicationService = Depends(get_medication_service),
-    schedule_service: MedicationScheduleService = Depends(
-        get_medication_schedule_service
-    ),
-    reminder_service: MedicationReminderService = Depends(
-        get_medication_reminder_service
-    ),
-    log_service: MedicationLogService = Depends(get_medication_log_service),
-    current_user: User = Depends(get_current_user),
+    medication_service: MedicationServiceDep,
+    schedule_service: MedicationScheduleServiceDep,
+    reminder_service: MedicationReminderServiceDep,
+    log_service: MedicationLogServiceDep,
+    current_user: CurrentUserDep,
 ):
     """获取用药仪表盘数据"""
     today = date.today()

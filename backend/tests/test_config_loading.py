@@ -5,6 +5,7 @@
 from pathlib import Path
 
 import yaml
+
 from app.core.container import init_container, reset_container
 
 
@@ -189,10 +190,8 @@ class TestDockerComposeFiles:
         assert compose_path.exists()
 
     def test_staging_compose_file_exists(self):
-        """测试测试环境docker-compose文件存在"""
-        compose_path = (
-            Path(__file__).parent.parent.parent / "docker-compose.staging.yml"
-        )
+        """Staging 使用与生产相同的 overlay（docker-compose.staging.yml 已弃用，见 AGENTS.md）。"""
+        compose_path = Path(__file__).parent.parent.parent / "docker-compose.prod.yml"
         assert compose_path.exists()
 
     def test_prod_compose_file_exists(self):

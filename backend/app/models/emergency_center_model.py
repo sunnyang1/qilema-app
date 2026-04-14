@@ -4,11 +4,12 @@
 
 import enum
 
-from app.core.database import Base
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship as db_relationship
+
+from app.core.database import Base
 
 
 class EmergencyCallStatus(str, enum.Enum):

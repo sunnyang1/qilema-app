@@ -63,7 +63,7 @@ jobs:
         run: |
           BACKUP_ID=$(date +%Y%m%d_%H%M%S)
           echo "id=$BACKUP_ID" >> $GITHUB_OUTPUT
-          
+
           ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
           set -e
           BACKUP_PATH="/backups/pre-deploy-${{ steps.backup.outputs.id }}"
@@ -93,13 +93,13 @@ jobs:
         run: |
           ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
           set -e
-          
+
           ENV=${{ needs.determine-env.outputs.environment }}
           VERSION=${{ needs.determine-env.outputs.version }}
-          
+
           echo "🚀 Deploying $VERSION to $ENV"
           cd ${{ secrets.APP_PATH }}
-          
+
           # Update code
           git fetch origin
           if [ "$ENV" = "staging" ]; then
@@ -107,20 +107,20 @@ jobs:
           else
             git checkout $VERSION
           fi
-          
+
           # Pull images
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-          
+
           # Start DB first
           docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres redis
           sleep 5
-          
+
           # Run migrations
           docker compose exec -T backend python -m alembic upgrade head || true
-          
+
           # Deploy app
           docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d backend nginx
-          
+
           # Health check
           sleep 10
           for i in {1..30}; do
@@ -131,7 +131,7 @@ jobs:
             echo "Waiting... ($i/30)"
             sleep 2
           done
-          
+
           docker system prune -f
           EOF
 
@@ -161,11 +161,11 @@ jobs:
           set -e
           BACKUP_PATH="/backups/pre-deploy-${{ needs.pre-deploy.outputs.backup-id }}"
           cd ${{ secrets.APP_PATH }}
-          
+
           docker compose down || true
           gunzip < $BACKUP_PATH/db.sql.gz | docker compose exec -T postgres psql -U qilema || true
           docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-          
+
           sleep 10
           for i in {1..30}; do
             if curl -f http://localhost:8000/health > /dev/null 2>&1; then

@@ -8,12 +8,15 @@ import logging
 import re
 import time
 import uuid
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
-from app.core.exceptions import BaseAppException
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.core.auth_policy import is_public_path
+from app.core.config import settings
+from app.core.exceptions import BaseAppException
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -143,7 +146,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
             },
         )
 
-    def _sanitize_sensitive_info(self, info: Optional[any]) -> Optional[str]:
+    def _sanitize_sensitive_info(self, info: Optional[Any]) -> Optional[str]:
         """脱敏敏感信息（密码、token等）"""
         if not info:
             return None
@@ -183,9 +186,20 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """处理请求并记录详细日志"""
-        # 生成8位十六进制请求ID
-        request_id = uuid.uuid4().hex[:8]
+        # 请求 ID：优先使用客户端传入的 X-Request-ID（便于分布式追踪）
+        incoming_rid = request.headers.get("x-request-id") or request.headers.get(
+            "X-Request-ID"
+        )
+        if incoming_rid and incoming_rid.strip():
+            raw = incoming_rid.strip()[:128]
+            # 去掉 ASCII 控制字符与 DEL，保留 UTF-8（含中文）用于关联 ID
+            request_id = (
+                re.sub(r"[\x00-\x1f\x7f]", "", raw)[:128] or uuid.uuid4().hex[:8]
+            )
+        else:
+            request_id = uuid.uuid4().hex[:8]
         request.state.request_id = request_id
+        request.state.is_public_path = is_public_path(request.url.path)
 
         # 记录请求开始时间
         start_time = time.time()
@@ -197,6 +211,7 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                 "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
+                "is_public_path": request.state.is_public_path,
                 "query_params": str(request.query_params),
                 "client": request.client.host if request.client else None,
                 "user_agent": request.headers.get("user-agent"),
@@ -212,6 +227,7 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
 
             # 添加响应头
             response.headers["X-Request-ID"] = request_id
+            response.headers["X-Process-Time"] = f"{duration_ms:.2f}ms"
 
             # 识别慢请求并标记
             is_slow = duration_ms > SLOW_REQUEST_THRESHOLD
@@ -223,6 +239,7 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                         "request_id": request_id,
                         "method": request.method,
                         "path": request.url.path,
+                        "is_public_path": request.state.is_public_path,
                         "duration_ms": duration_ms,
                         "slow_request": True,
                     },
@@ -236,6 +253,7 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                     "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
+                    "is_public_path": request.state.is_public_path,
                     "status_code": response.status_code,
                     "duration_ms": duration_ms,
                     "slow_request": is_slow,
@@ -256,6 +274,7 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
                     "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
+                    "is_public_path": request.state.is_public_path,
                     "duration_ms": duration_ms,
                     "exception": str(exc),
                 },
@@ -266,6 +285,17 @@ class EnhancedLoggingMiddleware(BaseHTTPMiddleware):
 
 # 保留旧的RequestLoggingMiddleware作为别名，保持向后兼容
 RequestLoggingMiddleware = EnhancedLoggingMiddleware
+
+
+class ApiVersionResponseMiddleware(BaseHTTPMiddleware):
+    """为 v1 API 响应附加 X-API-Version（US-004 / 版本可观测性）。"""
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith(settings.API_V1_PREFIX):
+            response.headers["X-API-Version"] = "1"
+        return response
 
 
 def setup_middleware(app: FastAPI) -> None:
@@ -282,3 +312,6 @@ def setup_middleware(app: FastAPI) -> None:
 
     # 请求日志中间件
     app.add_middleware(EnhancedLoggingMiddleware)
+
+    # API 版本响应头（最后添加 = 中间件链最外层，响应最后写出）
+    app.add_middleware(ApiVersionResponseMiddleware)

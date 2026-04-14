@@ -14,6 +14,8 @@ import sys
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from sqlalchemy.orm import Session
+
 from app.core.database import Base, SessionLocal, engine
 from app.models.knowledge_base import (
     KnowledgeArticle,
@@ -21,7 +23,6 @@ from app.models.knowledge_base import (
     KnowledgeTag,
     article_tag_association,
 )
-from sqlalchemy.orm import Session
 
 # ==================== 急救知识数据 ====================
 

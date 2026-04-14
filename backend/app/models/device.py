@@ -5,10 +5,11 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -19,21 +20,20 @@ class Device(Base, BaseModelMixin):
 
     __tablename__ = "devices"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
+    __table_args__ = (
+        Index("idx_devices_user_id", "user_id"),  # For user devices lookup
+        Index("idx_devices_status", "status"),  # For filtering by status
     )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     device_id: Mapped[str] = mapped_column(
         String(36), unique=True, index=True, comment="设备ID"
     )
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.user_id"), nullable=False, index=True
     )
-    device_name: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="设备名称"
-    )
-    device_type: Mapped[str] = mapped_column(
-        String(20), nullable=False, comment="设备类型"
-    )
+    device_name: Mapped[str] = mapped_column(String(50), nullable=False, comment="设备名称")
+    device_type: Mapped[str] = mapped_column(String(20), nullable=False, comment="设备类型")
     device_brand: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True, comment="设备品牌"
     )
@@ -49,21 +49,15 @@ class Device(Base, BaseModelMixin):
         default="active",
         comment="状态: active/inactive/offline",
     )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, default=True, comment="是否激活"
-    )
-    is_online: Mapped[bool] = mapped_column(
-        Boolean, default=False, comment="是否在线"
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否激活")
+    is_online: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否在线")
     battery_level: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True, comment="电池电量(0-100)"
     )
     settings: Mapped[Optional[dict]] = mapped_column(
         JSON, nullable=True, comment="设备设置"
     )
-    data: Mapped[Optional[dict]] = mapped_column(
-        JSON, nullable=True, comment="设备数据"
-    )
+    data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, comment="设备数据")
     last_sync_time: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True, comment="最后同步时间"
     )

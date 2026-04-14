@@ -13,8 +13,12 @@ export interface RequestInterceptor {
 // 响应拦截器类型
 export interface ResponseInterceptor {
   onResponse?: (response: Response) => Response | Promise<Response>;
-  onResponseError?: (error: APIError) => Promise<APIError> | void;
+  /** 返回 `Response` 表示错误已恢复（如刷新 token 后重试成功），将按成功响应解析 */
+  onResponseError?: (error: APIError) => Promise<Response | void | undefined>;
 }
+
+/** 401 重试等场景下用于复现 fetch 的上下文（body 为 string / FormData 时可安全重试） */
+export type APIErrorRequestContext = { url: string; init: RequestInit };
 
 // API 错误类型
 export class APIError extends Error {
@@ -22,17 +26,96 @@ export class APIError extends Error {
     public status: number,
     public code: string,
     message: string,
-    public detail?: any
+    public detail?: any,
+    public readonly requestContext?: APIErrorRequestContext
   ) {
     super(message);
     this.name = 'APIError';
   }
 }
 
+/**
+ * 将 FastAPI `detail` 转为单行可读文案。
+ * - `str`：原样返回
+ * - `list`（422 校验）：拼接各元素的 `msg`
+ * - 其他：尽力字符串化
+ */
+function formatFastApiDetail(detail: unknown): string {
+  if (detail == null || detail === '') {
+    return '';
+  }
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((item) => {
+        if (item != null && typeof item === 'object' && 'msg' in item) {
+          return String((item as { msg?: unknown }).msg ?? '').trim();
+        }
+        if (typeof item === 'string') {
+          return item.trim();
+        }
+        return '';
+      })
+      .filter(Boolean);
+    return parts.length ? parts.join('；') : '';
+  }
+  if (typeof detail === 'object') {
+    try {
+      return JSON.stringify(detail);
+    } catch {
+      return '';
+    }
+  }
+  return String(detail);
+}
+
+/** 错误响应体：优先使用后端已填的 `message`，否则从 `detail` 推导（兼容裸 FastAPI 与自定义封装） */
+function messageFromErrorBody(errorData: Record<string, unknown>): string {
+  const msg = errorData.message;
+  if (typeof msg === 'string' && msg.trim()) {
+    return msg.trim();
+  }
+  const fromDetail = formatFastApiDetail(errorData.detail);
+  if (fromDetail) {
+    return fromDetail;
+  }
+  return '请求失败';
+}
+
+function errorCodeFromBody(errorData: Record<string, unknown>): string {
+  const c = errorData.code ?? errorData.error_code;
+  return typeof c === 'string' && c ? c : 'UNKNOWN_ERROR';
+}
+
+/** 从失败响应构造 APIError（供客户端内部与 401 重试失败路径复用） */
+export async function apiErrorFromResponse(
+  response: Response,
+  requestContext?: APIErrorRequestContext
+): Promise<APIError> {
+  let errorData: Record<string, unknown>;
+  try {
+    errorData = (await response.json()) as Record<string, unknown>;
+  } catch {
+    errorData = { message: response.statusText };
+  }
+
+  return new APIError(
+    response.status,
+    errorCodeFromBody(errorData),
+    messageFromErrorBody(errorData),
+    errorData.detail !== undefined ? errorData.detail : errorData,
+    requestContext
+  );
+}
+
 // 请求配置接口
 export interface RequestConfig extends RequestInit {
   params?: Record<string, string | number | boolean>;
   skipAuth?: boolean;
+  /** 由 401 刷新后自动重试设置，防止无限刷新 */
+  retriedAfter401?: boolean;
 }
 
 // API 客户端类
@@ -99,8 +182,20 @@ class APIClient {
     return finalConfig;
   }
 
+  private async parseSuccessBody<T>(response: Response): Promise<T> {
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json() as Promise<T>;
+    }
+
+    return response.text() as unknown as Promise<T>;
+  }
+
   // 处理响应
-  private async handleResponse<T>(response: Response): Promise<T> {
+  private async handleResponse<T>(
+    response: Response,
+    requestContext?: APIErrorRequestContext
+  ): Promise<T> {
     // 执行响应拦截器
     for (const interceptor of this.interceptors.response) {
       if (interceptor.onResponse) {
@@ -109,26 +204,23 @@ class APIClient {
     }
 
     if (!response.ok) {
-      let errorData: any;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { message: response.statusText };
-      }
-
-      const error = new APIError(
-        response.status,
-        errorData.code || 'UNKNOWN_ERROR',
-        errorData.message || errorData.detail || '请求失败',
-        errorData.detail
-      );
+      const error = await apiErrorFromResponse(response, requestContext);
 
       // 执行响应错误拦截器
       for (const interceptor of this.interceptors.response) {
         if (interceptor.onResponseError) {
           const result = await interceptor.onResponseError(error);
-          if (result) {
-            throw result;
+          if (result instanceof Response) {
+            let recovered = result;
+            for (const intr of this.interceptors.response) {
+              if (intr.onResponse) {
+                recovered = await intr.onResponse(recovered);
+              }
+            }
+            if (!recovered.ok) {
+              throw await apiErrorFromResponse(recovered, requestContext);
+            }
+            return this.parseSuccessBody<T>(recovered);
           }
         }
       }
@@ -136,12 +228,7 @@ class APIClient {
       throw error;
     }
 
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      return response.json() as Promise<T>;
-    }
-
-    return response.text() as unknown as Promise<T>;
+    return this.parseSuccessBody<T>(response);
   }
 
   // GET 请求
@@ -153,7 +240,7 @@ class APIClient {
     });
 
     const response = await fetch(url, finalConfig);
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, { url, init: finalConfig });
   }
 
   // POST 请求
@@ -170,7 +257,28 @@ class APIClient {
     });
 
     const response = await fetch(url, finalConfig);
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, { url, init: finalConfig });
+  }
+
+  /**
+   * POST application/x-www-form-urlencoded（如 OAuth2 密码流 `/auth/login`）
+   */
+  async postUrlEncoded<T>(path: string, body: Record<string, string>, config?: RequestConfig): Promise<T> {
+    const url = this.buildURL(path, config?.params);
+    const params = new URLSearchParams();
+    Object.entries(body).forEach(([k, v]) => params.append(k, v));
+    const finalConfig = await this.handleRequest({
+      ...config,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...config?.headers,
+      },
+      body: params.toString(),
+    });
+
+    const response = await fetch(url, finalConfig);
+    return this.handleResponse<T>(response, { url, init: finalConfig });
   }
 
   // PUT 请求
@@ -187,7 +295,7 @@ class APIClient {
     });
 
     const response = await fetch(url, finalConfig);
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, { url, init: finalConfig });
   }
 
   // DELETE 请求
@@ -199,7 +307,7 @@ class APIClient {
     });
 
     const response = await fetch(url, finalConfig);
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, { url, init: finalConfig });
   }
 
   // 上传文件
@@ -216,7 +324,7 @@ class APIClient {
     });
 
     const response = await fetch(url, finalConfig);
-    return this.handleResponse<T>(response);
+    return this.handleResponse<T>(response, { url, init: finalConfig });
   }
 }
 

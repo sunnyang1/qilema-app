@@ -43,6 +43,10 @@ lerna-debug.log*
 # ========== 测试 ==========
 coverage/
 .nyc_output/
+# Reassure：提交 baseline.perf 作对比；运行产物不提交
+.reassure/current.perf
+.reassure/output.json
+.reassure/output.md
 
 # ========== 系统文件 ==========
 .DS_Store

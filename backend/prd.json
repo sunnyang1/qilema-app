@@ -1,126 +1,182 @@
 {
   "project": "qilema-backend",
-  "branchName": "ralph/test-suite-redesign",
-  "description": "全面重设计和优化测试套件，提高测试稳定性、可维护性和覆盖率",
+  "productName": "起了吗 App",
+  "productVersion": "1.1",
+  "sourceDocument": "docs/prd.md",
+  "branchName": "ralph/full-project-refactoring",
+  "description": "Python/FastAPI 后端与领域服务；用户故事与根目录 prd.json、docs/prd.md v1.1 一致，验收侧重 API、数据与安全。",
+  "refactorProgramRef": "仓库根目录 prd.json 的 refactorProgram；计划全文见 tasks/prd-global-refactor.md",
+  "improvementProgramRef": "仓库根目录 prd.json 的 improvementProgram；计划全文见 tasks/prd-post-refactor-improvements.md",
   "userStories": [
     {
-      "id": "US-001",
-      "title": "修复配置验证测试",
-      "description": "修复 SECRET_KEY 和 DEBUG 配置验证测试，使其与实际配置行为一致",
+      "id": "US-P01",
+      "title": "用户认证与安全",
+      "description": "注册/登录与身份验证，支撑各业务模块访问控制（文档 §2.1、§4.1 JWT + OAuth2）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "SECRET_KEY 验证测试通过，错误信息格式正确匹配期望值",
-        "DEBUG 自动配置测试通过，开发/测试环境正确设置为 True",
-        "生产环境 DEBUG 设置为 False",
-        "所有配置相关的测试添加 @pytest.mark.config 标记"
+        "用户可完成注册与登录流程",
+        "接口层使用 JWT + OAuth2 约定（与后端技术规范一致）",
+        "敏感操作需有效凭证，未授权访问被拒绝"
       ],
       "priority": 1,
       "passes": false,
-      "notes": "当前测试失败主要因为错误信息格式不匹配"
+      "notes": "文档 Phase 1 MVP 列为已完成；以端到端/API 验证为准。"
     },
     {
-      "id": "US-002",
-      "title": "修复缓存相关测试",
-      "description": "修复所有缓存服务测试，使用 Mock 避免依赖真实 Redis",
+      "id": "US-P02",
+      "title": "每日签到打卡",
+      "description": "用户每日确认安全状态，系统记录签到时间（文档 §2.2 功能1）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "所有缓存服务测试使用 Mock 对象，不依赖真实 Redis 连接",
-        "缓存装饰器测试验证正确的缓存命中和未命中行为",
-        "缓存空值保护测试验证 None 值的正确处理",
-        "缓存预热功能测试验证预热的正确执行",
-        "所有缓存测试添加 @pytest.mark.cache 标记"
+        "用户可通过操作完成当日签到",
+        "签到成功后状态更新并持久化到服务端",
+        "同一天仅首次签到有效",
+        "可查询签到历史记录"
       ],
       "priority": 1,
       "passes": false,
-      "notes": "当前测试失败主要是因为 Redis Mock 配置不正确"
+      "notes": "文档 Phase 1 MVP 列为已完成。"
     },
     {
-      "id": "US-003",
-      "title": "修复通知服务集成测试",
-      "description": "修复通知服务集成测试，使用 Mock 服务模拟第三方调用",
+      "id": "US-P03",
+      "title": "异常预警机制",
+      "description": "连续未签到超阈值时自动触发预警并通知紧急联系人（文档 §2.2 功能2）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "降级策略测试使用 Mock 的通知渠道",
-        "熔断器测试验证正确的熔断和恢复行为",
-        "重试机制测试验证指数退避策略",
-        "通知优先级测试验证正确的优先级处理",
-        "所有通知服务测试添加 @pytest.mark.notification 标记"
+        "用户可配置预警时间阈值",
+        "超过阈值未签到时自动触发预警流程",
+        "预警可通过多种渠道送达联系人"
       ],
       "priority": 1,
       "passes": false,
-      "notes": "部分集成测试依赖 Mock 对象的配置不正确"
+      "notes": "文档 Phase 1 MVP 列为已完成。"
     },
     {
-      "id": "US-004",
-      "title": "增加熔断器持久化测试",
-      "description": "为新增的熔断器持久化功能添加充分的测试覆盖",
+      "id": "US-P04",
+      "title": "SOS 紧急求助",
+      "description": "一键发起求助，附带位置等信息（文档 §2.2 功能3）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "测试服务启动时从 Redis 加载熔断器状态",
-        "测试熔断器失败时保存状态到 Redis",
-        "测试熔断器成功时清除 Redis 中的状态",
-        "测试 Redis 不可用时的降级行为",
-        "测试持久化功能的线程安全性"
+        "SOS 需防误触（如长按约 3 秒）",
+        "触发后可获取并发送当前位置",
+        "求助通知可通过多种渠道发送"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P05",
+      "title": "紧急联系人管理",
+      "description": "维护 1～10 名联系人，优先级与通知渠道（文档 §2.2 功能4）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "可添加、编辑、删除紧急联系人（数量在 1～10）",
+        "可设置通知优先级",
+        "可为联系人选择通知渠道"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P06",
+      "title": "消息通知模块",
+      "description": "预警、SOS、系统等消息触达用户与联系人（文档 §2.1 架构、Phase 1 短信）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "关键事件（签到异常、SOS 等）可产生通知任务",
+        "至少支持文档所述的一种可靠渠道（如短信）并可扩展",
+        "通知失败时有可观测的降级或重试策略（与实现一致即可）"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 含短信通知。"
+    },
+    {
+      "id": "US-P07",
+      "title": "健康档案管理",
+      "description": "基础信息、病史、用药、过敏等；敏感数据保护（文档 §2.2 功能5、§3.1 HealthRecord）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "用户可维护完整健康档案信息",
+        "支持多条病史、用药、过敏记录",
+        "健康相关敏感数据加密存储与传输符合项目安全约定"
       ],
       "priority": 2,
       "passes": false,
-      "notes": "这是新增功能，需要完整的测试覆盖"
+      "notes": "文档 Phase 2 增强版（进行中）。"
     },
     {
-      "id": "US-005",
-      "title": "优化测试配置和依赖",
-      "description": "更新测试配置文件和依赖管理",
+      "id": "US-P08",
+      "title": "智能设备联动",
+      "description": "绑定手环/手表等，展示生理数据并参与异常预警（文档 §2.2 功能6）。",
+      "prdPhase": "Phase2",
       "acceptanceCriteria": [
-        "更新 requirements.txt 包含 pytest-html、pytest-mock 等必要依赖",
-        "创建/更新 pytest.ini 配置测试标记和报告选项",
-        "创建 tests/fixtures/ 目录存放共享测试夹具",
-        "创建 .env.test 示例文件",
-        "创建 tests/README.md 文档说明测试策略"
+        "用户可绑定支持的智能手环/手表类设备",
+        "可展示实时或准实时生理数据",
+        "异常生理数据可触发预警流程"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2；与生理数据监测、异常预警相关。"
+    },
+    {
+      "id": "US-P09",
+      "title": "急救资源对接",
+      "description": "120、医院、AED 等资源信息与导航能力（文档 §2.2 功能7、§5 Phase 2/3）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "提供一键拨打 120 能力（在平台允许范围内）",
+        "可展示周边急救资源（含地图能力）",
+        "支持导航至医院/AED（文档 Phase 3 对 AED 导航有进一步规划）"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2 含地图与 120；Phase 3 含 AED 地图与导航、与 120 深度对接等规划。"
+    },
+    {
+      "id": "US-P10",
+      "title": "用户设置与个性化",
+      "description": "偏好、通知、展示等配置（文档 Phase 2）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "用户可修改与体验相关的关键设置项",
+        "设置持久化并在重启后生效",
+        "与预警阈值、通知渠道等配置不冲突或有一致性校验"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2 增强版。"
+    },
+    {
+      "id": "US-P11",
+      "title": "Phase 3：急救协同与知识扩展",
+      "description": "与 120 协同、救护车追踪、AED/知识库/用药提醒等规划能力（文档 §5 Phase 3）。",
+      "prdPhase": "Phase3",
+      "acceptanceCriteria": [
+        "与 120 急救中心对接方案可落地评估（接口/合规）",
+        "急救车实时位置追踪（若立项则定义最小可用范围）",
+        "AED 设备地图与导航、急救知识库、用药提醒等按路线图拆分迭代"
       ],
       "priority": 3,
       "passes": false,
-      "notes": "基础设施改进，为后续测试开发提供支持"
+      "notes": "文档 Phase 3 完整版（规划中）；宜拆为子故事后再验收入口。"
     },
     {
-      "id": "US-006",
-      "title": "实现测试报告生成",
-      "description": "配置自动生成详细的测试报告",
+      "id": "US-P12",
+      "title": "技术基线与工程化（跨功能）",
+      "description": "后端：文档 §4.1、§4.2；Docker/CI、可观测性与测试门禁。",
+      "prdPhase": "CrossCutting",
       "acceptanceCriteria": [
-        "配置 pytest-html 生成 HTML 格式测试报告",
-        "配置 pytest-cov 生成代码覆盖率报告",
-        "配置 pytest-json-report 生成 JSON 格式报告",
-        "报告自动保存到 reports/ 目录",
-        "报告包含测试摘要、失败详情、覆盖率统计"
+        "技术栈与 docs/prd.md §4.1 一致或偏差已文档化（Python/FastAPI/SQLAlchemy/Redis/PostgreSQL 等）",
+        "核心领域服务采用 BaseService[T] 等统一模式（§4.2）",
+        "容器化与 CI 可复现镜像构建、pytest/质量门禁",
+        "监控与指标（如 Prometheus/Grafana）按部署环境逐步落地"
       ],
-      "priority": 3,
+      "priority": 2,
       "passes": false,
-      "notes": "需要在 pytest.ini 中配置报告插件"
-    },
-    {
-      "id": "US-007",
-      "title": "创建测试文档",
-      "description": "创建测试文档，指导团队成员如何编写和运行测试",
-      "acceptanceCriteria": [
-        "创建 tests/README.md 包含测试策略和最佳实践",
-        "文档说明如何运行不同标记的测试（单元、集成、E2E）",
-        "文档说明如何添加新的测试用例",
-        "文档说明测试标记的使用方法和命名规范",
-        "文档包含常见问题和解决方案"
-      ],
-      "priority": 4,
-      "passes": false,
-      "notes": "文档帮助团队维护和扩展测试套件"
-    },
-    {
-      "id": "US-008",
-      "title": "实现测试分层策略",
-      "description": "为所有测试添加适当的分层标记",
-      "acceptanceCriteria": [
-        "为所有单元测试添加 @pytest.mark.unit 标记",
-        "为所有集成测试添加 @pytest.mark.integration 标记",
-        "为所有端到端测试添加 @pytest.mark.e2e 标记",
-        "为慢速测试添加 @pytest.mark.slow 标记",
-        "创建运行脚本支持按标记筛选测试"
-      ],
-      "priority": 4,
-      "passes": false,
-      "notes": "分层策略便于选择性运行不同类型的测试"
+      "notes": "与根目录 prd.json US-P12 后端侧重一致；客户端见 mobile/prd.json。"
     }
   ]
 }

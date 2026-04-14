@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { apiClient } from '@/utils/api';
@@ -42,7 +42,7 @@ export default function SOSStatusScreen() {
     if (!requestId) {
       Toast.show({
         type: 'error',
-        text1: '错误',
+        text1: '参数错误',
         text2: '缺少 SOS 请求 ID',
         visibilityTime: 3000,
       });
@@ -56,8 +56,8 @@ export default function SOSStatusScreen() {
        * 接口：GET /api/v1/sos/{sos_id}
        * Path 参数：sos_id: string
        */
-      const response = await apiClient.get<any>(`/api/v1/sos/${requestId}`);
-      setSosData(response.data);
+      const data = await apiClient.get<SOSRequestData>(`/api/v1/sos/${requestId}`);
+      setSosData(data);
     } catch (error: any) {
       console.error('获取 SOS 状态失败:', error);
       Toast.show({
@@ -94,7 +94,7 @@ export default function SOSStatusScreen() {
               await apiClient.put(`/api/v1/sos/${requestId}/cancel`);
               Toast.show({
                 type: 'success',
-                text1: '已取消',
+                text1: '取消成功',
                 text2: 'SOS 求助已取消',
                 visibilityTime: 3000,
               });
@@ -177,7 +177,8 @@ export default function SOSStatusScreen() {
     return (
       <Screen backgroundColor={theme.backgroundRoot} statusBarStyle="light">
         <View style={styles.centerContainer}>
-          <ThemedText variant="body">加载中...</ThemedText>
+          <ActivityIndicator size="small" color={theme.primary} />
+          <ThemedText variant="body" style={styles.loadingText}>加载中...</ThemedText>
         </View>
       </Screen>
     );
@@ -186,6 +187,9 @@ export default function SOSStatusScreen() {
   return (
     <Screen backgroundColor={theme.backgroundRoot} statusBarStyle="light">
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <ThemedText variant="small" color={theme.textSecondary} style={styles.pageLead}>
+          已持续监控当前求助进展，页面会自动刷新状态
+        </ThemedText>
         {/* 状态卡片 */}
         <ThemedView level="root" style={styles.statusCard}>
           {statusInfo && (
@@ -276,6 +280,7 @@ export default function SOSStatusScreen() {
             style={[styles.cancelButton, { backgroundColor: theme.error }]}
             onPress={handleCancelSOS}
             disabled={cancelling}
+            activeOpacity={0.88}
           >
             <ThemedText variant="body" color={theme.buttonPrimaryText} style={styles.cancelButtonText}>
               {cancelling ? '取消中...' : '取消 SOS 求助'}
@@ -287,6 +292,7 @@ export default function SOSStatusScreen() {
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: theme.backgroundTertiary }]}
           onPress={() => router.back()}
+          activeOpacity={0.88}
         >
           <FontAwesome6 name="arrow-left" size={16} color={theme.textPrimary} style={styles.backButtonIcon} />
           <ThemedText variant="body" style={styles.backButtonText}>
@@ -311,11 +317,20 @@ const createStyles = (theme: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    marginTop: 10,
+  },
+  pageLead: {
+    textAlign: 'center',
+    marginBottom: 12,
+  },
   statusCard: {
     alignItems: 'center',
     padding: 32,
     borderRadius: 16,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: theme.borderLight,
   },
   iconContainer: {
     width: 96,
@@ -339,6 +354,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: theme.borderLight,
   },
   detailTitle: {
     marginBottom: 16,

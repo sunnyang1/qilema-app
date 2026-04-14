@@ -8,6 +8,10 @@ import os
 from datetime import datetime
 
 import pytest
+from cryptography.fernet import Fernet
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from app.core.database import Base
 from app.models.anomaly import Anomaly, AnomalyTypeEnum, SeverityLevel
 from app.models.device import Device
@@ -25,9 +29,6 @@ from app.schemas.emergency_center import (
     RescueRecordCreate,
 )
 from app.services.emergency_center_service import EmergencyCenterService
-from cryptography.fernet import Fernet
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 # ========== 测试数据库设置 ==========
 

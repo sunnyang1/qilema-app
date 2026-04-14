@@ -6,10 +6,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 from uuid import uuid4
 
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -20,9 +21,14 @@ class EmergencyContact(Base, BaseModelMixin):
 
     __tablename__ = "emergency_contacts"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, index=True
+    __table_args__ = (
+        Index("idx_emergency_contacts_user_id", "user_id"),  # For user contacts lookup
+        Index(
+            "idx_emergency_contacts_user_primary", "user_id", "is_primary"
+        ),  # For finding primary contact
     )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     contact_id: Mapped[str] = mapped_column(
         String(36),
         nullable=False,
@@ -33,12 +39,8 @@ class EmergencyContact(Base, BaseModelMixin):
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.user_id"), nullable=False, index=True
     )
-    name: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="联系人姓名"
-    )
-    phone: Mapped[str] = mapped_column(
-        String(20), nullable=False, comment="联系人电话"
-    )
+    name: Mapped[str] = mapped_column(String(50), nullable=False, comment="联系人姓名")
+    phone: Mapped[str] = mapped_column(String(20), nullable=False, comment="联系人电话")
     relation: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True, comment="与用户关系"
     )

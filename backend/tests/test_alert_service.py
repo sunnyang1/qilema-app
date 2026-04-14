@@ -3,6 +3,10 @@
 from datetime import date, datetime, timedelta
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
 from app.core.database import Base
 from app.models.alert import AlertSetting
 from app.models.checkin import CheckIn
@@ -10,9 +14,6 @@ from app.models.emergency_contact import EmergencyContact
 from app.models.user import User
 from app.schemas.alert import AlertCreate, AlertResolveRequest, AlertSettingCreate
 from app.services.alert_service import AlertService
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 # 创建测试数据库
 engine = create_engine(

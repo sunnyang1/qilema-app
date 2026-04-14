@@ -4,9 +4,10 @@
 使用 dependency-injector 管理应用的所有服务和资源
 """
 
+from dependency_injector import containers, providers
+
 from app.core.database import get_db, get_engine
 from app.core.redis import redis_manager
-from dependency_injector import containers, providers
 
 
 class Container(containers.DeclarativeContainer):

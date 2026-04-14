@@ -7,9 +7,9 @@
 import json
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
-from functools import wraps
 from datetime import datetime
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
 from app.core.cache import cache_result, get_cached, invalidate_cache
 from app.core.cache_config import CacheConfig
@@ -419,6 +419,7 @@ class CacheMixin:
             ... def get_user(self, user_id: str):
             ...     return self.db.query(User).filter(...).first()
         """
+
         def decorator(func: Callable) -> Callable:
             @wraps(func)
             def wrapper(*args, **kwargs) -> Any:
@@ -447,7 +448,9 @@ class CacheMixin:
                     self._set(full_key, result, ttl)
 
                 return result
+
             return wrapper
+
         return decorator
 
 
@@ -502,7 +505,9 @@ class CacheWarmer:
                     "count": len(result) if hasattr(result, "__len__") else 1,
                     "duration": time.time() - start,
                 }
-                logger.info(f"缓存预热完成: {name}, 耗时: {self.results[name]['duration']:.2f}s")
+                logger.info(
+                    f"缓存预热完成: {name}, 耗时: {self.results[name]['duration']:.2f}s"
+                )
             except Exception as e:
                 self.results[name] = {
                     "success": False,

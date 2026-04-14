@@ -2,10 +2,11 @@
 用户设置SQLAlchemy模型
 """
 
-from app.core.database import Base
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship as db_relationship
+
+from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
 class UserSetting(Base, BaseModelMixin):

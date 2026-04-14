@@ -65,6 +65,12 @@ class Settings(BaseSettings):
         "Accept",
         "Origin",
     ]
+    # 浏览器可读自定义响应头（US-004）
+    CORS_EXPOSE_HEADERS: Union[str, List[str]] = [
+        "X-Request-ID",
+        "X-API-Version",
+        "X-Process-Time",
+    ]
 
     # ========== 数据库配置 ==========
     DATABASE_URL: str = "sqlite:///./qilema.db"
@@ -89,6 +95,10 @@ class Settings(BaseSettings):
 
     # ========== 紧急求助配置 ==========
     SOS_CONTACT_NOTIFY_CHANNELS: List[str] = ["push", "sms"]
+
+    # ========== 管理员配置 ==========
+    # 管理员用户ID列表（逗号分隔的环境变量或列表）
+    ADMIN_USER_IDS: Union[str, List[str]] = []
 
     # ========== 服务器配置 ==========
     HOST: str = "0.0.0.0"
@@ -213,6 +223,26 @@ class Settings(BaseSettings):
 
         return origins
 
+    @field_validator("ADMIN_USER_IDS", mode="before")
+    @classmethod
+    def parse_admin_user_ids(cls, v, info) -> List[str]:
+        """解析管理员用户ID配置
+
+        Args:
+            v: ADMIN_USER_IDS值（字符串或列表）
+            info: Pydantic验证信息对象
+
+        Returns:
+            List[str]: 解析后的管理员用户ID列表
+        """
+        if isinstance(v, str):
+            if not v:
+                return []
+            return [uid.strip() for uid in v.split(",") if uid.strip()]
+        elif isinstance(v, list):
+            return v
+        return []
+
     @field_validator("CORS_ALLOW_METHODS", mode="before")
     @classmethod
     def parse_cors_allow_methods(cls, v, info) -> List[str]:
@@ -266,6 +296,16 @@ class Settings(BaseSettings):
                 raise ValueError("生产环境CORS_ALLOW_HEADERS不能使用通配符")
 
         return headers
+
+    @field_validator("CORS_EXPOSE_HEADERS", mode="before")
+    @classmethod
+    def parse_cors_expose_headers(cls, v, info) -> List[str]:
+        """解析 CORS 暴露给前端的响应头列表"""
+        if isinstance(v, str):
+            return [h.strip() for h in v.split(",") if h.strip()]
+        if isinstance(v, list):
+            return [str(h).strip() for h in v]
+        return []
 
     @field_validator("SECRET_KEY")
     @classmethod

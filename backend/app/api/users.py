@@ -2,38 +2,52 @@
 用户API路由
 
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
-from app.api.dependencies import get_user_service
+from fastapi import APIRouter, HTTPException, status
+
+from app.api.dependencies import CurrentUserDep, UserServiceDep
+from app.api.openapi_tags import TAG_USER_SETTINGS
+from app.core.config import settings
 from app.core.exceptions import UserAlreadyExistsException, UserNotFoundException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
 from app.models.user import User
-from app.services.user_service import UserService
-from fastapi import APIRouter, Depends
+from app.schemas.user import UserRegisterRequest, UserUpdate
 
-router = APIRouter()
+router = APIRouter(tags=[TAG_USER_SETTINGS])
+
+
+def _require_self_or_admin(current_user: User, target_user_id: str) -> None:
+    if current_user.user_id == target_user_id:
+        return
+    if current_user.user_id in settings.ADMIN_USER_IDS:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="无权访问该用户",
+    )
 
 
 @router.post("/register", summary="用户注册")
 async def register(
-    user_data: dict,
-    service: UserService = Depends(get_user_service),
+    user_data: UserRegisterRequest,
+    service: UserServiceDep,
 ):
-    """用户注册"""
+    """用户注册（与 /auth/register 使用相同校验模型）"""
     try:
-        user = service.create(user_data)
+        user = service.create(user_data.model_dump())
         return ApiResponseBuilder.success(
             data={"user_id": user.user_id}, message="注册成功"
         )
     except ValueError as e:
         if "已注册" in str(e):
-            raise UserAlreadyExistsException(phone=user_data.get("phone"))
+            raise UserAlreadyExistsException(phone=user_data.phone)
         raise
 
 
 @router.get("/me", summary="获取当前用户信息")
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
+async def get_user_me(current_user: CurrentUserDep):
     """获取当前登录用户信息"""
     return ApiResponseBuilder.success(data=current_user.to_dict())
 
@@ -41,9 +55,11 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 @router.get("/{user_id}", summary="获取用户信息")
 async def get_user(
     user_id: str,
-    service: UserService = Depends(get_user_service),
+    current_user: CurrentUserDep,
+    service: UserServiceDep,
 ):
-    """根据用户ID获取用户信息"""
+    """根据用户ID获取用户信息（本人或管理员）"""
+    _require_self_or_admin(current_user, user_id)
     user = service.get_by_id(user_id)
     if not user:
         raise UserNotFoundException(user_id=user_id)
@@ -54,12 +70,14 @@ async def get_user(
 @router.put("/{user_id}", summary="更新用户信息")
 async def update_user(
     user_id: str,
-    update_data: dict,
-    service: UserService = Depends(get_user_service),
+    update_data: UserUpdate,
+    current_user: CurrentUserDep,
+    service: UserServiceDep,
 ):
-    """更新用户信息"""
+    """更新用户信息（本人或管理员）"""
+    _require_self_or_admin(current_user, user_id)
     try:
-        user = service.update(user_id, update_data)
+        user = service.update(user_id, update_data.model_dump(exclude_unset=True))
         return ApiResponseBuilder.success(data=user.to_dict(), message="更新成功")
     except ValueError as e:
         if "不存在" in str(e):

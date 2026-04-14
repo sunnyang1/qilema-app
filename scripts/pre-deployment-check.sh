@@ -16,9 +16,9 @@ PASSED=0
 check() {
     local description=$1
     local command=$2
-    
+
     echo -n "Checking: $description... "
-    
+
     if eval "$command" >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
         ((PASSED++))

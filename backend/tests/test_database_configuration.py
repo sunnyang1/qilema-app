@@ -3,6 +3,7 @@
 """
 
 import pytest
+
 from app.core.config import Settings
 from app.core.database import get_db, get_db_session, get_engine
 

@@ -1,5 +1,111 @@
 # AGENTS.md - 项目知识库
 
+**说明**：本文件为长期技术约定与示例索引；**执行状态与验收**以根目录 **`prd.json`**（`userStories`、`refactorProgram`、`improvementProgram` 均已 **complete**）及 **`docs/prd.md`** 为准。下文 **「Stage 4」** 等章节是**实现指南**，不代表当前仍有一项名为「阶段 4」的开放工程单（历史进度见 **`progress.txt`** 归档段）。
+
+## Stage 4: 模型层优化指南 (2026-03-18)
+
+### 关联加载策略
+
+根据使用频率选择合适的 `lazy` 模式：
+
+```python
+# 1. 高频/大数据量 - lazy='dynamic'（返回 Query 对象）
+checkins: Mapped[List["CheckIn"]] = relationship(
+    "CheckIn", back_populates="user", lazy="dynamic"
+)
+
+# 2. 中频/小数据量 - lazy='select'（默认）
+emergency_contacts: Mapped[List["EmergencyContact"]] = relationship(
+    "EmergencyContact", back_populates="user"
+)
+
+# 3. 一对一/总是需要 - lazy='joined'（立即加载）
+alert_settings: Mapped[Optional["AlertSetting"]] = relationship(
+    "AlertSetting", back_populates="user", uselist=False, lazy="joined"
+)
+```
+
+### 数据库索引优化
+
+添加复合索引优化查询性能：
+
+```python
+from sqlalchemy import Index
+
+class User(Base):
+    __tablename__ = "users"
+
+    __table_args__ = (
+        Index("idx_users_phone_created", "phone", "created_at"),
+        Index("idx_users_last_sign_in", "last_sign_in"),
+    )
+```
+
+### to_dict() 性能优化
+
+预定义关联关系列表，避免运行时 inspect：
+
+```python
+class User(Base):
+    # 预定义关联关系名称（类级别 frozenset）
+    _RELATIONSHIP_NAMES = frozenset([
+        "emergency_contacts", "checkins", "alerts", ...
+    ])
+
+    def to_dict(self, exclude=None, include=None, include_relations=None):
+        default_exclude = ["password_hash"]
+
+        # 支持选择性包含关联关系
+        relations_to_exclude = set(self._RELATIONSHIP_NAMES)
+        if include_relations:
+            relations_to_exclude -= set(include_relations)
+
+        default_exclude.extend(relations_to_exclude)
+        # ...
+```
+
+### 模型字段验证
+
+使用 `@validates` 装饰器进行字段验证：
+
+```python
+from sqlalchemy.orm import validates
+
+class User(Base):
+    @validates("phone")
+    def validate_phone(self, key: str, phone: str) -> str:
+        if not re.match(r"^1[3-9]\d{9}$", phone):
+            raise ValueError(f"无效的手机号格式: {phone}")
+        return phone
+```
+
+### lazy='dynamic' + cascade 注意事项
+
+SQLAlchemy 2.x 中 `lazy='dynamic'` 与 `cascade='delete-orphan'` 组合有兼容性问题：
+
+```python
+# 解决方案 1: 使用 lazy='select' 替代 dynamic
+# 适合需要级联删除的关系
+checkins: Mapped[List["CheckIn"]] = relationship(
+    "CheckIn", back_populates="user",
+    cascade="all, delete-orphan", lazy="select"  # 使用 select 而非 dynamic
+)
+
+# 解决方案 2: 移除 cascade，改为手动清理
+# 适合大数据量表，保留历史记录
+notifications: Mapped[List["Notification"]] = relationship(
+    "Notification", back_populates="user",
+    lazy="dynamic"  # 不使用 cascade
+)
+
+# 在删除用户前手动清理
+def cleanup_dynamic_relations(self, db_session):
+    for notification in self.notifications:
+        db_session.delete(notification)
+```
+
+---
+
 ## API/SDK 标准升级指南 (2026-03-17)
 
 ### SQLAlchemy 2.x 迁移
@@ -99,7 +205,7 @@ chub get sqlalchemy/orm --lang py
 ### 问题 1: 循环导入和未定义类型
 **文件**: `app/services/notification_service.py`
 
-**问题**: 
+**问题**:
 - 循环导入 (`anomaly_service` → `notification_service` → `anomaly_service`)
 - `NotificationServiceConfig` 未定义
 - `SendNotificationRequest` 未定义

@@ -8,11 +8,12 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import markdown
+from sqlalchemy import and_, desc, or_
+from sqlalchemy.orm import Session
+
 from app.core.cache_config import CacheConfig
 from app.models.knowledge_base import KnowledgeArticle, KnowledgeCategory, KnowledgeTag
 from app.services.base_service import BaseService
-from sqlalchemy import and_, desc, or_
-from sqlalchemy.orm import Session
 
 
 class KnowledgeCategoryService(BaseService[KnowledgeCategory]):

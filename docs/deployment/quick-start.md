@@ -347,7 +347,7 @@ curl https://api.qilema.com/health
    ```bash
    # Restart services
    docker-compose restart backend
-   
+
    # Or restart everything
    docker-compose down
    docker-compose up -d
@@ -357,10 +357,10 @@ curl https://api.qilema.com/health
    ```bash
    # Find backup ID
    ls -lh /backups/pre-deploy-*/
-   
+
    # Rollback
    ./scripts/rollback-production.sh 20240115_143022
-   
+
    # Verify
    curl https://api.qilema.com/health
    ```

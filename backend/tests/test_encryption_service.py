@@ -4,8 +4,9 @@ import os
 from unittest.mock import patch
 
 import pytest
-from app.services.health_record_service import EncryptionService
 from cryptography.fernet import Fernet
+
+from app.services.health_record_service import EncryptionService
 
 
 class TestEncryptionService:

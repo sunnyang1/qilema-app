@@ -185,12 +185,12 @@ from app.core.database import Base
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     phone: Mapped[str] = mapped_column(String(11), unique=True)
     name: Mapped[Optional[str]] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
+
     # 关联关系
     posts: Mapped[List["Post"]] = relationship(back_populates="author")
 ```

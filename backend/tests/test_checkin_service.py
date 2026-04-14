@@ -5,13 +5,14 @@
 from datetime import date, datetime, timedelta
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from app.models.checkin import CheckIn
 from app.models.emergency_contact import EmergencyContact
 from app.models.user import User
 from app.schemas.checkin import CheckInCreate, CheckInDateQuery
 from app.services.checkin_service import CheckInService
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 # 测试数据库
 TEST_DATABASE_URL = "sqlite:///./test.db"

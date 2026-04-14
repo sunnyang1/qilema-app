@@ -8,6 +8,9 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
+
 from app.core.cache import invalidate_cache
 from app.core.cache_config import CacheConfig
 from app.models.emergency_contact import EmergencyContact
@@ -36,8 +39,6 @@ from app.services.notification.notification_stats_service import (
 from app.services.notification.notification_template_service import (
     NotificationTemplateService,
 )
-from sqlalchemy import desc, func
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 

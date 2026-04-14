@@ -5,10 +5,11 @@
 """
 
 import pytest
-from app.core.exceptions import BaseAppException
-from app.core.middleware import setup_middleware
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from app.core.exceptions import BaseAppException
+from app.core.middleware import setup_middleware
 
 
 def test_backend_connection_error_no_mojibake():

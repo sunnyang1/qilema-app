@@ -2,6 +2,7 @@
 认证API路由
 
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
 import asyncio
@@ -9,18 +10,24 @@ import time
 from collections import defaultdict
 from typing import Dict
 
-from app.core.database import get_db
-from app.core.response_builder import ApiResponseBuilder
-from app.core.security import create_access_token, get_current_user, verify_password
-from app.models.user import User
-from app.schemas.user import UserRegisterRequest
-from app.services.user_service import UserService
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 
-router = APIRouter()
+from app.api.dependencies import CurrentUserDep, DbSession, UserServiceDep
+from app.api.openapi_tags import TAG_USER_AUTH
+from app.core.response_builder import ApiResponseBuilder
+from app.core.security import create_access_token, verify_password
+from app.models.user import User
+from app.schemas.user import UserRegisterRequest
+from app.services.user_service import UserService
+
+router = APIRouter(tags=[TAG_USER_AUTH])
 
 # 简单的内存速率限制器（生产环境应使用 Redis）
 _login_attempts: Dict[str, list] = defaultdict(list)
@@ -60,8 +67,8 @@ async def check_rate_limit(
 @router.post("/login", summary="用户登录")
 async def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: DbSession,
 ):
     """
     用户登录（使用 OAuth2 密码流）
@@ -115,17 +122,11 @@ async def login(
     )
 
 
-def get_user_service(db: Session = Depends(get_db)) -> UserService:
-    """获取用户服务实例"""
-    return UserService(db)
-
-
 @router.post("/register", summary="用户注册")
 async def register(
     user_data: UserRegisterRequest,
-    service: UserService = Depends(get_user_service),
+    service: UserServiceDep,
 ):
-    """用户注册"""
     # UserRegisterRequest 已经通过 Pydantic 进行了字段验证
     # 包括：phone 格式、密码长度、name 必填等
 
@@ -143,7 +144,7 @@ async def register(
 
 
 @router.post("/refresh", summary="刷新访问令牌")
-async def refresh_token(current_user: User = Depends(get_current_user)):
+async def refresh_token(current_user: CurrentUserDep):
     """刷新访问令牌"""
     # 创建新的访问令牌
     access_token = create_access_token(data={"sub": current_user.user_id})
@@ -155,7 +156,7 @@ async def refresh_token(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout", summary="用户登出")
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(current_user: CurrentUserDep):
     """用户登出"""
     # 在实际应用中，可以将令牌加入黑名单
     # 这里只是返回成功响应
@@ -163,7 +164,7 @@ async def logout(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/me", summary="获取当前用户信息")
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
+async def get_user_me(current_user: CurrentUserDep):
     """获取当前登录用户信息"""
     # 立即将 User 对象转换为字典，避免 FastAPI 序列化时出现循环引用
     user_dict = {

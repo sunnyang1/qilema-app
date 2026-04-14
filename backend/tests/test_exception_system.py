@@ -8,6 +8,9 @@ import time
 from unittest.mock import patch
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from app.core.exceptions import (
     AlreadyCheckedInException,
     BaseAppException,
@@ -20,8 +23,6 @@ from app.core.exceptions import (
     handle_database_error,
 )
 from app.core.middleware import setup_middleware
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 
 @pytest.fixture

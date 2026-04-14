@@ -10,6 +10,8 @@ pytestmark = pytest.mark.skip(reason="需要重写以适配新的服务架构")
 
 from unittest.mock import Mock, patch
 
+from sqlalchemy.orm import Session
+
 from app.core.notification_simulators import NotificationServiceConfig
 from app.models.notification_model import Notification
 from app.schemas.notification import (
@@ -19,7 +21,6 @@ from app.schemas.notification import (
     SendNotificationRequest,
 )
 from app.services.notification_service import NotificationService
-from sqlalchemy.orm import Session
 
 
 class TestNotificationServiceIntegration:

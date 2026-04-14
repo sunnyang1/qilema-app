@@ -7,17 +7,20 @@ AED设备地图API路由
 
 from typing import List, Optional
 
-from app.core.database import get_db
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
+from fastapi import APIRouter, Query, status
+from pydantic import BaseModel, Field
+
+from app.api.dependencies import AEDServiceDep, CurrentActiveUserDep, DbSession
+from app.api.openapi_tags import TAG_EMERGENCY_RESOURCE
 from app.core.exceptions import NotFoundException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_active_user
-from app.models.user import User
-from app.services.aed_service import AEDService
-from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["AED设备"])
+router = APIRouter(tags=[TAG_EMERGENCY_RESOURCE])
 
 
 # ========== 请求/响应模型 ==========
@@ -74,21 +77,20 @@ class AEDStatistics(BaseModel):
 
 @router.get("/nearby", response_model=dict)
 def get_nearby_aeds(
-    latitude: float = Query(..., ge=-90, le=90, description="纬度"),
-    longitude: float = Query(..., ge=-180, le=180, description="经度"),
-    radius: float = Query(default=5000, ge=100, le=50000, description="搜索半径（米）"),
-    only_active: bool = Query(default=True, description="仅返回可用设备"),
-    limit: int = Query(default=20, ge=1, le=100, description="返回数量限制"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
+    latitude: Annotated[float, Query(ge=-90, le=90, description="纬度")],
+    longitude: Annotated[float, Query(ge=-180, le=180, description="经度")],
+    radius: Annotated[float, Query(ge=100, le=50000, description="搜索半径（米）")] = 5000,
+    only_active: Annotated[bool, Query(description="仅返回可用设备")] = True,
+    limit: Annotated[int, Query(ge=1, le=100, description="返回数量限制")] = 20,
 ):
     """
     获取附近的AED设备
 
     基于当前位置搜索附近可用的AED设备，返回距离和预估到达时间
     """
-    aeds = AEDService.get_nearby_aeds(
-        db,
+    aeds = service.get_nearby_aeds(
         latitude=latitude,
         longitude=longitude,
         radius=radius,
@@ -106,8 +108,8 @@ def get_nearby_aeds(
 @router.post("/navigation")
 def get_aed_navigation(
     request: NavigationRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
 ):
     """
     获取AED导航链接
@@ -115,12 +117,12 @@ def get_aed_navigation(
     返回多个地图平台的导航链接，支持高德、百度、腾讯、苹果、谷歌地图
     """
     # 获取目标AED位置
-    aed = AEDService.get_by_id(db, request.to_aed_id)
+    aed = service.get_by_id(request.to_aed_id)
     if not aed or aed.resource_type != "aed":
         raise NotFoundException("AED设备不存在")
 
     # 生成导航链接
-    nav_urls = AEDService.get_aed_navigation_url(
+    nav_urls = service.get_aed_navigation_url(
         from_lat=request.from_lat,
         from_lon=request.from_lon,
         to_lat=aed.latitude,
@@ -147,18 +149,17 @@ def get_aed_navigation(
 
 @router.get("/nearest")
 def get_nearest_aed(
-    latitude: float = Query(..., ge=-90, le=90, description="纬度"),
-    longitude: float = Query(..., ge=-180, le=180, description="经度"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
+    latitude: Annotated[float, Query(ge=-90, le=90, description="纬度")],
+    longitude: Annotated[float, Query(ge=-180, le=180, description="经度")],
 ):
     """
     获取最近的AED设备
 
     快速找到距离当前位置最近的可用AED设备
     """
-    aeds = AEDService.get_nearby_aeds(
-        db,
+    aeds = service.get_nearby_aeds(
         latitude=latitude,
         longitude=longitude,
         radius=10000,  # 搜索10公里
@@ -178,7 +179,7 @@ def get_nearest_aed(
     nearest = aeds[0]
 
     # 生成导航链接
-    nav_urls = AEDService.get_aed_navigation_url(
+    nav_urls = service.get_aed_navigation_url(
         from_lat=latitude,
         from_lon=longitude,
         to_lat=nearest["latitude"],
@@ -199,15 +200,15 @@ def get_nearest_aed(
 @router.get("/{aed_id}")
 def get_aed_detail(
     aed_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
 ):
     """
     获取AED设备详情
 
     返回AED设备的完整信息，包括位置、状态、负责人等
     """
-    aed = AEDService.get_by_id(db, aed_id)
+    aed = service.get_by_id(aed_id)
     if not aed or aed.resource_type != "aed":
         raise NotFoundException("AED设备不存在")
 
@@ -218,8 +219,8 @@ def get_aed_detail(
 def update_aed_status(
     aed_id: int,
     request: AEDStatusUpdateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
 ):
     """
     更新AED设备状态
@@ -234,8 +235,8 @@ def update_aed_status(
     if request.notes:
         inspection_data["notes"] = request.notes
 
-    updated = AEDService.update_aed_status(
-        db, aed_id, request.status, inspection_data if inspection_data else None
+    updated = service.update_aed_status(
+        aed_id, request.status, inspection_data if inspection_data else None
     )
 
     if not updated:
@@ -247,8 +248,8 @@ def update_aed_status(
 @router.post("/import", status_code=status.HTTP_201_CREATED)
 def import_aeds_batch(
     import_data: List[dict],
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
 ):
     """
     批量导入AED设备
@@ -269,40 +270,38 @@ def import_aeds_batch(
     - battery_expiry: 电池过期日期
     - pad_expiry/electrode_expiry: 电极片过期日期
     """
-    result = AEDService.import_aeds_batch(
-        db, import_data, operator_id=current_user.user_id
-    )
+    result = service.import_aeds_batch(import_data, operator_id=current_user.user_id)
 
     return ApiResponseBuilder.success(data=result, message="批量导入AED设备成功")
 
 
 @router.get("/statistics/overview")
 def get_aed_statistics(
-    city: Optional[str] = Query(None, description="城市名称（不传则统计全部）"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
+    city: Annotated[Optional[str], Query(description="城市名称（不传则统计全部）")] = None,
 ):
     """
     获取AED统计信息
 
     返回AED设备的统计数据，包括总数、状态分布、城市分布、可用率等
     """
-    stats = AEDService.get_aed_statistics(db, city=city)
+    stats = service.get_aed_statistics(city=city)
     return ApiResponseBuilder.success(data=stats, message="获取AED统计信息成功")
 
 
 @router.get("/maintenance/expiring")
 def get_expiring_aeds(
-    days: int = Query(default=30, ge=1, le=365, description="提前多少天预警"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: AEDServiceDep,
+    days: Annotated[int, Query(ge=1, le=365, description="提前多少天预警")] = 30,
 ):
     """
     获取即将过期的AED设备
 
     查询电池或电极片即将过期的AED设备，用于维护提醒
     """
-    aeds = AEDService.get_expiring_aeds(db, days=days)
+    aeds = service.get_expiring_aeds(days=days)
 
     return ApiResponseBuilder.success(
         data={"count": len(aeds), "warning_days": days, "aeds": aeds},
@@ -312,13 +311,13 @@ def get_expiring_aeds(
 
 @router.get("/map/bounds")
 def get_aeds_in_bounds(
-    min_lat: float = Query(..., ge=-90, le=90, description="最小纬度"),
-    max_lat: float = Query(..., ge=-90, le=90, description="最大纬度"),
-    min_lon: float = Query(..., ge=-180, le=180, description="最小经度"),
-    max_lon: float = Query(..., ge=-180, le=180, description="最大经度"),
-    only_active: bool = Query(default=True, description="仅返回可用设备"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    db: DbSession,
+    min_lat: Annotated[float, Query(ge=-90, le=90, description="最小纬度")],
+    max_lat: Annotated[float, Query(ge=-90, le=90, description="最大纬度")],
+    min_lon: Annotated[float, Query(ge=-180, le=180, description="最小经度")],
+    max_lon: Annotated[float, Query(ge=-180, le=180, description="最大经度")],
+    only_active: Annotated[bool, Query(description="仅返回可用设备")] = True,
 ):
     """
     获取地图边界内的AED设备
@@ -337,8 +336,9 @@ def get_aeds_in_bounds(
     )
 
     if only_active:
-        from app.models.emergency_resource_model import AEDStatus
         from sqlalchemy import or_
+
+        from app.models.emergency_resource_model import AEDStatus
 
         query = query.filter(
             or_(

@@ -9,10 +9,11 @@ import math
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from app.models.emergency_resource_model import AEDStatus, EmergencyResource
-from app.services.base_service import BaseService
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
+
+from app.models.emergency_resource_model import AEDStatus, EmergencyResource
+from app.services.base_service import BaseService
 
 
 class AEDService(BaseService[EmergencyResource]):

@@ -3,20 +3,27 @@
 
 提供通知发送、查询、管理等RESTful接口
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
 from datetime import datetime
 from typing import Optional
 
-from app.api.dependencies import get_notification_service
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
+from fastapi import APIRouter, status
+
+from app.api.dependencies import CurrentAdminDep, CurrentUserDep, NotificationServiceDep
+from app.api.openapi_tags import TAG_NOTIFICATION
 from app.core.exceptions import (
     ForbiddenException,
     NotFoundException,
     ValidationException,
 )
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
-from app.models.user import User
 from app.schemas.notification import (
     BatchSendNotificationRequest,
     MarkAsReadRequest,
@@ -30,10 +37,8 @@ from app.schemas.notification import (
     NotificationTemplateResponse,
     SendNotificationRequest,
 )
-from app.services.notification import NotificationService
-from fastapi import APIRouter, Depends, status
 
-router = APIRouter(tags=["消息通知"])
+router = APIRouter(tags=[TAG_NOTIFICATION])
 
 
 # ========== 通知发送 ==========
@@ -42,8 +47,8 @@ router = APIRouter(tags=["消息通知"])
 @router.post("/send")
 def send_notification(
     request: SendNotificationRequest,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     发送通知
@@ -66,8 +71,8 @@ def send_notification(
 @router.post("/batch-send")
 def batch_send_notification(
     request: BatchSendNotificationRequest,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     批量发送通知
@@ -86,8 +91,8 @@ def batch_send_notification(
 @router.get("/list")
 def get_notifications(
     query_params: NotificationQuery,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     查询通知记录
@@ -107,8 +112,8 @@ def get_notifications(
 @router.post("/mark-as-read")
 def mark_as_read(
     request: MarkAsReadRequest,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     标记通知为已读
@@ -136,8 +141,8 @@ def mark_as_read(
 
 @router.get("/unread-count")
 def get_unread_count(
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取未读通知数量
@@ -152,8 +157,8 @@ def get_unread_count(
 def get_notification_statistics(
     start_date: datetime,
     end_date: datetime,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取通知统计数据
@@ -166,9 +171,9 @@ def get_notification_statistics(
 
 @router.get("/daily-statistics")
 def get_daily_statistics(
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
     days: int = 7,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
 ):
     """
     获取每日通知统计
@@ -181,10 +186,10 @@ def get_daily_statistics(
 
 @router.get("/channel-statistics")
 def get_channel_statistics(
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
 ):
     """
     获取各渠道通知统计
@@ -203,8 +208,8 @@ def get_channel_statistics(
 @router.post("/preferences", status_code=status.HTTP_201_CREATED)
 def create_preference(
     preference_data: NotificationPreferenceCreate,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     创建通知偏好设置
@@ -221,8 +226,8 @@ def create_preference(
 
 @router.get("/preferences")
 def get_preference(
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取通知偏好设置
@@ -241,8 +246,8 @@ def get_preference(
 @router.put("/preferences")
 def update_preference(
     update_data: NotificationPreferenceUpdate,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     更新通知偏好设置
@@ -262,8 +267,8 @@ def update_preference(
 @router.post("/templates", status_code=status.HTTP_201_CREATED)
 def create_template(
     template_data: NotificationTemplateCreate,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     创建通知模板
@@ -279,8 +284,8 @@ def create_template(
 @router.get("/templates/{template_code}")
 def get_template(
     template_code: str,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取通知模板
@@ -296,11 +301,11 @@ def get_template(
 
 @router.get("/templates")
 def list_templates(
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
     notification_type: Optional[str] = None,
     channel: Optional[str] = None,
     is_active: Optional[bool] = None,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
 ):
     """
     列出通知模板
@@ -315,8 +320,8 @@ def list_templates(
 def render_template(
     template_code: str,
     data: dict,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     渲染通知模板
@@ -336,8 +341,8 @@ def render_template(
 @router.get("/circuit-breaker/{channel}")
 def get_circuit_breaker_state(
     channel: str,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取熔断器状态
@@ -350,9 +355,9 @@ def get_circuit_breaker_state(
 
 @router.post("/circuit-breaker/reset")
 def reset_circuit_breaker(
+    service: NotificationServiceDep,
+    current_user: CurrentUserDep,
     channel: Optional[str] = None,
-    service: NotificationService = Depends(get_notification_service),
-    current_user: User = Depends(get_current_user),
 ):
     """
     重置熔断器
@@ -369,18 +374,17 @@ def reset_circuit_breaker(
 
 @router.get("/admin/statistics")
 def get_admin_statistics(
+    admin: CurrentAdminDep,  # 添加管理员权限检查
+    service: NotificationServiceDep,
     start_date: datetime,
     end_date: datetime,
     user_id: Optional[str] = None,
-    service: NotificationService = Depends(get_notification_service),
 ):
     """
     获取全局通知统计数据
 
     管理员接口,统计全局或指定用户的通知数据
     """
-    # 验证管理员权限
-    # 这里应该添加管理员权限验证逻辑
     if user_id:
         statistics = service.get_statistics(user_id, start_date, end_date)
     else:

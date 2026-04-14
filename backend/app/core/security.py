@@ -6,12 +6,13 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import bcrypt
-from app.core.config import settings
-from app.core.database import get_db
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.core.database import get_db
 
 # OAuth2密码流
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
@@ -69,6 +70,27 @@ def decode_access_token(token: str) -> Optional[dict]:
         return None
 
 
+def _credentials_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无法验证凭据",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def _user_from_access_token(token: str, db: Session) -> Optional[Any]:
+    """由 Bearer token 解析并加载 User；token 无效或用户不存在时返回 None。"""
+    from app.models.user import User
+
+    payload = decode_access_token(token)
+    if payload is None:
+        return None
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+    return db.query(User).filter(User.user_id == user_id).first()
+
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> Any:
@@ -81,29 +103,9 @@ async def get_current_user(
     Raises:
         HTTPException: 当 token 无效或用户不存在时
     """
-    # 延迟导入以避免循环依赖
-    from app.models.user import User
-
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="无法验证凭据",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    payload = decode_access_token(token)
-    if payload is None:
-        raise credentials_exception
-
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
-
-    # 从数据库获取用户
-    user = db.query(User).filter(User.user_id == user_id).first()
+    user = _user_from_access_token(token, db)
     if user is None:
-        raise credentials_exception
-
-    # 返回 User ORM 对象
+        raise _credentials_exception()
     return user
 
 
@@ -119,30 +121,32 @@ async def get_current_active_user(
     Raises:
         HTTPException: 当 token 无效、用户不存在或用户未激活时
     """
-    # 延迟导入以避免循环依赖
-    from app.models.user import User
-
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="无法验证凭据",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    payload = decode_access_token(token)
-    if payload is None:
-        raise credentials_exception
-
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
-
-    # 从数据库获取用户
-    user = db.query(User).filter(User.user_id == user_id).first()
+    user = _user_from_access_token(token, db)
     if user is None:
-        raise credentials_exception
-
-    # 检查用户是否激活
+        raise _credentials_exception()
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="用户账号未激活")
+    return user
 
+
+async def get_current_admin(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> Any:
+    """
+    获取当前管理员用户
+
+    Returns:
+        Any: 用户 ORM 对象（管理员权限）
+
+    Raises:
+        HTTPException: 当 token 无效、用户不存在或无管理员权限时
+    """
+    user = _user_from_access_token(token, db)
+    if user is None:
+        raise _credentials_exception()
+    if user.user_id not in settings.ADMIN_USER_IDS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限",
+        )
     return user

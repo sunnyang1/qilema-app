@@ -1,14 +1,14 @@
 # 批次 3: API 层更新
 
-**复杂度**: 中等  
-**任务粒度**: 2-5分钟/任务  
+**复杂度**: 中等
+**任务粒度**: 2-5分钟/任务
 **总预估**: 30分钟
 
 ---
 
 ## 任务 US-3-1: 更新用户相关路由
 
-**文件**: `backend/app/api/users.py`  
+**文件**: `backend/app/api/users.py`
 **时间**: 5分钟
 
 ### 当前代码
@@ -35,35 +35,35 @@ async def list_users(
 
 ## 任务 US-3-2: 更新签到相关路由
 
-**文件**: `backend/app/api/checkins.py`  
+**文件**: `backend/app/api/checkins.py`
 **时间**: 5分钟
 
 ---
 
 ## 任务 US-3-3: 更新 SOS 相关路由
 
-**文件**: `backend/app/api/sos_requests.py`  
+**文件**: `backend/app/api/sos_requests.py`
 **时间**: 5分钟
 
 ---
 
 ## 任务 US-3-4: 更新健康记录路由
 
-**文件**: `backend/app/api/health_records.py`  
+**文件**: `backend/app/api/health_records.py`
 **时间**: 5分钟
 
 ---
 
 ## 任务 US-3-5: 更新设备相关路由
 
-**文件**: `backend/app/api/devices.py`  
+**文件**: `backend/app/api/devices.py`
 **时间**: 5分钟
 
 ---
 
 ## 任务 US-3-6: 更新其他路由
 
-**文件**: 剩余 api 文件  
+**文件**: 剩余 api 文件
 **时间**: 5分钟
 
 ---

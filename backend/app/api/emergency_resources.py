@@ -3,13 +3,15 @@
 
 提供周边搜索、导航、资源管理等RESTful接口
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
-from app.api.dependencies import get_emergency_resource_service
+from fastapi import APIRouter, status
+
+from app.api.dependencies import CurrentUserDep, EmergencyResourceServiceDep
+from app.api.openapi_tags import TAG_EMERGENCY_RESOURCE
 from app.core.exceptions import NotFoundException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
-from app.models.user import User
 from app.schemas.emergency_resource import (
     NavigationRequest,
     NearbySearchRequest,
@@ -22,10 +24,8 @@ from app.schemas.emergency_resource import (
     ResourceResponse,
     ResourceUpdate,
 )
-from app.services.emergency_resource_service import EmergencyResourceService
-from fastapi import APIRouter, Depends, status
 
-router = APIRouter(tags=["急救资源"])
+router = APIRouter(tags=[TAG_EMERGENCY_RESOURCE])
 
 
 # ========== 资源管理 ==========
@@ -34,10 +34,8 @@ router = APIRouter(tags=["急救资源"])
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_resource(
     resource_data: ResourceCreate,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     创建急救资源
@@ -51,9 +49,7 @@ def create_resource(
 @router.get("/{resource_id}")
 def get_resource(
     resource_id: int,
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     获取急救资源详情
@@ -69,9 +65,7 @@ def get_resource(
 @router.get("")
 def query_resources(
     query_params: ResourceQuery,
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     查询急救资源
@@ -88,10 +82,8 @@ def query_resources(
 def update_resource(
     resource_id: int,
     update_data: ResourceUpdate,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     更新急救资源
@@ -107,10 +99,8 @@ def update_resource(
 @router.delete("/{resource_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_resource(
     resource_id: int,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     删除急救资源
@@ -129,10 +119,8 @@ def delete_resource(
 @router.post("/nearby/search")
 def search_nearby(
     request: NearbySearchRequest,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     搜索周边急救资源
@@ -154,10 +142,8 @@ def search_nearby(
 @router.post("/navigation")
 def get_navigation_route(
     request: NavigationRequest,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     获取导航路线
@@ -175,10 +161,8 @@ def get_navigation_route(
 def create_facility(
     resource_id: int,
     facility_data: ResourceFacilityCreate,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     创建资源设施
@@ -195,9 +179,7 @@ def create_facility(
 @router.get("/{resource_id}/facilities")
 def get_resource_facilities(
     resource_id: int,
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     获取资源设施列表
@@ -217,10 +199,8 @@ def get_resource_facilities(
 def create_department(
     resource_id: int,
     department_data: ResourceDepartmentCreate,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     创建资源科室
@@ -237,9 +217,7 @@ def create_department(
 @router.get("/{resource_id}/departments")
 def get_resource_departments(
     resource_id: int,
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     获取资源科室列表
@@ -257,9 +235,7 @@ def get_resource_departments(
 
 @router.get("/statistics/overview")
 def get_resource_statistics(
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     获取资源统计信息
@@ -272,10 +248,8 @@ def get_resource_statistics(
 
 @router.get("/statistics/popular")
 def get_popular_resources(
+    resource_service: EmergencyResourceServiceDep,
     limit: int = 10,
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
 ):
     """
     获取热门资源
@@ -296,11 +270,9 @@ def quick_navigate_to_resource(
     resource_id: int,
     current_lat: float,
     current_lon: float,
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
     route_type: str = "driving",
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
 ):
     """
     一键导航到资源
@@ -336,10 +308,8 @@ def quick_navigate_to_resource(
 @router.post("/{resource_id}/verify")
 def verify_resource(
     resource_id: int,
-    current_user: User = Depends(get_current_user),
-    resource_service: EmergencyResourceService = Depends(
-        get_emergency_resource_service
-    ),
+    current_user: CurrentUserDep,
+    resource_service: EmergencyResourceServiceDep,
 ):
     """
     验证资源信息

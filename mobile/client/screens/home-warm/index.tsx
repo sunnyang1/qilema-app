@@ -9,12 +9,11 @@ import {
   StyleSheet,
   ScrollView,
   Animated,
-  Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -27,6 +26,7 @@ import {
 } from '@/constants/theme-warm';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkInService } from '@/services/checkin';
+import Toast from 'react-native-toast-message';
 
 const styles = StyleSheet.create({
   container: {
@@ -69,6 +69,7 @@ const styles = StyleSheet.create({
 
   iconButton: {
     padding: Spacing.sm,
+    borderRadius: BorderRadius.full,
   },
 
   avatar: {
@@ -170,6 +171,10 @@ const styles = StyleSheet.create({
   signInCard: {
     backgroundColor: Colors.primary,
     minWidth: '100%',
+    borderRadius: BorderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
   },
 
   signInCardChecked: {
@@ -334,10 +339,20 @@ export default function WarmHomePage() {
       await checkInService.checkIn();
       setIsCheckedIn(true);
       await loadCheckInStatus();
-      alert('签到成功！');
+      Toast.show({
+        type: 'success',
+        text1: '签到成功',
+        text2: '已记录今日签到，继续保持',
+        visibilityTime: 2200,
+      });
     } catch (error) {
       console.error('签到失败:', error);
-      alert('签到失败，请重试');
+      Toast.show({
+        type: 'error',
+        text1: '签到失败',
+        text2: '请稍后重试',
+        visibilityTime: 2600,
+      });
     } finally {
       setCheckInLoading(false);
     }
@@ -356,6 +371,15 @@ export default function WarmHomePage() {
     router.push('/health');
   };
 
+  const handlePressNotifications = () => {
+    Toast.show({
+      type: 'info',
+      text1: '通知中心开发中',
+      text2: '后续版本将支持消息提醒',
+      visibilityTime: 2200,
+    });
+  };
+
   return (
     <Screen backgroundColor={Colors.backgroundRoot}>
       <ScrollView
@@ -371,9 +395,16 @@ export default function WarmHomePage() {
             </ThemedText>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.iconButton}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              activeOpacity={0.8}
+              onPress={handlePressNotifications}
+              accessibilityRole="button"
+              accessibilityLabel="消息通知"
+              accessibilityHint="点击查看通知状态"
+            >
               <FontAwesome6 name="bell" size={24} color={Colors.textSecondary} />
-            </View>
+            </TouchableOpacity>
             <View style={styles.avatar}>
               <FontAwesome6 name="user" size={20} color={Colors.primaryDark} />
             </View>
@@ -434,13 +465,19 @@ export default function WarmHomePage() {
           <View style={styles.gridContainer}>
             {/* 签到（突出显示） */}
             <View style={styles.gridItem}>
-              <View
+              <TouchableOpacity
                 style={[
                   styles.signInCard,
                   isCheckedIn && styles.signInCardChecked,
                   checkInLoading && styles.signInCardDisabled,
                   Shadows.glow,
                 ]}
+                onPress={handleCheckIn}
+                disabled={isCheckedIn || checkInLoading}
+                activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel={isCheckedIn ? '今日已签到' : '每日签到'}
+                accessibilityHint="点击完成今日签到"
               >
                 {checkInLoading ? (
                   <FontAwesome6 name="spinner" size={40} color={Colors.backgroundDefault} style={styles.signInIcon} spin />
@@ -452,55 +489,67 @@ export default function WarmHomePage() {
                 <ThemedText variant="smallMedium" color={Colors.backgroundDefault} style={styles.signInLabel}>
                   {checkInLoading ? '签到中...' : isCheckedIn ? '已签到' : '每日签到'}
                 </ThemedText>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* 紧急求助 */}
             <View style={styles.gridItem}>
-              <View
+              <TouchableOpacity
                 style={[
                   styles.gridItem,
                   { backgroundColor: Colors.error },
                   Shadows.medium,
                 ]}
+                onPress={handlePressSOS}
+                activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel="进入 SOS 求助"
               >
                 <FontAwesome6 name="phone-volume" size={36} color={Colors.backgroundDefault} style={styles.gridIcon} />
                 <ThemedText variant="smallMedium" color={Colors.backgroundDefault} style={styles.gridLabel}>
                   SOS求助
                 </ThemedText>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* 联系人 */}
             <View style={styles.gridItem}>
-              <View
+              <TouchableOpacity
                 style={[
                   styles.gridItem,
                   { backgroundColor: Colors.accent },
                   Shadows.medium,
                 ]}
+                onPress={handlePressContacts}
+                activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel="进入紧急联系人"
               >
                 <FontAwesome6 name="address-book" size={36} color={Colors.backgroundDefault} style={styles.gridIcon} />
                 <ThemedText variant="smallMedium" color={Colors.backgroundDefault} style={styles.gridLabel}>
                   紧急联系人
                 </ThemedText>
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* 健康档案 */}
             <View style={styles.gridItem}>
-              <View
+              <TouchableOpacity
                 style={[
                   styles.gridItem,
                   { backgroundColor: Colors.info },
                   Shadows.medium,
                 ]}
+                onPress={handlePressHealth}
+                activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel="进入健康档案"
               >
                 <FontAwesome6 name="notes-medical" size={36} color={Colors.backgroundDefault} style={styles.gridIcon} />
                 <ThemedText variant="smallMedium" color={Colors.backgroundDefault} style={styles.gridLabel}>
                   健康档案
                 </ThemedText>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -531,6 +580,7 @@ export default function WarmHomePage() {
           </View>
         </View>
       </ScrollView>
+      <Toast />
     </Screen>
   );
 }

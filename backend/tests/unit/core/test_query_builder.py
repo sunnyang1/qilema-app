@@ -5,9 +5,10 @@ QueryBuilder 单元测试
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from app.core.query_builder import PaginationResult, QueryBuilder, paginate
 from sqlalchemy import Column, Integer, String, desc
 from sqlalchemy.orm import Query
+
+from app.core.query_builder import PaginationResult, QueryBuilder, paginate
 
 
 class MockModel:

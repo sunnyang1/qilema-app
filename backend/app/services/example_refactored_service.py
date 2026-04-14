@@ -5,15 +5,16 @@
 - CacheMixin: 统一的缓存管理
 - QueryBuilder: 统一的查询构建
 
-可以作为其他服务重构的参考模板
+可以作为其他服务重构的参考模板。非 DI 默认实现；归属见 docs/PHASE2_DOMAIN_BOUNDARIES.md（R-W4）。
 """
 
 from typing import List, Optional
 
+from sqlalchemy.orm import Session
+
 from app.core.cache_mixin import CacheMixin
 from app.core.query_builder import QueryBuilder, paginate
 from app.models.user import User
-from sqlalchemy.orm import Session
 
 
 class RefactoredUserService(CacheMixin):

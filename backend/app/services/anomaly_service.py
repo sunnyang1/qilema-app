@@ -9,6 +9,9 @@ import statistics
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
+from sqlalchemy import desc, or_
+from sqlalchemy.orm import Session
+
 from app.models.anomaly import (
     Anomaly,
     AnomalyStatus,
@@ -30,8 +33,6 @@ from app.schemas.anomaly import (
 )
 from app.services.notification_service import NotificationService
 from app.services.sos_service import SOSService
-from sqlalchemy import desc, or_
-from sqlalchemy.orm import Session
 
 
 class AnomalyService:

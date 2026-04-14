@@ -55,10 +55,10 @@ This guide explains how to set up all required secrets for the deployment pipeli
   ```bash
   # Generate SSH key
   ssh-keygen -t rsa -b 4096 -f ~/.ssh/qilema_staging
-  
+
   # Display private key (to copy into GitHub)
   cat ~/.ssh/qilema_staging
-  
+
   # Copy public key to server
   ssh-copy-id -i ~/.ssh/qilema_staging.pub deploy@staging.example.com
   ```

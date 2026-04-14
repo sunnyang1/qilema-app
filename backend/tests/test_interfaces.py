@@ -6,6 +6,7 @@ from abc import ABC
 from unittest.mock import Mock
 
 import pytest
+
 from app.core.interfaces import (
     IAlertService,
     ICheckInService,

@@ -4,11 +4,13 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
+from app.models.base_mixin import BaseModelMixin
 
 from ..core.database import Base
 
@@ -19,6 +21,7 @@ if TYPE_CHECKING:
 
 class SOSTypeEnum(str, enum.Enum):
     """SOS类型枚举"""
+
     MANUAL = "manual"  # 手动触发
     AUTO = "auto"  # 自动触发
     DEVICE = "device"  # 设备触发
@@ -26,6 +29,7 @@ class SOSTypeEnum(str, enum.Enum):
 
 class SOSStatusEnum(str, enum.Enum):
     """SOS状态枚举"""
+
     PENDING = "pending"  # 待救援
     RESCUING = "rescuing"  # 救援中
     RESOLVED = "resolved"  # 已解除
@@ -36,6 +40,13 @@ class SOSRequest(Base, BaseModelMixin):
     """SOS求助请求模型 (SQLAlchemy 2.x)"""
 
     __tablename__ = "sos_requests"
+
+    __table_args__ = (
+        Index(
+            "idx_sos_user_triggered", "user_id", "trigger_time"
+        ),  # For user SOS history
+        Index("idx_sos_status", "status"),  # For filtering by status
+    )
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True, comment="求助ID"
@@ -70,9 +81,7 @@ class SOSRequest(Base, BaseModelMixin):
     )
 
     # 120急救对接
-    call_120: Mapped[bool] = mapped_column(
-        Boolean, default=False, comment="是否拨打120"
-    )
+    call_120: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否拨打120")
     ambulance_contact: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True, comment="救护车联系方式"
     )
@@ -105,12 +114,16 @@ class SOSRequest(Base, BaseModelMixin):
         comment="更新时间",
     )
 
-    # 关联关系
-    user: Mapped["User"] = relationship("User", back_populates="sos_requests")
+    # 关联关系 - SOSRequest.user is frequently accessed, use lazy='joined' for immediate loading
+    user: Mapped["User"] = relationship(
+        "User", back_populates="sos_requests", lazy="joined"
+    )
     location_histories: Mapped[List["SOSLocationHistory"]] = relationship(
         "SOSLocationHistory", back_populates="sos_request", cascade="all, delete-orphan"
     )
-    anomalies: Mapped[List["Anomaly"]] = relationship("Anomaly", back_populates="sos_request")
+    anomalies: Mapped[List["Anomaly"]] = relationship(
+        "Anomaly", back_populates="sos_request"
+    )
 
 
 class SOSLocationHistory(Base, BaseModelMixin):

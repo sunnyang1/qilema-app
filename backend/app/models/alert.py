@@ -5,10 +5,11 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from app.core.database import Base
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -19,12 +20,8 @@ class Alert(Base, BaseModelMixin):
 
     __tablename__ = "alerts"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, index=True
-    )
-    alert_id: Mapped[str] = mapped_column(
-        String(36), unique=True, index=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    alert_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.user_id"), nullable=False, index=True
     )
@@ -85,9 +82,7 @@ class AlertSetting(Base, BaseModelMixin):
 
     __tablename__ = "alert_settings"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, index=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.user_id"), nullable=False, index=True, unique=True
     )
@@ -136,9 +131,7 @@ class AlertSetting(Base, BaseModelMixin):
     emergency_contact_notify: Mapped[bool] = mapped_column(
         Boolean, default=True, comment="通知紧急联系人"
     )
-    auto_resolve: Mapped[bool] = mapped_column(
-        Boolean, default=True, comment="自动解决"
-    )
+    auto_resolve: Mapped[bool] = mapped_column(Boolean, default=True, comment="自动解决")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

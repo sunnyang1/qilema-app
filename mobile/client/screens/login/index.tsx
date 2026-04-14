@@ -7,13 +7,11 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import Toast from 'react-native-toast-message';
@@ -28,9 +26,14 @@ const styles = (theme: any) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 48,
   },
+  formCard: {
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 28,
   },
   logo: {
     fontSize: 64,
@@ -45,6 +48,11 @@ const styles = (theme: any) => StyleSheet.create({
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  helperText: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 8,
   },
   form: {
     width: '100%',
@@ -61,6 +69,7 @@ const styles = (theme: any) => StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
+    borderWidth: 1,
   },
   button: {
     height: 48,
@@ -97,8 +106,9 @@ export default function LoginPage() {
     if (!username || !password) {
       Toast.show({
         type: 'error',
-        text1: '提示',
+        text1: '登录失败',
         text2: '请输入用户名和密码',
+        visibilityTime: 2600,
       });
       return;
     }
@@ -107,8 +117,9 @@ export default function LoginPage() {
       await login(username, password);
       Toast.show({
         type: 'success',
-        text1: '成功',
-        text2: '登录成功',
+        text1: '登录成功',
+        text2: '欢迎回来',
+        visibilityTime: 2200,
       });
       router.replace('/(tabs)');
     } catch (error: any) {
@@ -116,6 +127,7 @@ export default function LoginPage() {
         type: 'error',
         text1: '登录失败',
         text2: error.message || '用户名或密码错误',
+        visibilityTime: 2600,
       });
     }
   };
@@ -133,13 +145,22 @@ export default function LoginPage() {
             <ThemedText variant="h2" color={theme.textPrimary} style={styles(theme).title}>
               起了吗
             </ThemedText>
-            <ThemedText variant="body" color={theme.textSecondary}>
+            <ThemedText variant="body" color={theme.textSecondary} style={styles(theme).subtitle}>
               独居人群紧急医疗服务
+            </ThemedText>
+            <ThemedText variant="small" color={theme.textMuted} style={styles(theme).helperText}>
+              登录后可查看健康与 SOS 实时状态
             </ThemedText>
           </View>
 
           {/* Form */}
-          <View style={styles(theme).form}>
+          <View
+            style={[
+              styles(theme).form,
+              styles(theme).formCard,
+              { backgroundColor: theme.backgroundDefault, borderColor: theme.borderLight },
+            ]}
+          >
             <View style={styles(theme).inputContainer}>
               <ThemedText variant="smallMedium" color={theme.textPrimary} style={styles(theme).inputLabel}>
                 用户名
@@ -150,6 +171,7 @@ export default function LoginPage() {
                   {
                     backgroundColor: theme.backgroundTertiary,
                     color: theme.textPrimary,
+                    borderColor: theme.border,
                   },
                 ]}
                 placeholder="请输入用户名"
@@ -171,6 +193,7 @@ export default function LoginPage() {
                   {
                     backgroundColor: theme.backgroundTertiary,
                     color: theme.textPrimary,
+                    borderColor: theme.border,
                   },
                 ]}
                 placeholder="请输入密码"
@@ -187,14 +210,19 @@ export default function LoginPage() {
               style={[styles(theme).button, { backgroundColor: theme.primary }]}
               onPress={handleLogin}
               disabled={isLoading}
+              activeOpacity={0.88}
             >
-              <ThemedText
-                variant="bodyMedium"
-                color={theme.buttonPrimaryText}
-                style={styles(theme).buttonText}
-              >
-                {isLoading ? '登录中...' : '登录'}
-              </ThemedText>
+              {isLoading ? (
+                <ActivityIndicator color={theme.buttonPrimaryText} />
+              ) : (
+                <ThemedText
+                  variant="bodyMedium"
+                  color={theme.buttonPrimaryText}
+                  style={styles(theme).buttonText}
+                >
+                  登录
+                </ThemedText>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -203,7 +231,7 @@ export default function LoginPage() {
             <ThemedText variant="small" color={theme.textSecondary}>
               还没有账号？{' '}
             </ThemedText>
-            <TouchableOpacity onPress={() => router.push('/register')}>
+            <TouchableOpacity onPress={() => router.push('/register')} activeOpacity={0.75}>
               <ThemedText variant="smallMedium" color={theme.primary}>
                 立即注册
               </ThemedText>

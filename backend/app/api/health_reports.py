@@ -3,22 +3,22 @@
 
 提供健康趋势分析、综合报告、异常检测等RESTful接口
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
 from datetime import date
 from typing import Optional
 
-from app.core.database import get_db
+from fastapi import APIRouter, Query
+from pydantic import BaseModel, Field
+
+from app.api.dependencies import CurrentActiveUserDep, HealthReportServiceDep
+from app.api.openapi_tags import TAG_HEALTH_RECORD
 from app.core.exceptions import ValidationException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_active_user
-from app.models.user import User
-from app.services.health_report_service import HealthReportService, ReportPeriod
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from app.services.health_report_service import ReportPeriod
 
-router = APIRouter(tags=["健康报告"])
+router = APIRouter(tags=[TAG_HEALTH_RECORD])
 
 
 # ========== 请求/响应模型 ==========
@@ -51,8 +51,8 @@ class PeriodComparisonRequest(BaseModel):
 @router.post("/trend-analysis")
 def get_trend_analysis(
     request: TrendAnalysisRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: HealthReportServiceDep,
 ):
     """
     获取健康数据趋势分析
@@ -62,8 +62,7 @@ def get_trend_analysis(
     if request.start_date > request.end_date:
         raise ValidationException("开始日期不能晚于结束日期")
 
-    result = HealthReportService.get_trend_analysis(
-        db,
+    result = service.get_trend_analysis(
         user_id=current_user.user_id,
         metric_type=request.metric_type,
         start_date=request.start_date,
@@ -76,18 +75,18 @@ def get_trend_analysis(
 
 @router.get("/comprehensive")
 def get_comprehensive_report(
+    current_user: CurrentActiveUserDep,
+    service: HealthReportServiceDep,
     report_date: date = Query(default_factory=date.today, description="报告日期"),
     period: ReportPeriod = Query(default=ReportPeriod.WEEK, description="报告周期"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取综合健康报告
 
     生成包含心率、血压、步数、睡眠等多项指标的综合健康报告
     """
-    result = HealthReportService.get_comprehensive_report(
-        db, user_id=current_user.user_id, report_date=report_date, period=period
+    result = service.get_comprehensive_report(
+        user_id=current_user.user_id, report_date=report_date, period=period
     )
 
     return ApiResponseBuilder.success(data=result, message="获取综合健康报告成功")
@@ -95,20 +94,20 @@ def get_comprehensive_report(
 
 @router.get("/anomalies")
 def get_anomaly_report(
+    current_user: CurrentActiveUserDep,
+    service: HealthReportServiceDep,
     days: int = Query(default=7, ge=1, le=90, description="查询天数"),
     severity: Optional[str] = Query(
         default=None, description="严重程度筛选: high/medium/low"
     ),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
 ):
     """
     获取异常检测报告
 
     查询指定天数内的健康数据异常，支持按严重程度筛选
     """
-    result = HealthReportService.get_anomaly_report(
-        db, user_id=current_user.user_id, days=days, severity=severity
+    result = service.get_anomaly_report(
+        user_id=current_user.user_id, days=days, severity=severity
     )
 
     return ApiResponseBuilder.success(data=result, message="获取异常检测报告成功")
@@ -117,16 +116,15 @@ def get_anomaly_report(
 @router.post("/compare-periods")
 def compare_periods(
     request: PeriodComparisonRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: HealthReportServiceDep,
 ):
     """
     对比两个时期的数据
 
     对比当前时期和上一时期的数据变化，计算变化百分比
     """
-    result = HealthReportService.compare_periods(
-        db,
+    result = service.compare_periods(
         user_id=current_user.user_id,
         metric_type=request.metric_type,
         current_start=request.current_start,
@@ -141,16 +139,16 @@ def compare_periods(
 @router.get("/daily-summary/{summary_date}")
 def get_daily_summary(
     summary_date: date,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: CurrentActiveUserDep,
+    service: HealthReportServiceDep,
 ):
     """
     获取每日健康摘要
 
     返回指定日期的健康数据摘要，包括步数、心率、睡眠等
     """
-    result = HealthReportService.get_daily_summary(
-        db, user_id=current_user.user_id, summary_date=summary_date
+    result = service.get_daily_summary(
+        user_id=current_user.user_id, summary_date=summary_date
     )
 
     return ApiResponseBuilder.success(data=result, message="获取每日健康摘要成功")
@@ -158,22 +156,23 @@ def get_daily_summary(
 
 @router.get("/daily-summary")
 def get_today_summary(
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+    current_user: CurrentActiveUserDep,
+    service: HealthReportServiceDep,
 ):
     """
     获取今日健康摘要
 
     快捷接口，返回今天的健康数据摘要
     """
-    result = HealthReportService.get_daily_summary(
-        db, user_id=current_user.user_id, summary_date=date.today()
+    result = service.get_daily_summary(
+        user_id=current_user.user_id, summary_date=date.today()
     )
 
     return ApiResponseBuilder.success(data=result, message="获取今日健康摘要成功")
 
 
 @router.get("/metrics/available")
-def get_available_metrics(current_user: User = Depends(get_current_active_user)):
+def get_available_metrics(current_user: CurrentActiveUserDep):
     """
     获取可用的健康指标列表
 
@@ -231,13 +230,16 @@ def get_available_metrics(current_user: User = Depends(get_current_active_user))
 
 
 @router.get("/thresholds/default")
-def get_default_thresholds(current_user: User = Depends(get_current_active_user)):
+def get_default_thresholds(
+    current_user: CurrentActiveUserDep,
+    service: HealthReportServiceDep,
+):
     """
     获取默认健康阈值
 
     返回系统默认的健康指标阈值范围
     """
     return ApiResponseBuilder.success(
-        data={"thresholds": HealthReportService.DEFAULT_THRESHOLDS},
+        data={"thresholds": service.DEFAULT_THRESHOLDS},
         message="获取默认健康阈值成功",
     )

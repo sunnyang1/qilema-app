@@ -9,10 +9,11 @@ from datetime import date, datetime, timedelta
 from enum import Enum as PyEnum
 from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy.orm import Session
+
 from app.models.device_data import DeviceData, DeviceThreshold
 from app.models.health_record import HealthRecord
 from app.services.base_service import BaseService
-from sqlalchemy.orm import Session
 
 
 class ReportPeriod(str, PyEnum):

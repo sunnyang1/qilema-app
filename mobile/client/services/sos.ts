@@ -1,4 +1,5 @@
 import { apiClient } from '@/utils/api';
+import { contactsService } from '@/services/contacts';
 import * as Location from 'expo-location';
 
 // SOS 请求状态
@@ -90,15 +91,15 @@ export const sosService = {
       const location = await this.getCurrentLocation();
 
       // 发送请求到后端
-      const response = await apiClient.post('/api/v1/sos-requests', {
+      const data = await apiClient.post<SOSRequest>('/api/v1/sos-requests', {
         location: location ? { latitude: location.latitude, longitude: location.longitude } : undefined,
         locationAddress: location?.address,
       });
 
       // 缓存当前 SOS 请求
-      await this.cacheCurrentRequest(response.data);
+      await this.cacheCurrentRequest(data);
 
-      return response.data;
+      return data;
     } catch (error) {
       console.error('发起 SOS 求助失败:', error);
       throw error;
@@ -110,8 +111,15 @@ export const sosService = {
    */
   async getEmergencyContacts(): Promise<EmergencyContact[]> {
     try {
-      const response = await apiClient.get('/api/v1/emergency-contacts');
-      return response.data;
+      const list = await contactsService.getContacts();
+      return list.map((c) => ({
+        id: c.contactId,
+        name: c.name,
+        relation: c.relationship,
+        phone: c.phone,
+        priority: c.priority,
+        isDefault: c.isDefault,
+      }));
     } catch (error) {
       console.error('获取紧急联系人列表失败:', error);
       throw error;
@@ -123,12 +131,11 @@ export const sosService = {
    */
   async callContact(contactId: string): Promise<void> {
     try {
-      const response = await apiClient.post(`/api/v1/emergency-contacts/${contactId}/call`);
-      // 模拟拨打电话
-      if (response.data.phone) {
-        // 在实际应用中，这里会调用系统拨号功能
-        console.log(`拨打联系人电话: ${response.data.phone}`);
-        // Linking.openURL(`tel:${response.data.phone}`);
+      const result = await apiClient.post<{ phone?: string }>(
+        `/api/v1/emergency-contacts/${contactId}/call`
+      );
+      if (result?.phone) {
+        console.log(`拨打联系人电话: ${result.phone}`);
       }
     } catch (error) {
       console.error('拨打联系人电话失败:', error);
@@ -162,12 +169,11 @@ export const sosService = {
         return cached;
       }
 
-      // 从后端获取
-      const response = await apiClient.get('/api/v1/sos-requests/current');
-      if (response.data) {
-        await this.cacheCurrentRequest(response.data);
+      const data = await apiClient.get<SOSRequest | null>('/api/v1/sos-requests/current');
+      if (data) {
+        await this.cacheCurrentRequest(data);
       }
-      return response.data;
+      return data;
     } catch (error) {
       console.error('获取 SOS 状态失败:', error);
       return null;

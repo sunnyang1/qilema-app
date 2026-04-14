@@ -4,6 +4,10 @@ import os
 from datetime import datetime
 
 import pytest
+from cryptography.fernet import Fernet
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from app.core.database import Base
 
 # 导入数据库相关的模型
@@ -19,9 +23,6 @@ from app.schemas.health_record import (
     MedicationUpdate,
 )
 from app.services.health_record_service import HealthRecordService
-from cryptography.fernet import Fernet
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 # 测试数据库
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"

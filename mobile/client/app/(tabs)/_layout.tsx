@@ -11,6 +11,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        freezeOnBlur: true,
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.backgroundDefault,

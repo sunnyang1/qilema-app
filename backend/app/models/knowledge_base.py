@@ -8,8 +8,6 @@ from datetime import datetime
 from typing import List as TypingList
 from typing import Optional
 
-from app.core.database import Base
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import (
     Boolean,
     Column,
@@ -21,6 +19,9 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import relationship
+
+from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 # 文章-标签关联表
 article_tag_association = Table(

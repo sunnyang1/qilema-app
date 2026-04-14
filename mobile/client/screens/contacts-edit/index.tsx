@@ -14,6 +14,7 @@ import {
   Platform,
   AccessibilityInfo,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
@@ -55,17 +56,27 @@ const styles = StyleSheet.create({
   // 头部
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.lg,
   },
 
+  headerTextBlock: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
   headerTitle: {
     ...Typography.h1,
     color: Colors.textPrimary,
-    flex: 1,
+  },
+
+  headerSubtitle: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
   },
 
   cancelButton: {
@@ -84,6 +95,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing['5xl'],
+  },
+  formLead: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
   },
 
   // 表单项
@@ -321,7 +337,8 @@ export default function ContactEditPage() {
       const contact = await contactsService.getContact(contactId);
       setName(contact.name);
       setPhone(contact.phone);
-      setRelationship(RELATIONSHIPS.indexOf(contact.relationship) || 0);
+      const relIdx = RELATIONSHIPS.indexOf(contact.relationship);
+      setRelationship(relIdx >= 0 ? relIdx : 0);
       setPriority(contact.priority);
       setNotificationChannels(contact.notificationChannels);
     } catch (error: any) {
@@ -330,7 +347,7 @@ export default function ContactEditPage() {
         type: 'error',
         text1: '加载失败',
         text2: error.message || '请稍后重试',
-        visibilityTime: 3000,
+        visibilityTime: 2600,
       });
       router.back();
     }
@@ -397,8 +414,8 @@ export default function ContactEditPage() {
         Toast.show({
           type: 'success',
           text1: '更新成功',
-          text2: '联系人信息已更新',
-          visibilityTime: 2000,
+          text2: '联系人信息已保存',
+          visibilityTime: 2200,
         });
       } else {
         // 添加联系人
@@ -406,8 +423,8 @@ export default function ContactEditPage() {
         Toast.show({
           type: 'success',
           text1: '添加成功',
-          text2: '联系人已添加',
-          visibilityTime: 2000,
+          text2: '已新增紧急联系人',
+          visibilityTime: 2200,
         });
       }
 
@@ -418,7 +435,7 @@ export default function ContactEditPage() {
         type: 'error',
         text1: '保存失败',
         text2: error.message || '请稍后重试',
-        visibilityTime: 3000,
+        visibilityTime: 2600,
       });
     } finally {
       setIsSaving(false);
@@ -447,6 +464,7 @@ export default function ContactEditPage() {
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={handleCancel}
+            activeOpacity={0.75}
             hitSlop={HitSlop.medium}
             accessible
             accessibilityLabel="取消"
@@ -457,14 +475,22 @@ export default function ContactEditPage() {
               取消
             </ThemedText>
           </TouchableOpacity>
-          <ThemedText variant="h1" color={Colors.textPrimary} style={styles.headerTitle}>
-            {isEditing ? '编辑联系人' : '添加联系人'}
-          </ThemedText>
+          <View style={styles.headerTextBlock}>
+            <ThemedText variant="h1" color={Colors.textPrimary} style={styles.headerTitle}>
+              {isEditing ? '编辑联系人' : '添加联系人'}
+            </ThemedText>
+            <ThemedText variant="small" color={Colors.textSecondary} style={styles.headerSubtitle}>
+              紧急时可第一时间通知对方
+            </ThemedText>
+          </View>
           <View style={{ width: 60 }} />
         </View>
 
         {/* 表单 */}
         <ScrollView style={styles.formContainer}>
+          <ThemedText variant="small" color={Colors.textSecondary} style={styles.formLead}>
+            标注 * 的字段为必填项
+          </ThemedText>
           {/* 姓名 */}
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>
@@ -540,6 +566,7 @@ export default function ContactEditPage() {
             <TouchableOpacity
               style={styles.dropdownContainer}
               onPress={() => handleSelectRelationship(relationship)}
+              activeOpacity={0.85}
               hitSlop={HitSlop.small}
               accessible
               accessibilityLabel={`关系：${RELATIONSHIPS[relationship]}`}
@@ -575,6 +602,7 @@ export default function ContactEditPage() {
                     priority === p ? styles.priorityButtonSelected : null,
                   ]}
                   onPress={() => setPriority(p)}
+                  activeOpacity={0.85}
                   hitSlop={HitSlop.small}
                   accessible
                   accessibilityLabel={`优先级 ${p}`}
@@ -607,6 +635,7 @@ export default function ContactEditPage() {
                     notificationChannels.includes(channel) ? styles.notificationOptionSelected : null,
                   ]}
                   onPress={() => toggleNotificationChannel(channel)}
+                  activeOpacity={0.85}
                   hitSlop={HitSlop.small}
                   accessible
                   accessibilityLabel={
@@ -649,6 +678,7 @@ export default function ContactEditPage() {
             ]}
             onPress={handleSave}
             disabled={isSaving}
+            activeOpacity={0.88}
             hitSlop={HitSlop.medium}
             accessible
             accessibilityLabel="保存联系人"
@@ -656,9 +686,13 @@ export default function ContactEditPage() {
             accessibilityRole="button"
             accessibilityState={{ disabled: isSaving }}
           >
-            <ThemedText variant="bodyMedium" color={Colors.backgroundDefault} style={styles.saveButtonText}>
-              {isSaving ? '保存中...' : '保存'}
-            </ThemedText>
+            {isSaving ? (
+              <ActivityIndicator color={Colors.backgroundDefault} />
+            ) : (
+              <ThemedText variant="bodyMedium" color={Colors.backgroundDefault} style={styles.saveButtonText}>
+                保存
+              </ThemedText>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

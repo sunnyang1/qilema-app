@@ -2,6 +2,7 @@
 Token相关的Schema
 """
 from typing import Optional
+
 from pydantic import BaseModel
 
 

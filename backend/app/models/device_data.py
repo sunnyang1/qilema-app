@@ -2,10 +2,11 @@
 设备数据SQLAlchemy模型
 """
 
-from app.core.database import Base
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship as db_relationship
+
+from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
 class DeviceData(Base, BaseModelMixin):

@@ -5,9 +5,10 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.orm import Session
+
 from app.schemas.checkin import CheckInCreate
 from app.services.checkin_service import CheckInService
-from sqlalchemy.orm import Session
 
 
 class TestCheckInServiceCache:

@@ -5,10 +5,11 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -18,6 +19,17 @@ class Notification(Base, BaseModelMixin):
     """通知模型 (SQLAlchemy 2.x)"""
 
     __tablename__ = "notifications"
+    __table_args__ = (
+        Index(
+            "idx_notifications_user_created", "user_id", "created_at"
+        ),  # For listing user notifications
+        Index(
+            "idx_notifications_user_status", "user_id", "status"
+        ),  # For filtering by status
+        Index(
+            "idx_notifications_user_type", "user_id", "notification_type"
+        ),  # For filtering by type
+    )
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True, comment="自增ID"
@@ -63,11 +75,15 @@ class Notification(Base, BaseModelMixin):
     )
 
     # 发送信息
-    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="发送时间")
+    sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, comment="发送时间"
+    )
     delivered_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True, comment="送达时间"
     )
-    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, comment="阅读时间")
+    read_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, comment="阅读时间"
+    )
     error_message: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True, comment="错误信息"
     )
@@ -202,4 +218,6 @@ class NotificationPreference(Base, BaseModelMixin):
     )
 
     # 关系
-    user: Mapped["User"] = relationship("User", back_populates="notification_preferences")
+    user: Mapped["User"] = relationship(
+        "User", back_populates="notification_preferences"
+    )

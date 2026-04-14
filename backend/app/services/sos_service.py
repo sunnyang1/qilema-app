@@ -7,6 +7,9 @@ SOS求救服务
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
 from app.models.emergency_contact import EmergencyContact
 from app.models.sos_request import (
     SOSLocationHistory,
@@ -15,8 +18,6 @@ from app.models.sos_request import (
     SOSTypeEnum,
 )
 from app.schemas.sos_request import SOSRequestCreate, SOSStatusUpdateRequest
-from sqlalchemy import desc
-from sqlalchemy.orm import Session
 
 
 class SOSService:

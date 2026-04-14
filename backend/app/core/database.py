@@ -7,18 +7,20 @@ https://docs.sqlalchemy.org/en/20/changelog/migration_20.html
 
 from typing import Optional
 
-from app.core.config import settings
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 
+from app.core.config import settings
+
 
 class Base(DeclarativeBase):
     """SQLAlchemy 2.x 声明式基类
-    
+
     使用 DeclarativeBase 替代 declarative_base() 函数
     这是 SQLAlchemy 2.0 推荐的方式
     """
+
     pass
 
 
@@ -85,7 +87,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
     """获取数据库会话(依赖注入使用)
-    
+
     用法:
         @router.get("/items")
         def get_items(db: Session = Depends(get_db)):
@@ -100,7 +102,7 @@ def get_db():
 
 def get_db_session() -> Session:
     """获取数据库会话(直接使用)
-    
+
     用法:
         with get_db_session() as session:
             result = session.query(...)

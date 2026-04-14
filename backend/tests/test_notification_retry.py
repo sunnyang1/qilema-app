@@ -10,6 +10,7 @@ import time
 from unittest.mock import Mock, patch
 
 import pytest
+
 from app.models.notification_model import Notification
 from app.services.notification_service import NotificationService
 

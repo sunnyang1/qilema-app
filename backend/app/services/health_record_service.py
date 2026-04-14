@@ -3,6 +3,9 @@
 from datetime import datetime
 from typing import List, Optional
 
+from cryptography.fernet import Fernet
+from sqlalchemy.orm import Session
+
 from app.models.health_record import Allergy, HealthRecord, MedicalHistory, Medication
 from app.schemas.health_record import (
     AllergyCreate,
@@ -16,8 +19,6 @@ from app.schemas.health_record import (
     MedicationUpdate,
 )
 from app.services.base_service import BaseService
-from cryptography.fernet import Fernet
-from sqlalchemy.orm import Session
 
 
 class EncryptionService:

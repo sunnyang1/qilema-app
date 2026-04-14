@@ -8,6 +8,9 @@ import math
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.emergency_resource_model import (
     EmergencyResource,
     NavigationRoute,
@@ -29,8 +32,6 @@ from app.schemas.emergency_resource import (
     ResourceType,
     ResourceUpdate,
 )
-from sqlalchemy import func
-from sqlalchemy.orm import Session
 
 
 class EmergencyResourceService:

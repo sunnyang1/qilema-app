@@ -17,10 +17,12 @@ import {
   Dimensions,
   Platform,
   AccessibilityInfo,
+  Pressable,
 } from 'react-native';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { ThemedText } from '@/components/ThemedText';
+import EmptyState from '@/components/EmptyState';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -209,18 +211,22 @@ const styles = StyleSheet.create({
 });
 
 // 紧急联系人数据
-const emergencyContacts = [
+const emergencyContacts: EmergencyContact[] = [
   {
     id: '1',
     name: '李医生',
     relation: '家庭医生',
     phone: '138****5678',
+    priority: 1,
+    isDefault: true,
   },
   {
     id: '2',
     name: '张先生',
     relation: '儿子',
     phone: '139****1234',
+    priority: 2,
+    isDefault: false,
   },
 ];
 
@@ -342,7 +348,7 @@ export default function SOSPage() {
         type: 'success',
         text1: '求助已发送',
         text2: '已通知紧急联系人和急救中心',
-        visibilityTime: 5000,
+        visibilityTime: 2600,
       });
 
       // 拨打 120
@@ -357,7 +363,7 @@ export default function SOSPage() {
         type: 'error',
         text1: '求助失败',
         text2: message,
-        visibilityTime: 3000,
+        visibilityTime: 2600,
       });
     } finally {
       setLoading(false);
@@ -370,9 +376,9 @@ export default function SOSPage() {
       await sosService.callContact(contactId);
       Toast.show({
         type: 'success',
-        text1: '正在呼叫',
-        text2: `正在呼叫 ${contactName}`,
-        visibilityTime: 2000,
+        text1: '呼叫已发起',
+        text2: `正在联系 ${contactName}`,
+        visibilityTime: 2200,
       });
     } catch (error: any) {
       console.error('拨打联系人失败:', error);
@@ -380,7 +386,7 @@ export default function SOSPage() {
         type: 'error',
         text1: '呼叫失败',
         text2: error.message || '请稍后重试',
-        visibilityTime: 2000,
+        visibilityTime: 2600,
       });
     }
   }, []);
@@ -442,7 +448,15 @@ export default function SOSPage() {
           <ThemedText variant="title" color={Colors.textPrimary} style={styles.sectionTitle}>
             紧急联系人
           </ThemedText>
-          {contacts.map((contact) => (
+          {contacts.length === 0 ? (
+            <EmptyState
+              icon="address-book"
+              title="暂无可通知联系人"
+              subtitle="先添加紧急联系人，SOS 才能同步通知家属"
+              actionLabel="去添加联系人"
+              onActionPress={() => router.push('/contacts')}
+            />
+          ) : contacts.map((contact) => (
             <Pressable
               key={contact.id}
               style={styles.contactCard}
@@ -508,7 +522,7 @@ export default function SOSPage() {
               accessibilityLabel={loading ? "正在发送求助请求" : "立即呼叫 120 急救电话"}
               accessibilityHint="点击后将自动拨打 120 急救电话并发送位置"
               accessibilityRole="button"
-              accessibilityState={{ pressed: sosPressed, disabled: loading }}
+              accessibilityState={{ disabled: loading }}
             >
               {loading ? (
                 <FontAwesome6
@@ -558,6 +572,3 @@ export default function SOSPage() {
     </Screen>
   );
 }
-
-// 导入 Pressable
-const { Pressable } = require('react-native');

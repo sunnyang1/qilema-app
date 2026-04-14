@@ -57,23 +57,23 @@ copy_to_clipboard() {
 get_repo_url() {
     header
     section "Repository Information"
-    
+
     echo "Enter your GitHub repository URL"
     echo "Example: https://github.com/yourorg/qilema-app"
     read -p "Repository URL: " REPO_URL
-    
+
     if [[ ! $REPO_URL =~ ^https://github.com/.+/.+ ]]; then
         echo -e "${RED}✗ Invalid repository URL${NC}"
         exit 1
     fi
-    
+
     echo -e "${GREEN}✓ Repository: $REPO_URL${NC}"
 }
 
 setup_docker_credentials() {
     header
     section "Docker Hub Credentials"
-    
+
     echo "You need Docker Hub credentials for pushing images."
     echo ""
     echo "1. Go to: https://hub.docker.com/settings/account"
@@ -86,25 +86,25 @@ setup_docker_credentials() {
     echo "   - Permissions: 'Read & Write'"
     echo "   - Copy the token"
     echo ""
-    
+
     read -p "Enter your Docker Hub username: " DOCKER_USERNAME
     read -sp "Enter your Docker Hub access token (will not be displayed): " DOCKER_TOKEN
     echo ""
-    
+
     if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_TOKEN" ]; then
         echo -e "${RED}✗ Docker credentials required${NC}"
         return 1
     fi
-    
+
     echo -e "${GREEN}✓ Docker Hub credentials ready${NC}"
     echo ""
-    
+
     # Open GitHub secrets page
     if prompt_yes_no "Open GitHub secrets page in browser?"; then
         REPO_PATH=$(echo $REPO_URL | sed 's|https://github.com/||')
         open "https://github.com/$REPO_PATH/settings/secrets/actions" 2>/dev/null || \
         echo "Open: https://github.com/$REPO_PATH/settings/secrets/actions"
-        
+
         echo ""
         echo "Add these secrets:"
         echo "  Name: DOCKER_HUB_USERNAME"
@@ -120,21 +120,21 @@ setup_docker_credentials() {
 setup_staging_server() {
     header
     section "Staging Server Configuration"
-    
+
     echo "You need SSH access to your staging server."
     echo ""
     echo "If you don't have a staging server yet, see: DEPLOYMENT_GUIDE.md"
     echo ""
-    
+
     if ! prompt_yes_no "Do you have a staging server configured?"; then
         echo -e "${YELLOW}⚠ Skipping staging setup. Configure later.${NC}"
         return 0
     fi
-    
+
     read -p "Staging server hostname/IP (e.g., staging.example.com): " STAGING_HOST
     read -p "SSH username (typically 'deploy'): " STAGING_USER
     read -p "Application path (e.g., /var/www/qilema): " STAGING_PATH
-    
+
     echo ""
     echo "SSH key setup:"
     echo "1. Generate SSH key:"
@@ -145,17 +145,17 @@ setup_staging_server() {
     echo ""
     echo "3. Get private key for GitHub (copy output below):"
     echo ""
-    
+
     if [ -f ~/.ssh/qilema_staging ]; then
         echo "$(cat ~/.ssh/qilema_staging)"
     else
         echo -e "${YELLOW}⚠ SSH key not found. Generate it first with commands above.${NC}"
         return 1
     fi
-    
+
     echo ""
     read -p "Press Enter after setting up SSH..."
-    
+
     echo -e "${GREEN}✓ Staging server configuration ready${NC}"
     echo ""
     echo "Add these secrets to GitHub:"
@@ -170,25 +170,25 @@ setup_staging_server() {
 setup_production_server() {
     header
     section "Production Server Configuration"
-    
+
     echo "Production setup requires careful security consideration."
     echo ""
-    
+
     if ! prompt_yes_no "Do you have a production server configured?"; then
         echo -e "${YELLOW}⚠ Skipping production setup. Configure later.${NC}"
         return 0
     fi
-    
+
     read -p "Production server hostname/IP: " PROD_HOST
     read -p "SSH username: " PROD_USER
     read -p "Application path: " PROD_PATH
-    
+
     echo ""
     echo "🔒 SECURITY WARNING 🔒"
     echo "The SSH private key will be stored in GitHub secrets."
     echo "This is sensitive! Consider using deploy keys instead."
     echo ""
-    
+
     echo "SSH key setup:"
     echo "1. Generate SSH key:"
     echo "   ssh-keygen -t rsa -b 4096 -f ~/.ssh/qilema_prod"
@@ -198,17 +198,17 @@ setup_production_server() {
     echo ""
     echo "3. Get private key for GitHub:"
     echo ""
-    
+
     if [ -f ~/.ssh/qilema_prod ]; then
         echo "$(cat ~/.ssh/qilema_prod)"
     else
         echo -e "${YELLOW}⚠ SSH key not found. Generate it first.${NC}"
         return 1
     fi
-    
+
     echo ""
     read -p "Press Enter after setting up SSH..."
-    
+
     echo -e "${GREEN}✓ Production server configuration ready${NC}"
     echo ""
     echo "Add these secrets to GitHub:"
@@ -223,12 +223,12 @@ setup_production_server() {
 setup_slack_webhook() {
     header
     section "Slack Notifications (Optional)"
-    
+
     if ! prompt_yes_no "Do you want Slack notifications for deployments?"; then
         echo -e "${YELLOW}✓ Skipping Slack setup${NC}"
         return 0
     fi
-    
+
     echo ""
     echo "Create a Slack webhook for notifications:"
     echo "1. Go to: https://api.slack.com/apps"
@@ -239,12 +239,12 @@ setup_slack_webhook() {
     echo "6. Copy the webhook URL"
     echo ""
     read -p "Enter Slack webhook URL: " SLACK_WEBHOOK
-    
+
     if [ -z "$SLACK_WEBHOOK" ]; then
         echo -e "${RED}✗ Webhook URL required${NC}"
         return 1
     fi
-    
+
     echo -e "${GREEN}✓ Slack webhook ready${NC}"
     echo ""
     echo "Add this secret to GitHub:"
@@ -256,9 +256,9 @@ setup_slack_webhook() {
 create_github_environments() {
     header
     section "Creating GitHub Environments"
-    
+
     REPO_PATH=$(echo $REPO_URL | sed 's|https://github.com/||')
-    
+
     echo "You need to create two environments in GitHub:"
     echo ""
     echo "1. Staging (no approval required)"
@@ -274,27 +274,27 @@ create_github_environments() {
     echo "   - Add required reviewers (team leads)"
     echo "   - Set deployment branches to protected branches only"
     echo ""
-    
+
     if prompt_yes_no "Open GitHub environments page?"; then
         open "https://github.com/$REPO_PATH/settings/environments" 2>/dev/null || \
         echo "Open: https://github.com/$REPO_PATH/settings/environments"
-        
+
         read -p "Press Enter after creating environments..."
     fi
-    
+
     echo -e "${GREEN}✓ GitHub environments created${NC}"
 }
 
 setup_env_files() {
     header
     section "Environment Files Setup"
-    
+
     echo "You need to create .env files on your deployment servers."
     echo ""
-    
+
     if prompt_yes_no "Create .env.staging template locally first?"; then
         echo "Creating .env.staging template..."
-        
+
         cat > .env.staging.template << 'EOF'
 # Staging Environment Configuration
 ENVIRONMENT=staging
@@ -327,13 +327,13 @@ SMTP_PASSWORD=staging_email_password
 ENABLE_DEBUG_ENDPOINTS=True
 ENABLE_MOCK_SMS=True
 EOF
-        
+
         echo -e "${GREEN}✓ Created .env.staging.template${NC}"
     fi
-    
+
     if prompt_yes_no "Create .env.prod template locally first?"; then
         echo "Creating .env.prod template..."
-        
+
         cat > .env.prod.template << 'EOF'
 # Production Environment Configuration
 ENVIRONMENT=production
@@ -369,7 +369,7 @@ SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
 ENABLE_DEBUG_ENDPOINTS=False
 ENABLE_MOCK_SMS=False
 EOF
-        
+
         echo -e "${GREEN}✓ Created .env.prod.template${NC}"
     fi
 }
@@ -377,10 +377,10 @@ EOF
 test_setup() {
     header
     section "Testing Your Setup"
-    
+
     echo "Let's verify your deployment configuration..."
     echo ""
-    
+
     # Check git
     echo -n "Checking Git... "
     if git rev-parse --git-dir > /dev/null 2>&1; then
@@ -389,7 +389,7 @@ test_setup() {
         echo -e "${RED}✗${NC}"
         return 1
     fi
-    
+
     # Check Docker
     echo -n "Checking Docker... "
     if docker --version > /dev/null 2>&1; then
@@ -398,7 +398,7 @@ test_setup() {
         echo -e "${RED}✗${NC}"
         return 1
     fi
-    
+
     # Check Docker Compose
     echo -n "Checking Docker Compose... "
     if docker-compose --version > /dev/null 2>&1; then
@@ -407,7 +407,7 @@ test_setup() {
         echo -e "${RED}✗${NC}"
         return 1
     fi
-    
+
     echo ""
     echo -e "${GREEN}✓ All tools are available${NC}"
 }
@@ -415,7 +415,7 @@ test_setup() {
 final_checklist() {
     header
     section "Final Deployment Checklist"
-    
+
     cat << 'EOF'
 ✅ IMMEDIATE ACTIONS (Before First Deployment)
 
@@ -494,7 +494,7 @@ Before pushing to GitHub and triggering deployments, verify:
 - DEPLOYMENT_PIPELINE_STATUS.md - Quick reference
 
 EOF
-    
+
     echo ""
     read -p "Press Enter to finish..."
 }
@@ -510,7 +510,7 @@ main() {
     setup_env_files
     test_setup
     final_checklist
-    
+
     echo ""
     echo -e "${GREEN}✅ Setup Complete!${NC}"
     echo ""

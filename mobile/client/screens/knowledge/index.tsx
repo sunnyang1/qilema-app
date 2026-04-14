@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, ScrollView, TextInput, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { Screen } from '@/components/Screen';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import EmptyState from '@/components/EmptyState';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
 import { Spacing, BorderRadius } from '@/constants/theme-warm';
@@ -24,7 +25,7 @@ interface Article {
 }
 
 export default function KnowledgeScreen() {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const router = useSafeRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -75,6 +76,20 @@ export default function KnowledgeScreen() {
     router.push(`/knowledge/article/${articleId}`);
   };
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredCategories = categories.filter((item) => {
+    if (!normalizedQuery) return true;
+    return item.name.toLowerCase().includes(normalizedQuery);
+  });
+  const filteredArticles = popularArticles.filter((item) => {
+    if (!normalizedQuery) return true;
+    return (
+      item.title.toLowerCase().includes(normalizedQuery) ||
+      item.summary.toLowerCase().includes(normalizedQuery)
+    );
+  });
+  const hasNoResult = normalizedQuery.length > 0 && filteredCategories.length === 0 && filteredArticles.length === 0;
+
   const renderCategory = ({ item }: { item: Category }) => (
     <TouchableOpacity
       style={[styles.categoryCard, { backgroundColor: theme.backgroundDefault }]}
@@ -117,7 +132,8 @@ export default function KnowledgeScreen() {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <Screen backgroundColor={theme.backgroundRoot}>
+      <ScrollView style={styles.container}>
       <View style={styles.header}>
         <ThemedText variant="h1" color={theme.textPrimary}>
           知识库
@@ -138,12 +154,24 @@ export default function KnowledgeScreen() {
         />
       </View>
 
+      {hasNoResult ? (
+        <View style={styles.section}>
+          <EmptyState
+            icon="magnifying-glass"
+            title="未找到相关内容"
+            subtitle="试试更短关键词，或浏览下方分类"
+            actionLabel="清空搜索"
+            onActionPress={() => setSearchQuery('')}
+          />
+        </View>
+      ) : (
+        <>
       <View style={styles.section}>
         <ThemedText variant="h3" color={theme.textPrimary} style={styles.sectionTitle}>
           分类浏览
         </ThemedText>
         <FlatList
-          data={categories}
+          data={filteredCategories}
           renderItem={renderCategory}
           keyExtractor={(item) => item.id}
           horizontal
@@ -154,13 +182,16 @@ export default function KnowledgeScreen() {
 
       <View style={styles.section}>
         <ThemedText variant="h3" color={theme.textPrimary} style={styles.sectionTitle}>
-          热门文章
+          {normalizedQuery ? '搜索结果' : '热门文章'}
         </ThemedText>
-        {popularArticles.map((article) => (
+        {filteredArticles.map((article) => (
           <ArticleItem key={article.id} article={article} onPress={() => handleArticlePress(article.id)} />
         ))}
       </View>
+        </>
+      )}
     </ScrollView>
+    </Screen>
   );
 }
 

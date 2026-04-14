@@ -1,12 +1,11 @@
 """
 预警服务层
 """
-from typing import Optional, List, Union, Tuple
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple, Union
+
+from sqlalchemy.orm import Session
 
 from app.core.cache import cache_result, get_cached, invalidate_cache
 from app.core.cache_config import CacheConfig
@@ -20,7 +19,6 @@ from app.schemas.alert import (
     AlertSettingUpdate,
 )
 from app.services.base_service import BaseService
-from sqlalchemy.orm import Session
 
 
 class AlertService(BaseService[Alert]):
@@ -248,8 +246,13 @@ class AlertService(BaseService[Alert]):
 
         return count
 
-    
-    def get_alerts(self, user_id: str, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> Tuple[List[Alert], int]:
+    def get_alerts(
+        self,
+        user_id: str,
+        status: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Tuple[List[Alert], int]:
         """获取用户预警列表"""
         # 尝试从缓存获取
         cache_key = CacheConfig.make_key(

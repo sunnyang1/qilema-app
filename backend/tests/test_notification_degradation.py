@@ -8,6 +8,7 @@
 from unittest.mock import Mock
 
 import pytest
+
 from app.core.notification_simulators import NotificationServiceConfig
 from app.services.notification import NotificationService
 

@@ -142,12 +142,12 @@ from sqlalchemy import String, DateTime
 
 class ModernUser(Base):
     __tablename__ = "modern_users"
-    
+
     user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     phone: Mapped[str] = mapped_column(String(11), unique=True)
     nickname: Mapped[Optional[str]] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
+
     # 关联关系
     posts: Mapped[List["ModernPost"]] = relationship(lazy="selectin")
 ```

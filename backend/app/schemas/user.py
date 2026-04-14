@@ -5,9 +5,10 @@
 from datetime import datetime
 from typing import Optional
 
+from pydantic import BaseModel, Field, field_validator
+
 from app.core.schemas import BaseSchema
 from app.models.user import BloodTypeEnum, GenderEnum
-from pydantic import BaseModel, Field, field_validator
 
 
 class UserRegister(BaseModel):

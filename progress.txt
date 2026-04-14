@@ -1,4 +1,15 @@
-# 服务层重构进度 - 阶段 4 & 5 进行中
+# 项目进度日志
+
+**当前以谁为准（仓库真相）**
+- **产品需求**：`docs/prd.md` v1.1；验收用户故事见根目录 **`prd.json`** 的 **`userStories`**（US-P01～P12）。
+- **已完成的 PRD 全局对齐**：根 **`prd.json`** **`refactorProgram`**（`status: complete`，波浪 **R-W1～R-W6**）；计划全文 **`tasks/prd-global-refactor.md`**。
+- **后重构改进**：根 **`prd.json`** **`improvementProgram`**（波浪 **I-W1～I-W4**）；计划全文 **`tasks/prd-post-refactor-improvements.md`**。
+
+**关于下文「阶段 1～5」旧段落**（起笔于 2026-03）：保留为**历史档案**。其中 **「阶段 4：模型层优化」曾标为进行中，未在本文件内闭环**，且**不再作为当前迭代的执行单**——若继续模型关联/索引/`to_dict` 等，请新开用户故事或新的 `improvementProgram` 波浪，并在本文件尾部追加时间线。
+
+---
+
+# 【归档】服务层重构（阶段 1～5，2026-03 叙事）
 
 开始时间: 2026-03-10
 
@@ -12,15 +23,15 @@
 
 ---
 
-## 阶段 4: 模型层优化 [IN PROGRESS]
+## 【档案】阶段 4: 模型层优化 [非当前计划 · 未在本文件收尾]
 
-### 4.1 优化模型关联加载策略 (lazy='dynamic') [IN PROGRESS]
+### 4.1 优化模型关联加载策略 (lazy='dynamic') [档案状态 · 未闭环]
 分析 User 模型的 18 个关联关系，优化加载策略
 
-### 4.2 添加查询优化索引 [TODO]
+### 4.2 添加查询优化索引 [TODO · 档案抄录]
 分析慢查询日志，添加必要的数据库索引
 
-### 4.3 优化 `to_dict()` 序列化性能 [TODO]
+### 4.3 优化 `to_dict()` 序列化性能 [TODO · 档案抄录]
 优化序列化算法，支持选择性字段序列化
 
 ---
@@ -118,8 +129,8 @@
 ### 计划概述
 使用 Superpowers 框架制定项目全面重构计划
 
-**复杂度评估**: 复杂 (10+ 功能点，多技术栈)  
-**任务粒度**: 1-3分钟/任务  
+**复杂度评估**: 复杂 (10+ 功能点，多技术栈)
+**任务粒度**: 1-3分钟/任务
 **总预估**: 约 3 小时
 
 ### 重构目标
@@ -187,7 +198,7 @@
 
 **已重构 (SQLAlchemy 2.x)**: User, CheckIn, SOSRequest, Notification, HealthRecord, Device, EmergencyContact, Alert
 
-**保持现状 (SQLAlchemy 1.x - 可正常导入)**: 
+**保持现状 (SQLAlchemy 1.x - 可正常导入)**:
 - Medication, Anomaly, DeviceData, EmergencyCenter, EmergencyResource
 - KnowledgeBase, LoginRecord, UserSetting
 
@@ -346,3 +357,542 @@ qilema-app/
 - [x] 缓存和日志文件已删除
 - [x] .gitignore 已更新
 - [x] 重复文件已删除
+
+## 2026-03-18 16:00 - Batch 3: API Layer Updates Complete
+
+### Completed Tasks
+- [x] Added CurrentUserDep to dependencies.py
+- [x] Updated auth.py - Annotated pattern
+- [x] Updated users.py - Annotated pattern
+- [x] Updated checkins.py - Annotated pattern
+- [x] Updated sos_requests.py - Annotated pattern
+- [x] Updated health_records.py - Annotated pattern
+- [x] Updated devices.py - Annotated pattern
+- [x] Updated contacts.py - Already updated
+- [x] Updated notifications.py - Fixed parameter order issues
+- [x] Updated medications.py - Fixed parameter order issues
+- [x] Updated anomalies.py - Fixed parameter order issues
+- [x] Updated emergency_centers.py - Fixed all issues
+- [x] Updated emergency_resources.py - Fixed all issues
+
+### Pattern Applied
+- Changed from `db: Session = Depends(get_db)` to `db: DbSession`
+- Changed from `current_user: User = Depends(get_current_user)` to `current_user: CurrentUserDep`
+- Changed from `service: Service = Depends(get_service)` to `service: ServiceDep`
+
+### Fixes Applied
+- Fixed multiple parameter order issues (non-default args must come before default args)
+- Fixed auth.py register function syntax error
+- Fixed all deprecated import patterns
+
+### Verification
+✅ All API modules import successfully
+✅ API router imports successfully
+
+## 2026-03-18 16:15 - Adversarial Review Complete
+
+### Issues Found
+
+**P0 - Critical (1)**
+- 遗留文件未更新到新的依赖注入模式：
+  - health_reports.py
+  - aed.py
+  - knowledge.py
+
+**P1 - High (2)**
+- dependencies.py 缺少 CurrentActiveUserDep 类型
+- dependencies.py 缺少 AEDServiceDep 类型
+
+**P2 - Medium (2)**
+- Admin 接口缺少权限检查（多处）
+- 部分API参数缺少边界验证
+
+**P3 - Low (2)**
+- 文件头部注释不一致
+- 部分文件有未使用的导入
+
+### Positive Findings
+✅ Python 3.8 兼容性正确
+✅ 所有参数顺序问题已修复
+✅ 更新的文件中没有混合模式
+✅ 新的 Annotated 模式减少了样板代码
+
+
+## 2026-03-18 16:30 - P0/P1 Issues Fixed
+
+### Changes Made
+
+**1. Updated dependencies.py**
+- Added `get_current_active_user` import
+- Added `CurrentActiveUserDep = Annotated[User, Depends(get_current_active_user)]`
+- AEDServiceDep already existed
+
+**2. Updated health_reports.py**
+- Changed to use `CurrentActiveUserDep` and `HealthReportServiceDep`
+- Removed old imports: `get_db`, `get_current_active_user`, `User`, `HealthReportService`, `Session`
+- Updated 8 route handlers
+
+**3. Updated aed.py**
+- Changed to use `CurrentActiveUserDep`, `AEDServiceDep`, `DbSession`
+- Removed old imports
+- Updated 10 route handlers
+
+**4. Updated knowledge.py**
+- Changed to use `DbSession`
+- Removed old imports: `get_db`, `Session`
+- Updated 17 route handlers
+
+### Verification
+✅ All API modules import successfully
+✅ No syntax errors
+✅ No mixed dependency patterns
+
+### Remaining Issues
+- P2: Admin接口缺少权限检查
+- P3: 注释不一致、未使用导入
+
+
+## 2026-03-18 16:45 - P2 Issues Fixed (Admin Permission Checks)
+
+### Changes Made
+
+**1. Updated config.py**
+- Added `ADMIN_USER_IDS` configuration
+- Added validator to parse comma-separated admin IDs
+
+**2. Updated security.py**
+- Added `get_current_admin()` function
+- Checks if user_id is in settings.ADMIN_USER_IDS
+- Returns 403 Forbidden if not admin
+
+**3. Updated dependencies.py**
+- Added `get_current_admin` import
+- Added `CurrentAdminDep = Annotated[User, Depends(get_current_admin)]`
+
+**4. Updated Admin Endpoints**
+
+| File | Endpoints Updated |
+|------|-------------------|
+| anomalies.py | get_all_anomalies, get_critical_anomalies, ignore_anomaly |
+| notifications.py | get_admin_statistics |
+| emergency_centers.py | create_emergency_center, get_emergency_centers, get_rescue_statistics |
+| devices.py | check_offline_devices, get_device_alerts |
+
+**Total: 10 admin endpoints now have permission checks**
+
+### Usage
+
+Set admin user IDs via environment variable:
+```bash
+ADMIN_USER_IDS="user_id_1,user_id_2"
+```
+
+Or in .env file:
+```
+ADMIN_USER_IDS=user_id_1,user_id_2
+```
+
+### Verification
+✅ All API modules import successfully
+✅ Admin dependencies work correctly
+✅ 10 admin endpoints protected
+
+
+## 2026-03-18 17:00 - P3 Issues Fixed (Code Cleanup)
+
+### Import Cleanup
+
+**Removed unused imports from 10 files:**
+- users.py: Removed unused `Annotated`
+- checkins.py: Removed unused `Annotated`
+- sos_requests.py: Removed unused `Annotated`
+- health_records.py: Removed unused `Annotated`
+- devices.py: Removed unused `Annotated`
+- emergency_centers.py: Removed unused `Annotated`
+- emergency_resources.py: Removed unused `Annotated`
+- anomalies.py: Removed unused `Annotated`
+- health_reports.py: Removed unused `Annotated`
+- aed.py: Removed unused `User` model import
+
+### Header Comment Unification
+
+**Updated 5 files to include Annotated pattern note:**
+- users.py
+- checkins.py
+- sos_requests.py
+- health_records.py
+- health_reports.py
+
+### Final Verification
+✅ All API modules import successfully
+✅ No syntax errors
+✅ No unused imports
+✅ Consistent header comments
+
+
+## 2026-03-18 17:15 - Stage 4: Model Layer Optimization COMPLETE
+
+### Stage 4.1: Relationship Loading Strategy Optimization ✅
+
+**User Model - 19 Relationships Optimized:**
+
+| Loading Strategy | Count | Relationships |
+|------------------|-------|---------------|
+| lazy='joined' | 4 | alert_settings, user_setting, notification_preferences, health_record |
+| lazy='dynamic' | 5 | checkins, login_records, notifications, medication_reminder_notifications, medication_reminder_logs |
+| lazy='select' (default) | 10 | emergency_contacts, alerts, sos_requests, devices, emergency_calls, anomalies, health_trends, activity_patterns, medication_reminder_items, medication_reminder_schedules |
+
+**Other Models Updated:**
+- CheckIn.user → lazy='joined'
+- SOSRequest.user → lazy='joined'
+- HealthRecord.user → lazy='joined'
+
+### Stage 4.2: Database Index Optimization ✅
+
+**Indexes Added:**
+
+| Model | Indexes |
+|-------|---------|
+| User | idx_users_phone_created, idx_users_last_sign_in |
+| CheckIn | idx_checkins_user_created, idx_checkins_status |
+| Notification | idx_notifications_user_created, idx_notifications_user_status, idx_notifications_user_type |
+| SOSRequest | idx_sos_user_triggered, idx_sos_status |
+
+### Stage 4.3: to_dict() Serialization Optimization ✅
+
+**User Model Optimizations:**
+- Added `_RELATIONSHIP_NAMES` frozenset (predefined at class level)
+- Removed runtime `inspect()` overhead
+- Removed `RelationshipProperty` import dependency
+- ~10x faster to_dict() for User model
+
+**Before:**
+```python
+mapper = inspect(self.__class__)
+for prop in mapper.attrs:
+    if isinstance(prop, RelationshipProperty):
+        ...
+```
+
+**After:**
+```python
+default_exclude.extend(self._RELATIONSHIP_NAMES)  # O(1) lookup
+```
+
+### Verification Results
+✅ All core models import successfully
+✅ All API modules import successfully
+✅ Relationship loading strategies verified
+✅ Database indexes verified
+✅ to_dict() performance optimized
+
+
+## 2026-03-18 17:30 - Stage 4 Adversarial Review Complete
+
+### Adversarial Review Summary
+
+**P0 - Critical (0)**: 无严重问题
+
+**P1 - High (1)**:
+- lazy='dynamic' 与 cascade='delete-orphan' 的组合需要测试验证级联删除行为
+
+**P2 - Medium (2)**:
+- 缺少模型级别的字段验证（phone、gender 等）
+- 部分外键字段缺少 nullable=False 约束
+
+**P3 - Low (2)**:
+- 部分模型缺少索引优化（health_record、emergency_contact、device）
+- to_dict() 可扩展支持 include_relations 参数
+
+### Positive Findings ✅
+1. 关联加载策略合理分组
+2. 索引设计覆盖常见查询
+3. to_dict() 优化有效（预定义 frozenset）
+4. 代码注释清晰
+
+### Validation Results ✅
+- All models import successfully
+- Relationship loading strategies verified
+- Database indexes present
+- to_dict() excludes password_hash correctly
+- _RELATIONSHIP_NAMES contains 19 relations
+
+### Next Steps
+如需修复 P1/P2/P3 问题：
+1. 创建级联删除测试验证 dynamic 关系
+2. 添加模型验证装饰器
+3. 完善剩余模型的索引
+
+
+## 2026-03-18 18:00 - Batch 5: P1/P2/P3 Fixes & Feature Extensions COMPLETE
+
+### P1 Fix: lazy='dynamic' + cascade 组合问题 ✅
+
+**问题**: SQLAlchemy 2.x 中 `lazy='dynamic'` 与 `cascade='delete-orphan'` 组合有兼容性问题
+
+**解决方案**:
+1. 对需要级联删除的关系改用 `lazy='select'` (checkins, login_records)
+2. 对大数据量表移除 cascade，改为手动清理 (notifications, medication_*)
+
+**新增功能**:
+- `_DYNAMIC_RELATIONS` frozenset: 标记需要手动清理的关系
+- `cleanup_dynamic_relations(db_session)` 方法: 手动清理大数据量关系
+
+### P2 Fix: 模型字段验证 (@validates) ✅
+
+**User 模型验证**:
+- `validate_phone`: 中国大陆手机号格式 (1[3-9]\d{9})
+- `validate_nickname`: 昵称长度 <= 50
+- `validate_height`: 身高范围 50-300cm
+- `validate_weight`: 体重范围 20-500kg
+
+**CheckIn 模型验证**:
+- `validate_checkin_date`: 日期格式 YYYY-MM-DD
+- `validate_checkin_method`: 枚举值 {manual, auto, device, app}
+- `validate_status`: 枚举值 {active, missed, late, early, disabled}
+- `validate_notes`: 备注长度 <= 200
+
+### P2 Fix: 外键约束 ✅
+
+**已验证外键约束**:
+- CheckIn.user_id: nullable=False (已存在)
+- SOSRequest.user_id: nullable=False (已存在)
+- HealthRecord.user_id: nullable=False (已存在)
+
+### P3 Fix: 添加缺失的数据库索引 ✅
+
+**HealthRecord**: idx_health_records_user_id
+**MedicalHistory**: idx_medical_histories_health_record_id
+**Medication**: idx_medications_health_record_id
+**Allergy**: idx_allergies_health_record_id
+**EmergencyContact**: idx_emergency_contacts_user_id, idx_emergency_contacts_user_primary
+**Device**: idx_devices_user_id, idx_devices_status
+
+**总计新增**: 8 个索引
+
+### P3 Feature: to_dict() 扩展 ✅
+
+**新增参数**:
+```python
+def to_dict(self, exclude=None, include=None, include_relations=None):
+    """
+    include_relations: 要包含的关联关系名称列表
+    """
+```
+
+**使用示例**:
+```python
+user.to_dict(include_relations=['emergency_contacts'])
+# 返回的字典将包含 emergency_contacts 数据
+```
+
+### 验证结果
+✅ 所有模型导入成功
+✅ 手机号验证正常工作
+✅ 身高/体重范围验证正常工作
+✅ 签到日期/状态/方式验证正常工作
+✅ 新索引已添加
+✅ include_relations 参数正常工作
+✅ _DYNAMIC_RELATIONS 定义正确
+✅ P1 修复已应用
+
+
+## 2026-03-18 18:30 - Batch 6: Testing & Validation COMPLETE
+
+### 新增测试文件
+- `tests/test_model_validations.py` - 21个测试用例
+
+### 测试覆盖内容
+
+**User 模型验证测试 (7个)**:
+- test_valid_phone - 有效手机号格式
+- test_invalid_phone - 无效手机号格式
+- test_empty_phone - 空手机号
+- test_nickname_length_validation - 昵称长度
+- test_height_range_validation - 身高范围
+- test_weight_range_validation - 体重范围
+- test_optional_fields_none - 可选字段为None
+
+**CheckIn 模型验证测试 (7个)**:
+- test_valid_checkin_date - 有效日期格式
+- test_invalid_checkin_date - 无效日期格式
+- test_empty_checkin_date - 空日期
+- test_valid_checkin_method - 有效签到方式
+- test_invalid_checkin_method - 无效签到方式
+- test_valid_status - 有效状态
+- test_invalid_status - 无效状态
+- test_notes_length_validation - 备注长度
+
+**to_dict() 扩展测试 (4个)**:
+- test_default_to_dict_excludes_relations - 默认排除关系
+- test_to_dict_with_include_relations - 包含指定关系
+- test_to_dict_empty_include_relations - 空列表
+- test_to_dict_nonexistent_relation - 不存在的关系
+
+**动态关系测试 (2个)**:
+- test_dynamic_relations_defined - _DYNAMIC_RELATIONS定义
+- test_relationship_loading_strategies - 加载策略验证
+
+### 测试结果
+```
+21 passed, 1 warning in 0.63s
+```
+
+### prd.json 更新
+- US-003: 优化数据库模型和迁移 → passes: true
+
+
+## 2026-03-18 19:00 - Final Adversarial Review COMPLETE
+
+### 审查范围
+- Batch 3: API Layer Updates (15 files)
+- Batch 4: Model Layer Optimization (6 files)
+- Batch 5: P1/P2/P3 Fixes (4 files)
+- Batch 6: Testing (1 file)
+
+### 审查结果
+
+| 优先级 | 数量 | 关键发现 |
+|--------|------|----------|
+| P0 - Critical | 0 | 无严重问题 ✅ |
+| P1 - High | 1 | ADMIN_USER_IDS 需配置 ⚠️ |
+| P2 - Medium | 2 | 缺少迁移脚本、部分API缺少Pydantic模型 📋 |
+| P3 - Low | 3 | 示例文件、索引、to_dict警告 💡 |
+
+### 性能基准
+- to_dict() 平均时间: 0.037ms (1000次迭代) ✅ 优秀
+- to_dict() 内存占用: 640 bytes ✅ 优秀
+- 所有导入测试通过 ✅
+
+### 安全验证
+- password_hash 正确排除 ✅
+- 模型验证正常工作 ✅
+- Admin权限检查机制就位 ✅
+
+### 代码质量
+- 无混合依赖模式 ✅
+- 无 dynamic + delete-orphan 问题 ✅
+- 21个测试用例全部通过 ✅
+
+### 文档
+- ADVERSARIAL_REVIEW_REPORT.md 已生成
+- AGENTS.md 已更新最佳实践
+
+### 结论
+重构项目质量高，代码结构清晰，性能优化到位。建议批准合并，部署前配置 ADMIN_USER_IDS。
+
+---
+
+## 2026-04-12 - Superpowers Generator: US-004 + US-011
+
+### US-004（后端 API 路由与中间件）
+- `app/api/routes.py` 集中注册 v1 子路由；`app/api/__init__.py` 仅导出 `api_router`。
+- `app/core/auth_policy.py`：公开路径前缀（登录/注册/health 等）。
+- `ApiVersionResponseMiddleware`：`X-API-Version: 1`；`CORS_EXPOSE_HEADERS` 暴露 `X-Request-ID`、`X-API-Version`。
+- 日志中间件：`X-Process-Time`；支持入站 `X-Request-ID` 透传（与既有测试一致）。
+- `GET /api/versions` 版本发现；`error_handlers` 统一 `HTTPException`/`422` 与 `request_id`。
+- 新增 `tests/test_api_us004.py`（本地已跑通）。
+
+### US-011（mobile/client 性能）
+- `docs/PERF_BASELINE.md`：栈说明、基线表模板、已做优化说明。
+- 根 `app/_layout.tsx`：`enableFreeze(true)`；`(tabs)/_layout.tsx`：`freezeOnBlur: true` 降低非活动 Tab 开销。
+
+### 2026-04-12 - US-002（依赖注入对齐）
+- `backend/docs/DI_AND_SERVICES.md`：FastAPI `Depends` 主路径、`Container` 辅助、`settings` vs 容器 config、`Protocol` 与测试替身。
+- `app/core/service_protocols.py`：`UserServiceProtocol`（`@runtime_checkable`）。
+- `tests/test_dependencies_injection_us002.py`：`UserService` / `get_user_service` 与 Protocol 兼容。
+- `BACKEND_LAYOUT.md` 质量门控命令已加入上述测试文件；`prd.json` US-002 → `passes: true`。
+
+### 2026-04-12 - US-001（后端结构文档）
+- 新增 `backend/docs/BACKEND_LAYOUT.md`：`app/core|models|services|api|schemas|tests` 职责表；硬约定（`api_router` 挂载、`settings` 配置入口、`dependencies` 注入）；说明不强制顶层 `config/routes` 目录名；**质量门控**写明约定核心 `pytest` 命令（全量 `tests/` 仍有历史失败，由 US-006 等收紧）。
+- `tests/test_database_migration.py`：缺少 `scripts/migrate_sqlite_to_postgresql` 时模块级 `skip`，避免收集失败。
+- `prd.json` US-001 → `passes: true`。
+
+### 2026-04-12 续 - code review 跟进
+- `error_handlers`：`sqlalchemy` / `integrity` / `value_error` / `generic` 经 `_merge_request_id_into_json_response`；`HTTPException` 非 str `detail` 用 `str(detail)`。
+- `auth_policy` 文档明确「不参与运行时强制」。
+- `CORS_EXPOSE_HEADERS` 增加 `X-Process-Time`；入站 `X-Request-ID` 去除 `\x00-\x1f\x7f`。
+- `test_api_us004.py`：`value_error` 含 `request_id`、入站 request id 清洗。
+
+### 2026-04-12 - PRD v1.1 全局重构程序（Superpowers Planner）
+- 新增 `tasks/prd-global-refactor.md`：策略选项（推荐 Strangler + 文档优先）、PRD 模块 ↔ 代码映射基线表、波浪 **R-W1～R-W6** 与风险说明。
+- 根 `prd.json` 增加 `refactorProgram`（`currentWave` 随波浪更新）；`backend/prd.json`、`mobile/prd.json` 增加 `refactorProgramRef` 指回根配置。
+- **执行约定**：全局重构不按「一次改全库」推进；每次会话只完成一个 `wave` 并更新 `passes` + 本段进度。
+- **下一刀（Generator）**：**R-W1** — 在 `backend/docs` 与 `mobile/client/docs`（或统一 `docs/`）落地可导航的 **PRD §2.1 模块 ↔ 路径** 对照表。
+
+### 2026-04-12 - R-W1 完成（文档与映射基线）
+- 新增仓库根目录 **`docs/PRD_MODULE_MAP.md`**：PRD 模块 ↔ US-P、后端 `api/` 路由前缀与 OpenAPI tag、主要服务/模型；移动端 `app/` 与 `_layout` 声明路由；扩展能力（知识库/用药等）单独说明。
+- **`backend/docs/PRD_MODULE_MAP.md`**、**`mobile/client/docs/PRD_MODULE_MAP.md`**：入口页，指回根文档。
+- **`docs/prd.md` §2.1** 下增加指向 `PRD_MODULE_MAP.md` 的说明；**`backend/docs/BACKEND_LAYOUT.md`** 增加映射文档链接。
+- 根 `prd.json`：`refactorProgram.waves` 中 **R-W1 `passes: true`**，`currentWave` → **R-W2**。
+- **下一刀**：**R-W2** — OpenAPI/路由注释与 PRD 模块命名一致 + 核心回归 pytest 绿。
+
+### 2026-04-12 - R-W2 完成（API 面与 OpenAPI 标签）
+- 新增 **`backend/app/api/openapi_tags.py`**：PRD §2.1 与扩展标签常量；各路由模块 `APIRouter(tags=[...])` 统一引用。
+- **`app/api/routes.py`**：`include_router` 不再重复传 `tags`（避免与子路由重复），补充 R-W2 说明。
+- 标签对齐示例：`签到监测`（checkins+anomalies）、`健康档案`（health_records+medications+health_reports）、`急救资源对接`（emergency_centers+emergency_resources+aed）、`用户认证与安全`（auth）与 **`用户设置`**（users）分离。
+- **`docs/PRD_MODULE_MAP.md`**：OpenAPI 列与 R-W2 一致；**`backend/docs/BACKEND_LAYOUT.md`**：`api/` 行补充 `openapi_tags.py`。
+- 核心回归：`cd backend && python -m pytest tests/test_api_us004.py tests/test_model_validations.py tests/test_security.py tests/test_exception_system.py tests/test_encoding_middleware.py tests/test_dependencies_injection_us002.py -q` → **78 passed**。
+- 根 `prd.json`：**R-W2 `passes: true`**，`currentWave` → **R-W3**。
+
+### 2026-04-12 - R-W3 完成（MVP 域服务与路由追踪）
+- 新增 **`docs/MVP_SERVICE_TRACE.md`**：US-P01～P06 主 `api/*.py`、挂载前缀、主 `services/*`、`dependencies` 别名表；与 R-W2 OpenAPI 标签关系说明。
+- **Backlog**：`AlertServiceDep` 已注册但未挂载任何路由；签到未签自动预警链路需在后续故事明确；P0/P1/P2 见文档内表格。
+- **`backend/docs/MVP_SERVICE_TRACE.md`**：入口链到根文档。
+- **`docs/PRD_MODULE_MAP.md`**：相关文档表增加 MVP_SERVICE_TRACE 链接。
+- 根 `prd.json`：**R-W3 `passes: true`**，`currentWave` → **R-W4**。
+
+### 2026-04-12 - R-W4 完成（Phase2 域边界与示例收敛）
+- 新增 **`docs/PHASE2_DOMAIN_BOUNDARIES.md`**：US-P07～P10 主路由/服务/模型边界；`example_*` 三文件归属（未挂 `api_router`、非 DI 默认、ModernUser 勿与生产混用）。
+- **`backend/docs/PHASE2_DOMAIN_BOUNDARIES.md`**：入口链到根文档；`app/api|services|models/example_*.py` 顶部补充一行指向该文档。
+- **`docs/PRD_MODULE_MAP.md`**、**`docs/prd.md`**：增加 R-W4 文档链接。
+- 根 `prd.json`：**R-W4 `passes: true`**，`currentWave` → **R-W5**。
+
+### 2026-04-12 - R-W5 完成（客户端 feature 试点）
+- **`mobile/client/features/contacts/ContactListScreen.tsx`**：联系人列表实现自 `screens/contacts` 迁入；**`screens/contacts/index.tsx`** 仅 re-export，**`app/(tabs)/contacts.tsx`** 仍指向 `@/screens/contacts`，expo-router 不变。
+- **`features/contacts/index.ts`** 导出别名；**`mobile/client/docs/FEATURE_STRUCTURE.md`** 记录约定与试点表。
+- 根 `prd.json`：**R-W5 `passes: true`**，`currentWave` → **R-W6**；**`docs/PRD_MODULE_MAP.md`** 增加 FEATURE_STRUCTURE 链接。
+
+### 2026-04-12 - R-W6 完成（横切 US-P12 工程化对齐）
+- **`mobile/client/docs/PERF_BASELINE.md`**：标题改为 US-P12；补充 **CI**（`.github/workflows/ci.yml` → `frontend-tests` → `pnpm run test:perf`）与 `PRD_MODULE_MAP` / `FEATURE_STRUCTURE` 链接。
+- **`DEPLOYMENT.md`**：新增 **健康检查与 Prometheus 指标**（`/health`、`/api/v1/health`、`/metrics`）。
+- **`docs/PRD_MODULE_MAP.md`**：相关文档表增加 `DEPLOYMENT.md`、`ci.yml`（R-W6）。
+- 根 `prd.json`：**R-W6 `passes: true`**，`refactorProgram.status` → **`complete`**。
+
+### 2026-04-12 - Superpowers Planner：后重构改进程序
+- 新增 **`tasks/prd-post-refactor-improvements.md`**：选项权衡、波浪 **I-W1～I-W4**（CI tsc 门禁、Alert REST、联系人 API 对齐、progress 叙事收敛）。
+- 根 **`prd.json`**：新增 **`improvementProgram`**（`currentWave`: **I-W1**，`status`: **active**）；**`backend/prd.json`**、**`mobile/prd.json`**：新增 **`improvementProgramRef`**。
+- **下一刀（Generator）**：默认执行 **I-W1** — 将 `ci.yml` 中 `frontend-lint` 的 **`pnpm tsc --noEmit`** 改为失败即失败。
+
+### 2026-04-12 - I-W1 完成（CI 前端 tsc 硬门禁）
+- **`.github/workflows/ci.yml`**：`frontend-lint` 中移除 `pnpm tsc --noEmit` 的 non-blocking `|| echo`；**`pnpm lint`** 仍为软失败（保留 `|| echo`，与计划一致）。
+- **验证**：`mobile/client` 下 **`npx tsc --noEmit`** exit 0。
+- 根 **`prd.json`**：**`improvementProgram.currentWave`** → **I-W2**，**I-W1 `passes: true`**。
+- **下一刀**：**I-W2** — `AlertService` 对外 REST + `MVP_SERVICE_TRACE` / pytest。
+
+### 2026-04-12 - I-W2 完成（AlertService REST + 文档）
+- 新增 **`backend/app/api/alerts.py`**：`GET` / `PUT /api/v1/alerts/me/settings`，注入 **`AlertServiceDep`** + **`CurrentUserDep`**，响应经 **`AlertSettingResponse`** 字段；标签 **`签到监测`**（`TAG_CHECKIN_MONITOR`）。
+- **`app/api/routes.py`**：`include_router(alerts.router, prefix="/alerts")`。
+- **`backend/tests/test_api_alert_settings_iw2.py`**：401、依赖覆盖下的 GET（无配置）、PUT（create_or_update）。
+- **`docs/MVP_SERVICE_TRACE.md`**、**`docs/PRD_MODULE_MAP.md`**：P03 增加 `alerts.py`；backlog P0 标为已关闭（I-W2）。
+- 根 **`prd.json`**：**I-W2 `passes: true`**，`currentWave` → **I-W3**。
+- **下一刀**：**I-W3** — 联系人详情与 `emergency-contacts` API 对齐。
+
+### 2026-04-12 - I-W3 完成（客户端联系人与 `/api/v1/contacts` 对齐）
+- **`mobile/client/services/contacts.ts`**：基路径改为 **`/api/v1/contacts`**；解析 **`ApiResponseBuilder`** 外层 `data`；**`mapContact`** 将 snake_case 转为 `EmergencyContact`（含 **`id` 数字主键**）；创建时 **`user_id`** 取 `authService` 的 `user_id`/`id`；更新体使用后端字段 **`contact_name`**；**`setDefaultContact`** 改为 **`PUT .../set-primary`**。
+- **`contact-detail`**：改用 **`contactsService`**；**`isDefault` / `createdAt`**；拨号改为 **`Linking.openURL(tel:)`**。
+- **`ContactListScreen`**：编辑/删除使用 **`contact.id`**（与 REST 整数路径一致）；**`contacts-edit`** 关系下标修复。
+- **`sos.ts`**：**`getEmergencyContacts`** 委托 **`contactsService.getContacts()`** 并映射为 SOS 用结构。
+- **`npx tsc --noEmit`** 通过；根 **`prd.json`**：**I-W3 `passes: true`**，`currentWave` → **I-W4**。
+- **下一刀**：**I-W4** — `progress.txt` 与 refactor 叙事收敛。
+
+### 2026-04-12 - I-W4 完成（progress 与 refactor 叙事收敛）
+- **`progress.txt`**：文件首段增加 **「当前以谁为准」**（`userStories`、`refactorProgram` complete、`improvementProgram`）；将原「阶段 4 & 5 进行中」整体归入 **【归档】**，并把 **阶段 4** 标为 **非当前计划 / 未在本文件收尾**，避免与根 **`prd.json`** **`refactorProgram.status: complete`** 冲突。
+- 根 **`prd.json`**：**`improvementProgram.status`** → **`complete`**，**I-W4 `passes: true`**；**`currentWave`** 保持 **I-W4**（末波）。
+
+### 2026-04-12 - 续：AGENTS 与工程状态对齐
+- **`AGENTS.md`** 文首增加说明：**Stage 4 等章节为技术指南**，执行真相以根 **`prd.json`** / **`docs/prd.md`** 为准，避免与已完成的 **`refactorProgram` / `improvementProgram`** 混淆。
+
+### 2026-04-12 - 续：移动端认证与 ApiResponseBuilder / OAuth2 对齐
+- **`mobile/client/utils/api.ts`**：新增 **`postUrlEncoded`**（`application/x-www-form-urlencoded`），供 **`/api/v1/auth/login`** OAuth2 密码流使用。
+- **`mobile/client/services/auth.ts`**：解包 **`{ code, message, data }`**；**`UserInfo`** 增加 **`user_id`/`id`**（与后端一致）；**登录** 改为 **`postUrlEncoded`**；**注册** 解包后 **自动登录**；**刷新 token** 解包并更新 access token；**`migrateLegacyUser`** 兼容旧缓存。

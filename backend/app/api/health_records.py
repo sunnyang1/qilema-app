@@ -1,9 +1,13 @@
 """健康档案API路由
 
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
-from app.api.dependencies import get_health_record_service
+from fastapi import APIRouter
+
+from app.api.dependencies import HealthRecordServiceDep
+from app.api.openapi_tags import TAG_HEALTH_RECORD
 from app.core.exceptions import (
     InternalServerException,
     NotFoundException,
@@ -24,16 +28,14 @@ from app.schemas.health_record import (
     MedicationResponse,
     MedicationUpdate,
 )
-from app.services.health_record_service import HealthRecordService
-from fastapi import APIRouter, Depends
 
-router = APIRouter(prefix="/health-records", tags=["健康档案"])
+router = APIRouter(prefix="/health-records", tags=[TAG_HEALTH_RECORD])
 
 
 @router.post("/", summary="创建健康档案")
 def create_health_record(
     data: HealthRecordCreate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """
     创建健康档案
@@ -64,7 +66,7 @@ def create_health_record(
 @router.get("/{user_id}", summary="获取健康档案")
 def get_health_record(
     user_id: str,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """
     获取用户的完整健康档案,包含基础信息、病史记录、用药信息、过敏史
@@ -117,7 +119,7 @@ def get_health_record(
 def update_health_record(
     user_id: str,
     data: HealthRecordUpdate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """更新健康档案基础信息"""
     try:
@@ -136,7 +138,7 @@ def update_health_record(
 def add_medical_history(
     user_id: str,
     data: MedicalHistoryCreate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """
     添加病史记录
@@ -170,7 +172,7 @@ def add_medical_history(
 @router.get("/{user_id}/medical-histories", summary="获取病史记录列表")
 def get_medical_histories(
     user_id: str,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """获取用户的病史记录列表"""
     try:
@@ -198,7 +200,7 @@ def get_medical_histories(
 def update_medical_history(
     history_id: int,
     data: MedicalHistoryUpdate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """更新病史记录"""
     try:
@@ -217,7 +219,7 @@ def update_medical_history(
 @router.delete("/medical-histories/{history_id}", summary="删除病史记录")
 def delete_medical_history(
     history_id: int,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """删除病史记录"""
     try:
@@ -233,7 +235,7 @@ def delete_medical_history(
 def add_medication(
     user_id: str,
     data: MedicationCreate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """
     添加用药信息
@@ -268,8 +270,8 @@ def add_medication(
 @router.get("/{user_id}/medications", summary="获取用药信息列表")
 def get_medications(
     user_id: str,
+    service: HealthRecordServiceDep,
     current_only: bool = False,
-    service: HealthRecordService = Depends(get_health_record_service),
 ):
     """
     获取用户的用药信息列表
@@ -301,7 +303,7 @@ def get_medications(
 def update_medication(
     medication_id: int,
     data: MedicationUpdate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """更新用药信息"""
     try:
@@ -339,7 +341,7 @@ def update_medication(
 @router.delete("/medications/{medication_id}", summary="删除用药信息")
 def delete_medication(
     medication_id: int,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """删除用药信息"""
     try:
@@ -355,7 +357,7 @@ def delete_medication(
 def add_allergy(
     user_id: str,
     data: AllergyCreate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """
     添加过敏史
@@ -388,7 +390,7 @@ def add_allergy(
 @router.get("/{user_id}/allergies", summary="获取过敏史列表")
 def get_allergies(
     user_id: str,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """获取用户的过敏史列表"""
     try:
@@ -415,7 +417,7 @@ def get_allergies(
 def update_allergy(
     allergy_id: int,
     data: AllergyUpdate,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """更新过敏史"""
     try:
@@ -434,7 +436,7 @@ def update_allergy(
 @router.delete("/allergies/{allergy_id}", summary="删除过敏史")
 def delete_allergy(
     allergy_id: int,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """删除过敏史"""
     try:
@@ -449,7 +451,7 @@ def delete_allergy(
 @router.get("/{user_id}/summary", summary="生成健康档案摘要")
 def generate_summary(
     user_id: str,
-    service: HealthRecordService = Depends(get_health_record_service),
+    service: HealthRecordServiceDep,
 ):
     """
     生成健康档案摘要,用于快速分享给急救人员

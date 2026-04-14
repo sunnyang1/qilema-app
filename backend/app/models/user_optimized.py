@@ -10,12 +10,13 @@
 import enum
 from typing import TYPE_CHECKING, List, Optional
 
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Index, Integer, String
 from sqlalchemy.orm import relationship as db_relationship
 from sqlalchemy.sql import func
+
+from app.models.base_mixin import BaseModelMixin
 
 from ..core.database import Base
 

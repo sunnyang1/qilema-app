@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import '@/utils/auth-interceptor';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
+import { enableFreeze } from 'react-native-screens';
 import Toast from 'react-native-toast-message';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ColorSchemeProvider } from '@/hooks/useColorScheme';
@@ -11,6 +12,8 @@ import { RouteGuard } from '@/components/RouteGuard';
 LogBox.ignoreLogs([
   "TurboModuleRegistry.getEnforcing(...): 'RNMapsAirModule' could not be found",
 ]);
+
+enableFreeze(true);
 
 export default function RootLayout() {
   return (

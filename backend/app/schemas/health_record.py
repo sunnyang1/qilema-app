@@ -249,4 +249,3 @@ class HealthRecordSummary(BaseModel):
 
     # 最近设备异常
     recent_anomalies: Optional[List[dict]] = None
-

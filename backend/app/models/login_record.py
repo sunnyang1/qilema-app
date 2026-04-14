@@ -2,10 +2,11 @@
 用户登录记录SQLAlchemy模型
 """
 
-from app.core.database import Base
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship as db_relationship
+
+from app.core.database import Base
+from app.models.base_mixin import BaseModelMixin
 
 
 class LoginRecord(Base, BaseModelMixin):

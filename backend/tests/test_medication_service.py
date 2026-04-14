@@ -6,6 +6,8 @@
 
 from datetime import date, datetime, time, timedelta
 
+from sqlalchemy.orm import Session
+
 from app.models.medication import (
     LogStatus,
     MedicationReminderItem,
@@ -23,7 +25,6 @@ from app.services.medication_service import (
     MedicationScheduleService,
     MedicationService,
 )
-from sqlalchemy.orm import Session
 
 
 class TestMedicationService:

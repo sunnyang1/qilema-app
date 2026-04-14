@@ -32,9 +32,10 @@ def test_database_url():
 @pytest.fixture
 def db():
     """创建测试数据库会话"""
-    from app.core.database import Base
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
+    from app.core.database import Base
 
     # 使用内存数据库进行测试
     engine = create_engine(

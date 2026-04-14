@@ -8,12 +8,14 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar
 
-from app.core.cache import cache_result, get_cached, invalidate_cache
-from app.core.query_builder import QueryBuilder, paginate
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache_result, get_cached, invalidate_cache
+from app.core.query_builder import QueryBuilder, paginate
+
 ModelType = TypeVar("ModelType")
+
 
 class BaseService(Generic[ModelType]):
     """
@@ -297,10 +299,7 @@ class BaseService(Generic[ModelType]):
 
     @classmethod
     def get_by_ids(
-        cls,
-        db: Session,
-        ids: List[Any],
-        pk_column: str = "id"
+        cls, db: Session, ids: List[Any], pk_column: str = "id"
     ) -> List[ModelType]:
         """
         根据多个ID获取记录（批量查询优化）
@@ -323,10 +322,7 @@ class BaseService(Generic[ModelType]):
 
     @classmethod
     def create_batch(
-        cls,
-        db: Session,
-        records: List[Dict[str, Any]],
-        batch_size: int = 1000
+        cls, db: Session, records: List[Dict[str, Any]], batch_size: int = 1000
     ) -> List[ModelType]:
         """
         批量创建记录
@@ -357,7 +353,7 @@ class BaseService(Generic[ModelType]):
         # 提交剩余
         if len(records) % batch_size != 0:
             db.commit()
-            for inst in instances[len(records) - (len(records) % batch_size):]:
+            for inst in instances[len(records) - (len(records) % batch_size) :]:
                 db.refresh(inst)
 
         # 缓存新记录
@@ -376,7 +372,7 @@ class BaseService(Generic[ModelType]):
         db: Session,
         updates: List[Dict[str, Any]],
         pk_column: str = "id",
-        batch_size: int = 1000
+        batch_size: int = 1000,
     ) -> int:
         """
         批量更新记录
@@ -433,11 +429,7 @@ class BaseService(Generic[ModelType]):
 
     @classmethod
     def delete_batch(
-        cls,
-        db: Session,
-        ids: List[Any],
-        pk_column: str = "id",
-        batch_size: int = 1000
+        cls, db: Session, ids: List[Any], pk_column: str = "id", batch_size: int = 1000
     ) -> int:
         """
         批量删除记录
@@ -457,13 +449,15 @@ class BaseService(Generic[ModelType]):
         deleted_count = 0
 
         for i in range(0, len(ids), batch_size):
-            batch_ids = ids[i:i + batch_size]
+            batch_ids = ids[i : i + batch_size]
 
             if hasattr(cls.model_class, pk_column):
                 column = getattr(cls.model_class, pk_column)
-                result = db.query(cls.model_class).filter(
-                    column.in_(batch_ids)
-                ).delete(synchronize_session=False)
+                result = (
+                    db.query(cls.model_class)
+                    .filter(column.in_(batch_ids))
+                    .delete(synchronize_session=False)
+                )
                 deleted_count += result
 
                 # 清除缓存
@@ -482,7 +476,7 @@ class BaseService(Generic[ModelType]):
         per_page: int = 20,
         order_by: str = None,
         order_desc: bool = True,
-        **filters
+        **filters,
     ):
         """
         获取分页列表（使用 QueryBuilder）

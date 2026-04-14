@@ -6,9 +6,10 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from typing import List, Optional
 
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+
 from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 
 
 class AEDStatus(str, PyEnum):

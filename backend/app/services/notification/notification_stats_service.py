@@ -7,6 +7,9 @@
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.notification_model import Notification
 from app.schemas.notification import (
     NotificationChannelEnum,
@@ -14,8 +17,6 @@ from app.schemas.notification import (
     NotificationStatusEnum,
     NotificationTypeEnum,
 )
-from sqlalchemy import func
-from sqlalchemy.orm import Session
 
 
 class NotificationStatsService:

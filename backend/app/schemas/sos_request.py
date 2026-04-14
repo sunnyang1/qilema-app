@@ -5,8 +5,9 @@ SOS求救相关的Schema验证
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from app.core.schemas import BaseSchema
 from pydantic import BaseModel, Field
+
+from app.core.schemas import BaseSchema
 
 
 class SOSRequestCreate(BaseModel):

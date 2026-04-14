@@ -32,7 +32,7 @@ python -c "from app.core.database import Base, engine; print('✅ OK')"
 
 #### 2.1 Lifespan 上下文管理器
 ```python
-# 旧方式 (不推荐) 
+# 旧方式 (不推荐)
 @app.on_event("startup")
 async def startup_event():
     init_db()
@@ -124,12 +124,12 @@ from sqlalchemy import String, DateTime
 
 class ModernUser(Base):
     __tablename__ = "modern_users"
-    
+
     user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     phone: Mapped[str] = mapped_column(String(11), unique=True)
     nickname: Mapped[Optional[str]] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
+
     posts: Mapped[List["ModernPost"]] = relationship(lazy="selectin")
 ```
 
@@ -219,5 +219,5 @@ python -c "from app.models.example_modern import ModernUser; print('✅ Modern M
 | Express.js | 4.22.1 | ✅ 符合 | 代码规范正确 |
 | Supabase JS | 2.99.0 | ⚠️ 未使用 | 依赖存在但未使用 |
 
-**核心迁移状态**: ✅ 完成  
+**核心迁移状态**: ✅ 完成
 **项目问题**: ⚠️ 发现原有代码问题，需要后续修复

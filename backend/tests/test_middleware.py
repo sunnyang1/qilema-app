@@ -6,11 +6,12 @@ import time
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from app.core.exceptions import BaseAppException
-from app.core.middleware import EnhancedLoggingMiddleware, ExceptionHandlerMiddleware
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
+
+from app.core.exceptions import BaseAppException
+from app.core.middleware import EnhancedLoggingMiddleware, ExceptionHandlerMiddleware
 
 
 class TestEnhancedLoggingMiddleware:

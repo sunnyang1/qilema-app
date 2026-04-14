@@ -8,6 +8,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
+from sqlalchemy.orm import Session
+
 from app.core.database import SessionLocal
 from app.core.redis import redis_manager
 from app.models.alert import AlertSetting
@@ -16,7 +18,6 @@ from app.models.user import User
 from app.services.alert_service import AlertService
 from app.services.emergency_contact_service import EmergencyContactService
 from app.services.user_service import UserService
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 

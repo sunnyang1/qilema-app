@@ -9,12 +9,13 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy.orm import Session
+
 from app.core.cache import invalidate_cache
 from app.core.redis import redis_manager
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 from app.services.base_service import BaseService
-from sqlalchemy.orm import Session
 
 
 class UserService(BaseService[User]):

@@ -3,6 +3,7 @@
 """
 
 import pytest
+
 from app.schemas.notification import NotificationTemplateCreate
 from app.services.notification import NotificationTemplateService
 

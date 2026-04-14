@@ -4,6 +4,8 @@
 测试知识库文章、分类和标签的CRUD操作和搜索功能
 """
 
+from sqlalchemy.orm import Session
+
 from app.models.knowledge_base import KnowledgeArticle, KnowledgeCategory, KnowledgeTag
 from app.services.knowledge_service import (
     KnowledgeArticleService,
@@ -11,7 +13,6 @@ from app.services.knowledge_service import (
     KnowledgeCategoryService,
     KnowledgeTagService,
 )
-from sqlalchemy.orm import Session
 
 
 class TestKnowledgeCategoryService:

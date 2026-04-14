@@ -2,6 +2,8 @@
 核心模块
 """
 
+from dependency_injector import containers, providers
+
 from app.core.cache_mixin import CacheMixin, CacheWarmer
 from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine, get_db
@@ -13,7 +15,6 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
-from dependency_injector import containers, providers
 
 __all__ = [
     "containers",

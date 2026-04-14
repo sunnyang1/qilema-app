@@ -6,9 +6,10 @@
 
 from datetime import date, datetime, timedelta
 
+from sqlalchemy.orm import Session
+
 from app.models.device_data import DeviceData
 from app.services.health_report_service import HealthReportService, ReportPeriod
-from sqlalchemy.orm import Session
 
 
 class TestHealthReportService:

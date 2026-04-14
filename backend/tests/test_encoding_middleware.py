@@ -5,9 +5,10 @@
 """
 
 import pytest
-from app.core.middleware import EncodingMiddleware
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from app.core.middleware import EncodingMiddleware
 
 
 def test_encoding_middleware_adds_charset():

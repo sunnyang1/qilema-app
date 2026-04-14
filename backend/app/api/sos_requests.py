@@ -2,31 +2,31 @@
 SOS紧急求助API路由
 
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
 from typing import Optional
 
-from app.core.database import get_db
+from fastapi import APIRouter
+
+from app.api.dependencies import CurrentUserDep, DbSession
+from app.api.openapi_tags import TAG_SOS
 from app.core.exceptions import NotFoundException, ValidationException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
 from app.models.sos_request import SOSRequest
-from app.models.user import User
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["SOS紧急求助"])
+router = APIRouter(tags=[TAG_SOS])
 
 
 @router.post("/", summary="发起SOS求助")
 async def create_sos(
     latitude: float,
     longitude: float,
+    current_user: CurrentUserDep,
+    db: DbSession,
     address: Optional[str] = None,
     emergency_reason: Optional[str] = None,
     call_120: bool = False,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     """发起SOS紧急求助"""
     sos_request = SOSRequest(
@@ -50,10 +50,10 @@ async def create_sos(
 
 @router.get("/", summary="获取SOS记录")
 async def get_sos_requests(
+    current_user: CurrentUserDep,
+    db: DbSession,
     skip: int = 0,
     limit: int = 50,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     """获取用户SOS求助记录"""
     sos_requests = (
@@ -74,8 +74,8 @@ async def get_sos_requests(
 @router.get("/{sos_id}", summary="获取SOS详情")
 async def get_sos(
     sos_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: CurrentUserDep,
+    db: DbSession,
 ):
     """获取SOS求助详情"""
     sos = (
@@ -93,8 +93,8 @@ async def get_sos(
 @router.put("/{sos_id}/cancel", summary="取消SOS求助")
 async def cancel_sos(
     sos_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: CurrentUserDep,
+    db: DbSession,
 ):
     """取消SOS求助"""
     sos = (
@@ -119,8 +119,8 @@ async def cancel_sos(
 async def resolve_sos(
     sos_id: str,
     resolution: dict,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: CurrentUserDep,
+    db: DbSession,
 ):
     """标记SOS求助已解决"""
     sos = (

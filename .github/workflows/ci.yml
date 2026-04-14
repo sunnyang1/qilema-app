@@ -147,7 +147,7 @@ jobs:
           pnpm install
           cd client
           pnpm lint || echo "⚠️ Lint warnings found"
-          pnpm tsc --noEmit || echo "⚠️ Type errors found (non-blocking)"
+          pnpm tsc --noEmit
 
   frontend-tests:
     runs-on: ubuntu-latest
@@ -185,6 +185,7 @@ jobs:
           pnpm install
           cd client
           pnpm test --coverage --run || true
+          pnpm run test:perf
 
       - name: Upload coverage
         if: steps.check.outputs.exists == 'true'

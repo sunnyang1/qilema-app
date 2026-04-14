@@ -6,7 +6,7 @@
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
-from sqlalchemy import asc, desc, func, distinct
+from sqlalchemy import asc, desc, distinct, func
 from sqlalchemy.orm import Query, Session, joinedload, selectinload
 
 T = TypeVar("T")
@@ -316,9 +316,12 @@ class QueryBuilder:
         """
         # 使用 exists() 更高效，避免获取完整记录
         from sqlalchemy.sql import exists as sa_exists
-        return self.query.session.query(
-            sa_exists().where(self.query.whereclause)
-        ).scalar() if self.query.whereclause else self.query.count() > 0
+
+        return (
+            self.query.session.query(sa_exists().where(self.query.whereclause)).scalar()
+            if self.query.whereclause
+            else self.query.count() > 0
+        )
 
     def group_by(self, *field_names: str) -> "QueryBuilder":
         """
@@ -350,7 +353,8 @@ class QueryBuilder:
         """
         if field_names and self.model_class:
             columns = [
-                getattr(self.model_class, f) for f in field_names
+                getattr(self.model_class, f)
+                for f in field_names
                 if hasattr(self.model_class, f)
             ]
             if columns:
@@ -393,8 +397,8 @@ class QueryBuilder:
                 rel_attr = getattr(self.model_class, relation)
                 # 根据关系类型选择合适的加载策略
                 # 多对一/一对一使用 joinedload，一对多使用 selectinload
-                prop = getattr(rel_attr, 'property', None)
-                if prop and hasattr(prop, 'uselist'):
+                prop = getattr(rel_attr, "property", None)
+                if prop and hasattr(prop, "uselist"):
                     if prop.uselist:
                         self.query = self.query.options(selectinload(rel_attr))
                     else:
@@ -418,14 +422,17 @@ class QueryBuilder:
         """
         if self.model_class:
             columns = [
-                getattr(self.model_class, c) for c in column_names
+                getattr(self.model_class, c)
+                for c in column_names
                 if hasattr(self.model_class, c)
             ]
             if columns:
                 self.query = self.query.with_entities(*columns)
         return self
 
-    def aggregate(self, agg_func: str, field_name: str, label: str = None) -> "QueryBuilder":
+    def aggregate(
+        self, agg_func: str, field_name: str, label: str = None
+    ) -> "QueryBuilder":
         """
         添加聚合函数
 
@@ -446,11 +453,11 @@ class QueryBuilder:
 
         column = getattr(self.model_class, field_name)
         func_map = {
-            'count': func.count,
-            'sum': func.sum,
-            'avg': func.avg,
-            'min': func.min,
-            'max': func.max,
+            "count": func.count,
+            "sum": func.sum,
+            "avg": func.avg,
+            "min": func.min,
+            "max": func.max,
         }
 
         if agg_func in func_map:
@@ -622,7 +629,7 @@ class BatchQueryBuilder:
 def query_to_dict(
     query: Query,
     model_class: Type = None,
-    include_relations: Optional[List[str]] = None
+    include_relations: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     将查询构建器的配置转换为字典（用于缓存键生成）

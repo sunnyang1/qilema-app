@@ -3,6 +3,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+
 from app.models.emergency_contact import EmergencyContact
 from app.schemas.emergency_contact import EmergencyContactCreate, EmergencyContactUpdate
 from app.services.emergency_contact_service import EmergencyContactService

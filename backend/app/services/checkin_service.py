@@ -5,6 +5,9 @@
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
 from app.core.cache import cache_result, get_cached
 from app.core.cache_config import CacheConfig
 from app.core.interfaces import ICheckInService
@@ -16,8 +19,6 @@ from app.schemas.checkin import (
     CheckInStatusResponse,
 )
 from app.services.base_service import BaseService
-from sqlalchemy import and_, func
-from sqlalchemy.orm import Session
 
 
 class CheckInService(BaseService[CheckIn], ICheckInService):

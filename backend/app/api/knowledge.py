@@ -7,7 +7,15 @@
 
 from typing import List, Optional
 
-from app.core.database import get_db
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
+from fastapi import APIRouter, HTTPException, Query
+
+from app.api.dependencies import DbSession
+from app.api.openapi_tags import TAG_KNOWLEDGE
 from app.core.response_builder import ApiResponseBuilder
 from app.services.knowledge_service import (
     KnowledgeArticleService,
@@ -15,17 +23,15 @@ from app.services.knowledge_service import (
     KnowledgeCategoryService,
     KnowledgeTagService,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["急救知识库"])
+router = APIRouter(tags=[TAG_KNOWLEDGE])
 
 
 # ========== 首页数据 ==========
 
 
 @router.get("/homepage")
-async def get_homepage_data(db: Session = Depends(get_db)):
+async def get_homepage_data(db: DbSession):
     """获取知识库首页数据"""
     data = KnowledgeBaseService.get_homepage_data(db)
     return ApiResponseBuilder.success(data=data, message="获取首页数据成功")
@@ -36,7 +42,8 @@ async def get_homepage_data(db: Session = Depends(get_db)):
 
 @router.get("/categories")
 async def list_categories(
-    parent_id: Optional[int] = None, db: Session = Depends(get_db)
+    db: DbSession,
+    parent_id: Optional[int] = None,
 ):
     """获取分类列表"""
     categories = KnowledgeCategoryService.get_active_categories(db, parent_id)
@@ -46,14 +53,14 @@ async def list_categories(
 
 
 @router.get("/categories/tree")
-async def get_category_tree(db: Session = Depends(get_db)):
+async def get_category_tree(db: DbSession):
     """获取分类树"""
     tree = KnowledgeCategoryService.get_category_tree(db)
     return ApiResponseBuilder.success(data=tree, message="获取分类树成功")
 
 
 @router.get("/categories/{category_id}")
-async def get_category(category_id: int, db: Session = Depends(get_db)):
+async def get_category(category_id: int, db: DbSession):
     """获取分类详情"""
     category = KnowledgeCategoryService.get_by_id(db, category_id)
     if not category:
@@ -65,12 +72,12 @@ async def get_category(category_id: int, db: Session = Depends(get_db)):
 
 @router.post("/categories")
 async def create_category(
+    db: DbSession,
     name: str,
     description: Optional[str] = None,
     icon: Optional[str] = None,
     sort_order: int = 0,
     parent_id: Optional[int] = None,
-    db: Session = Depends(get_db),
 ):
     """创建分类（管理员功能）"""
     data = {
@@ -87,12 +94,12 @@ async def create_category(
 @router.put("/categories/{category_id}")
 async def update_category(
     category_id: int,
+    db: DbSession,
     name: Optional[str] = None,
     description: Optional[str] = None,
     icon: Optional[str] = None,
     sort_order: Optional[int] = None,
     is_active: Optional[bool] = None,
-    db: Session = Depends(get_db),
 ):
     """更新分类（管理员功能）"""
     data = {
@@ -118,7 +125,9 @@ async def update_category(
 
 @router.get("/tags")
 async def list_tags(
-    keyword: Optional[str] = None, limit: int = 50, db: Session = Depends(get_db)
+    db: DbSession,
+    keyword: Optional[str] = None,
+    limit: int = 50,
 ):
     """获取标签列表"""
     if keyword:
@@ -131,7 +140,7 @@ async def list_tags(
 
 
 @router.get("/tags/{tag_id}")
-async def get_tag(tag_id: int, db: Session = Depends(get_db)):
+async def get_tag(tag_id: int, db: DbSession):
     """获取标签详情"""
     tag = KnowledgeTagService.get_by_id(db, tag_id)
     if not tag:
@@ -141,10 +150,10 @@ async def get_tag(tag_id: int, db: Session = Depends(get_db)):
 
 @router.post("/tags")
 async def create_tag(
+    db: DbSession,
     name: str,
     description: Optional[str] = None,
     color: str = "#1890ff",
-    db: Session = Depends(get_db),
 ):
     """创建标签（管理员功能）"""
     data = {"name": name, "description": description, "color": color}
@@ -157,11 +166,11 @@ async def create_tag(
 
 @router.get("/articles")
 async def list_articles(
+    db: DbSession,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     category_id: Optional[int] = None,
     tag: Optional[str] = None,
-    db: Session = Depends(get_db),
 ):
     """获取文章列表"""
     tag_names = [tag] if tag else None
@@ -175,10 +184,10 @@ async def list_articles(
 
 @router.get("/articles/search")
 async def search_articles(
+    db: DbSession,
     keyword: str = Query(..., min_length=1),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
 ):
     """搜索文章"""
     articles = KnowledgeArticleService.search_articles(db, keyword, skip, limit)
@@ -188,7 +197,7 @@ async def search_articles(
 
 
 @router.get("/articles/{article_id}")
-async def get_article(article_id: int, db: Session = Depends(get_db)):
+async def get_article(article_id: int, db: DbSession):
     """获取文章详情（增加浏览次数）"""
     article = KnowledgeArticleService.get_article_detail(db, article_id)
     if not article:
@@ -200,7 +209,9 @@ async def get_article(article_id: int, db: Session = Depends(get_db)):
 
 @router.get("/articles/{article_id}/related")
 async def get_related_articles(
-    article_id: int, limit: int = Query(5, ge=1, le=10), db: Session = Depends(get_db)
+    article_id: int,
+    db: DbSession,
+    limit: int = Query(5, ge=1, le=10),
 ):
     """获取相关文章"""
     articles = KnowledgeArticleService.get_related_articles(db, article_id, limit)
@@ -210,7 +221,7 @@ async def get_related_articles(
 
 
 @router.post("/articles/{article_id}/like")
-async def like_article(article_id: int, db: Session = Depends(get_db)):
+async def like_article(article_id: int, db: DbSession):
     """点赞文章"""
     success = KnowledgeArticleService.increment_like(db, article_id)
     if not success:
@@ -220,6 +231,7 @@ async def like_article(article_id: int, db: Session = Depends(get_db)):
 
 @router.post("/articles")
 async def create_article(
+    db: DbSession,
     title: str,
     content: str,
     summary: Optional[str] = None,
@@ -230,7 +242,6 @@ async def create_article(
     tag_names: Optional[List[str]] = None,
     is_top: bool = False,
     status: str = "draft",
-    db: Session = Depends(get_db),
 ):
     """创建文章（管理员功能）"""
     data = {
@@ -252,6 +263,7 @@ async def create_article(
 @router.put("/articles/{article_id}")
 async def update_article(
     article_id: int,
+    db: DbSession,
     title: Optional[str] = None,
     content: Optional[str] = None,
     summary: Optional[str] = None,
@@ -261,7 +273,6 @@ async def update_article(
     tag_names: Optional[List[str]] = None,
     is_top: Optional[bool] = None,
     status: Optional[str] = None,
-    db: Session = Depends(get_db),
 ):
     """更新文章（管理员功能）"""
     data = {
@@ -287,7 +298,7 @@ async def update_article(
 
 
 @router.delete("/articles/{article_id}")
-async def delete_article(article_id: int, db: Session = Depends(get_db)):
+async def delete_article(article_id: int, db: DbSession):
     """删除文章（管理员功能）"""
     success = KnowledgeArticleService.delete_article(db, article_id)
     if not success:

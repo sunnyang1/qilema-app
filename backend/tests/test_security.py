@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock
 
 import pytest
+from fastapi import HTTPException, status
+
 from app.core.security import (
     create_access_token,
     decode_access_token,
@@ -17,7 +19,6 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
-from fastapi import HTTPException, status
 
 
 class TestPasswordHashing:

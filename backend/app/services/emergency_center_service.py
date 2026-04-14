@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 
 import requests
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
 from app.models.anomaly import Anomaly
 from app.models.device import Device
 from app.models.device_data import DeviceData
@@ -37,8 +40,6 @@ from app.schemas.emergency_center import (
 )
 from app.services.health_record_service import HealthRecordService
 from app.services.location_service import LocationService
-from sqlalchemy import desc
-from sqlalchemy.orm import Session
 
 
 class EmergencyCenterService:

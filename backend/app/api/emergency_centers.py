@@ -3,20 +3,25 @@
 
 提供一键拨打120、救护车追踪、救援记录等RESTful接口
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
 from typing import List
 
-from app.api.dependencies import get_emergency_center_service
-from app.core.database import get_db
+from fastapi import APIRouter, status
+
+from app.api.dependencies import (
+    CurrentAdminDep,
+    CurrentUserDep,
+    EmergencyCenterServiceDep,
+)
+from app.api.openapi_tags import TAG_EMERGENCY_RESOURCE
 from app.core.exceptions import (
     ForbiddenException,
     NotFoundException,
     ValidationException,
 )
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
-from app.models.user import User
 from app.schemas.emergency_center import (
     AmbulanceLocation,
     AmbulanceResponse,
@@ -31,11 +36,8 @@ from app.schemas.emergency_center import (
     RescueRecordResponse,
     RescueRecordUpdate,
 )
-from app.services.emergency_center_service import EmergencyCenterService
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["120急救中心"])
+router = APIRouter(tags=[TAG_EMERGENCY_RESOURCE])
 
 
 # ========== 120一键拨打 ==========
@@ -44,8 +46,8 @@ router = APIRouter(tags=["120急救中心"])
 @router.post("/call-120", status_code=status.HTTP_201_CREATED)
 def call_120(
     request: Call120Request,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     一键拨打120
@@ -65,8 +67,8 @@ def call_120(
 @router.get("/calls/{call_id}", response_model=EmergencyCallResponse)
 def get_emergency_call(
     call_id: int,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取急救呼叫记录详情
@@ -86,9 +88,9 @@ def get_emergency_call(
 
 @router.get("/calls/my-calls", response_model=List[EmergencyCallResponse])
 def get_my_emergency_calls(
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
     limit: int = 10,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
 ):
     """
     获取我的急救呼叫记录
@@ -103,9 +105,8 @@ def get_my_emergency_calls(
 def update_emergency_call(
     call_id: int,
     update_data: EmergencyCallUpdate,
-    db: Session = Depends(get_db),
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     更新急救呼叫记录
@@ -120,12 +121,8 @@ def update_emergency_call(
     if call.user_id != current_user.user_id:
         raise ForbiddenException("无权限操作")
 
-    for field, value in update_data.dict(exclude_unset=True).items():
-        setattr(call, field, value)
-
-    db.commit()
-    db.refresh(call)
-    return call
+    updated_call = service.update_emergency_call(call_id, update_data)
+    return updated_call
 
 
 # ========== 救护车管理 ==========
@@ -136,8 +133,8 @@ def update_emergency_call(
 )
 def dispatch_ambulance(
     emergency_call_id: int,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     派出救护车
@@ -154,7 +151,7 @@ def dispatch_ambulance(
 @router.post("/ambulances/location", response_model=AmbulanceResponse)
 def update_ambulance_location(
     location_data: AmbulanceLocation,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
+    service: EmergencyCenterServiceDep,
 ):
     """
     更新救护车位置
@@ -171,8 +168,8 @@ def update_ambulance_location(
 @router.get("/ambulances/{emergency_call_id}/track", response_model=AmbulanceTracking)
 def track_ambulance(
     emergency_call_id: int,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     追踪救护车
@@ -196,8 +193,8 @@ def track_ambulance(
 )
 def create_rescue_record(
     record_data: RescueRecordCreate,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     创建救援记录
@@ -215,8 +212,8 @@ def create_rescue_record(
 def update_rescue_record(
     record_id: int,
     update_data: RescueRecordUpdate,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     更新救援记录
@@ -238,8 +235,8 @@ def update_rescue_record(
 @router.post("/health-summary/{user_id}", response_model=HealthSummary)
 def get_health_summary(
     user_id: str,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取健康档案摘要
@@ -262,8 +259,9 @@ def get_health_summary(
     status_code=status.HTTP_201_CREATED,
 )
 def create_emergency_center(
+    admin: CurrentAdminDep,
     center_data: EmergencyCenterCreate,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
+    service: EmergencyCenterServiceDep,
 ):
     """
     创建急救中心(管理员接口)
@@ -279,8 +277,9 @@ def create_emergency_center(
 
 @router.get("/centers", response_model=List[EmergencyCenterResponse])
 def get_emergency_centers(
+    admin: CurrentAdminDep,
+    service: EmergencyCenterServiceDep,
     active_only: bool = True,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
 ):
     """
     获取急救中心列表(管理员接口)
@@ -296,7 +295,8 @@ def get_emergency_centers(
 
 @router.get("/statistics/overview")
 def get_rescue_statistics(
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
+    admin: CurrentAdminDep,
+    service: EmergencyCenterServiceDep,
 ):
     """
     获取救援统计信息(管理员接口)
@@ -323,9 +323,9 @@ def get_rescue_statistics(
 def quick_call_120(
     current_lat: float,
     current_lon: float,
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
     send_health_summary: bool = True,
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
 ):
     """
     快速拨打120
@@ -344,8 +344,8 @@ def quick_call_120(
 
 @router.get("/my-health-summary", response_model=HealthSummary)
 def get_my_health_summary(
-    service: EmergencyCenterService = Depends(get_emergency_center_service),
-    current_user: User = Depends(get_current_user),
+    service: EmergencyCenterServiceDep,
+    current_user: CurrentUserDep,
 ):
     """
     获取我的健康档案摘要

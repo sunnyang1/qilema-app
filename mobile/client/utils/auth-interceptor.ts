@@ -2,14 +2,24 @@
  * 认证拦截器
  * 自动为请求添加 Authorization 头
  */
-import { apiClient, APIError } from '@/utils/api';
+import { apiClient, APIError, apiErrorFromResponse, type RequestConfig } from '@/utils/api';
 import { authService } from '@/services/auth';
+
+function mergeAuthorizationHeader(headers: HeadersInit | undefined, token: string | null): Headers {
+  const h = new Headers(headers as HeadersInit | undefined);
+  if (token) {
+    h.set('Authorization', `Bearer ${token}`);
+  } else {
+    h.delete('Authorization');
+  }
+  return h;
+}
 
 // 认证拦截器
 apiClient.addRequestInterceptor({
   onRequest: async (config) => {
     // 如果请求标记为跳过认证，直接返回
-    if ((config as any).skipAuth) {
+    if ((config as RequestConfig).skipAuth) {
       return config;
     }
 
@@ -20,10 +30,7 @@ apiClient.addRequestInterceptor({
     if (token) {
       return {
         ...config,
-        headers: {
-          ...config.headers,
-          Authorization: `Bearer ${token}`,
-        },
+        headers: mergeAuthorizationHeader(config.headers as HeadersInit | undefined, token),
       };
     }
 
@@ -40,44 +47,61 @@ apiClient.addResponseInterceptor({
     return response;
   },
   onResponseError: async (error: APIError) => {
-    // 如果是 401 错误，尝试刷新令牌
-    if (error.status === 401) {
-      try {
-        console.log('Access token expired, refreshing...');
-        await authService.refreshToken();
-
-        // 重试原请求
-        const originalRequest = (error as any).config;
-        if (originalRequest && originalRequest.url && originalRequest.method) {
-          // 重新发起请求
-          const retryResponse = await fetch(originalRequest.url, {
-            ...originalRequest,
-            headers: {
-              ...originalRequest.headers,
-              Authorization: `Bearer ${authService.getAccessToken()}`,
-            },
-          });
-
-          if (retryResponse.ok) {
-            const contentType = retryResponse.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              return retryResponse.json();
-            }
-            return retryResponse.text();
-          }
-        }
-      } catch (refreshError) {
-        console.error('Failed to refresh token:', refreshError);
-
-        // 刷新失败，清除认证数据并跳转到登录页
-        await authService.logout();
-
-        // 注意：这里需要在导航时处理
-        // 可以通过事件或全局状态通知需要跳转到登录页
-        console.warn('Token refresh failed, user logged out');
-      }
+    if (error.status !== 401) {
+      throw error;
     }
 
-    throw error;
+    // 未持有 access token 时的 401（如登录密码错误）：不得走刷新，避免递归与误清 session
+    if (!authService.getAccessToken()) {
+      throw error;
+    }
+
+    const ctx = error.requestContext;
+    if (!ctx) {
+      throw error;
+    }
+
+    const { url, init } = ctx;
+    if ((init as RequestConfig).retriedAfter401) {
+      await authService.logout();
+      throw error;
+    }
+
+    try {
+      console.log('Access token expired, refreshing...');
+      await authService.refreshToken();
+      const token = authService.getAccessToken();
+      if (!token) {
+        await authService.logout();
+        throw error;
+      }
+
+      const retryInit: RequestConfig = {
+        ...init,
+        headers: mergeAuthorizationHeader(init.headers as HeadersInit | undefined, token),
+        retriedAfter401: true,
+      };
+
+      const retryResponse = await fetch(url, retryInit);
+
+      if (retryResponse.ok) {
+        return retryResponse;
+      }
+
+      if (retryResponse.status === 401) {
+        await authService.logout();
+        throw error;
+      }
+
+      throw await apiErrorFromResponse(retryResponse, { url, init: retryInit });
+    } catch (e) {
+      if (e instanceof APIError) {
+        throw e;
+      }
+      console.error('Failed to refresh token:', e);
+      await authService.logout();
+      console.warn('Token refresh failed, user logged out');
+      throw error;
+    }
   },
 });

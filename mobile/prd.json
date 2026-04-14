@@ -1,290 +1,182 @@
 {
-  "project": "起了吗 App - 前端迁移",
-  "branchName": "ralph/frontend-migration",
-  "description": "将 Flutter 前端迁移到 Expo 54 + React Native，应用温暖守护设计风格和 UI/UX Pro Max 优化标准",
+  "project": "qilema-mobile",
+  "productName": "起了吗 App",
+  "productVersion": "1.1",
+  "sourceDocument": "docs/prd.md",
+  "branchName": "ralph/full-project-refactoring",
+  "description": "Expo/React Native 客户端（mobile/client）；用户故事与根目录 prd.json、docs/prd.md v1.1 一致，验收侧重界面、交互与端上能力。",
+  "refactorProgramRef": "仓库根目录 prd.json 的 refactorProgram；计划全文见 tasks/prd-global-refactor.md",
+  "improvementProgramRef": "仓库根目录 prd.json 的 improvementProgram；计划全文见 tasks/prd-post-refactor-improvements.md",
   "userStories": [
     {
-      "id": "US-001",
-      "title": "签到历史页面",
-      "description": "作为用户，我希望查看签到历史记录，以便了解我的签到情况",
+      "id": "US-P01",
+      "title": "用户认证与安全",
+      "description": "注册/登录与身份验证，支撑各业务模块访问控制（文档 §2.1、§4.1 JWT + OAuth2）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "显示签到历史列表",
-        "显示签到日期、时间、状态",
-        "显示连续签到天数",
-        "支持按月份筛选",
-        "支持下拉刷新",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-002",
-      "title": "SOS状态页面",
-      "description": "作为用户，我希望查看SOS呼叫状态，以便了解救援进度",
-      "acceptanceCriteria": [
-        "显示 SOS 呼叫状态",
-        "显示已通知的联系人",
-        "显示救援进度",
-        "显示位置信息",
-        "支持取消求助",
-        "支持查看实时位置",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-003",
-      "title": "联系人列表页面",
-      "description": "作为用户，我希望管理紧急联系人，以便在紧急情况下快速求助",
-      "acceptanceCriteria": [
-        "显示紧急联系人列表",
-        "显示联系人姓名、关系、电话",
-        "支持添加新联系人",
-        "支持编辑联系人",
-        "支持删除联系人",
-        "支持拨打联系人电话",
-        "支持设置优先级",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
+        "用户可完成注册与登录流程",
+        "接口层使用 JWT + OAuth2 约定（与后端技术规范一致）",
+        "敏感操作需有效凭证，未授权访问被拒绝"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "第一批 - 核心功能，已完成"
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成；以端到端/API 验证为准。"
     },
     {
-      "id": "US-004",
-      "title": "联系人编辑页面",
-      "description": "作为用户，我希望编辑紧急联系人信息，以便保持联系人的最新信息",
+      "id": "US-P02",
+      "title": "每日签到打卡",
+      "description": "用户每日确认安全状态，系统记录签到时间（文档 §2.2 功能1）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "表单编辑联系人信息",
-        "字段：姓名、关系、电话、优先级",
-        "表单验证",
-        "保存和取消按钮",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
+        "用户可通过操作完成当日签到",
+        "签到成功后状态更新并持久化到服务端",
+        "同一天仅首次签到有效",
+        "可查询签到历史记录"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P03",
+      "title": "异常预警机制",
+      "description": "连续未签到超阈值时自动触发预警并通知紧急联系人（文档 §2.2 功能2）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "用户可配置预警时间阈值",
+        "超过阈值未签到时自动触发预警流程",
+        "预警可通过多种渠道送达联系人"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P04",
+      "title": "SOS 紧急求助",
+      "description": "一键发起求助，附带位置等信息（文档 §2.2 功能3）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "SOS 需防误触（如长按约 3 秒）",
+        "触发后可获取并发送当前位置",
+        "求助通知可通过多种渠道发送"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P05",
+      "title": "紧急联系人管理",
+      "description": "维护 1～10 名联系人，优先级与通知渠道（文档 §2.2 功能4）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "可添加、编辑、删除紧急联系人（数量在 1～10）",
+        "可设置通知优先级",
+        "可为联系人选择通知渠道"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P06",
+      "title": "消息通知模块",
+      "description": "预警、SOS、系统等消息触达用户与联系人（文档 §2.1 架构、Phase 1 短信）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "关键事件（签到异常、SOS 等）可产生通知任务",
+        "至少支持文档所述的一种可靠渠道（如短信）并可扩展",
+        "通知失败时有可观测的降级或重试策略（与实现一致即可）"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 含短信通知。"
+    },
+    {
+      "id": "US-P07",
+      "title": "健康档案管理",
+      "description": "基础信息、病史、用药、过敏等；敏感数据保护（文档 §2.2 功能5、§3.1 HealthRecord）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "用户可维护完整健康档案信息",
+        "支持多条病史、用药、过敏记录",
+        "健康相关敏感数据加密存储与传输符合项目安全约定"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "第一批 - 核心功能，已完成"
+      "passes": false,
+      "notes": "文档 Phase 2 增强版（进行中）。"
     },
     {
-      "id": "US-005",
-      "title": "健康档案主页",
-      "description": "作为用户，我希望查看健康档案概览，以便快速了解我的健康状况",
+      "id": "US-P08",
+      "title": "智能设备联动",
+      "description": "绑定手环/手表等，展示生理数据并参与异常预警（文档 §2.2 功能6）。",
+      "prdPhase": "Phase2",
       "acceptanceCriteria": [
-        "显示健康档案概览",
-        "显示基本信息（姓名、年龄、血型）",
-        "显示病史、药物、过敏史数量",
-        "快速入口到各详情页",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
+        "用户可绑定支持的智能手环/手表类设备",
+        "可展示实时或准实时生理数据",
+        "异常生理数据可触发预警流程"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2；与生理数据监测、异常预警相关。"
+    },
+    {
+      "id": "US-P09",
+      "title": "急救资源对接",
+      "description": "120、医院、AED 等资源信息与导航能力（文档 §2.2 功能7、§5 Phase 2/3）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "提供一键拨打 120 能力（在平台允许范围内）",
+        "可展示周边急救资源（含地图能力）",
+        "支持导航至医院/AED（文档 Phase 3 对 AED 导航有进一步规划）"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2 含地图与 120；Phase 3 含 AED 地图与导航、与 120 深度对接等规划。"
+    },
+    {
+      "id": "US-P10",
+      "title": "用户设置与个性化",
+      "description": "偏好、通知、展示等配置（文档 Phase 2）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "用户可修改与体验相关的关键设置项",
+        "设置持久化并在重启后生效",
+        "与预警阈值、通知渠道等配置不冲突或有一致性校验"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2 增强版。"
+    },
+    {
+      "id": "US-P11",
+      "title": "Phase 3：急救协同与知识扩展",
+      "description": "与 120 协同、救护车追踪、AED/知识库/用药提醒等规划能力（文档 §5 Phase 3）。",
+      "prdPhase": "Phase3",
+      "acceptanceCriteria": [
+        "与 120 急救中心对接方案可落地评估（接口/合规）",
+        "急救车实时位置追踪（若立项则定义最小可用范围）",
+        "AED 设备地图与导航、急救知识库、用药提醒等按路线图拆分迭代"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "第一批 - 核心功能"
+      "passes": false,
+      "notes": "文档 Phase 3 完整版（规划中）；宜拆为子故事后再验收入口。"
     },
     {
-      "id": "US-006",
-      "title": "病史页面",
-      "description": "作为用户，我希望管理病史记录，以便记录我的医疗历史",
+      "id": "US-P12",
+      "title": "技术基线与工程化（跨功能）",
+      "description": "客户端：Expo/React Native、工程化与 CI；与 §4 基础设施协同。",
+      "prdPhase": "CrossCutting",
       "acceptanceCriteria": [
-        "显示病史列表",
-        "显示病史名称、诊断日期、描述",
-        "支持添加病史",
-        "支持编辑病史",
-        "支持删除病史",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
+        "Expo SDK、expo-router 等与 mobile/client 文档及 package 约定一致",
+        "CI 中对 client 的 lint、TypeScript 检查与 Jest/Reassure 等可复现执行",
+        "关键导航/首屏有约定性能基线方法（如 docs/PERF_BASELINE.md、test:perf）",
+        "版本与构建通道（preview/production）有清晰说明，避免与后端 API 版本策略冲突"
       ],
-      "priority": 4,
-      "passes": true,
-      "notes": "第一批 - 核心功能"
-    },
-    {
-      "id": "US-007",
-      "title": "药物页面",
-      "description": "作为用户，我希望管理药物记录，以便记录我正在使用的药物",
-      "acceptanceCriteria": [
-        "显示药物列表",
-        "显示药物名称、剂量、用法",
-        "支持添加药物",
-        "支持编辑药物",
-        "支持删除药物",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": "第一批 - 核心功能"
-    },
-    {
-      "id": "US-008",
-      "title": "过敏史页面",
-      "description": "作为用户，我希望管理过敏史记录，以便记录我的过敏情况",
-      "acceptanceCriteria": [
-        "显示过敏史列表",
-        "显示过敏源、过敏反应、严重程度",
-        "支持添加过敏史",
-        "支持编辑过敏史",
-        "支持删除过敏史",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": "第一批 - 核心功能"
-    },
-    {
-      "id": "US-009",
-      "title": "知识库分类页面",
-      "description": "作为用户，我希望浏览知识库分类，以便找到感兴趣的健康文章",
-      "acceptanceCriteria": [
-        "显示知识库分类列表",
-        "显示分类名称、图标、文章数量",
-        "支持点击进入分类",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "第二批 - 知识库"
-    },
-    {
-      "id": "US-010",
-      "title": "文章列表页面",
-      "description": "作为用户，我希望查看分类下的文章列表，以便阅读健康文章",
-      "acceptanceCriteria": [
-        "显示分类下的文章列表",
-        "显示文章标题、摘要、发布时间",
-        "支持下拉刷新",
-        "支持分页加载",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "第二批 - 知识库"
-    },
-    {
-      "id": "US-011",
-      "title": "文章详情页面",
-      "description": "作为用户，我希望阅读文章详情，以便获取健康知识",
-      "acceptanceCriteria": [
-        "显示文章标题、内容、发布时间",
-        "显示作者信息",
-        "支持分享文章",
-        "支持收藏文章",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "第二批 - 知识库"
-    },
-    {
-      "id": "US-012",
-      "title": "用药提醒页面",
-      "description": "作为用户，我希望管理用药提醒，以便按时服药",
-      "acceptanceCriteria": [
-        "显示用药提醒列表",
-        "显示药物名称、提醒时间、状态",
-        "支持开启/关闭提醒",
-        "支持编辑提醒",
-        "支持删除提醒",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "第三批 - 扩展功能"
-    },
-    {
-      "id": "US-013",
-      "title": "添加药物页面",
-      "description": "作为用户，我希望添加药物信息，以便创建用药提醒",
-      "acceptanceCriteria": [
-        "表单添加药物信息",
-        "字段：药物名称、剂量、用法、提醒时间",
-        "表单验证",
-        "保存和取消按钮",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "第三批 - 扩展功能"
-    },
-    {
-      "id": "US-014",
-      "title": "设备列表页面",
-      "description": "作为用户，我希望查看已绑定设备，以便管理我的健康设备",
-      "acceptanceCriteria": [
-        "显示已绑定设备列表",
-        "显示设备名称、类型、状态",
-        "支持添加设备",
-        "支持删除设备",
-        "支持查看设备数据",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "第四批 - 设备和急救"
-    },
-    {
-      "id": "US-015",
-      "title": "设备数据页面",
-      "description": "作为用户，我希望查看设备实时数据，以便了解我的健康状况",
-      "acceptanceCriteria": [
-        "显示设备实时数据",
-        "显示心率、血压、血氧等",
-        "显示数据图表",
-        "支持查看历史数据",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": "第四批 - 设备和急救，使用 Mock 数据"
-    },
-    {
-      "id": "US-016",
-      "title": "医院列表页面",
-      "description": "作为用户，我希望查看附近医院，以便在紧急情况下快速就医",
-      "acceptanceCriteria": [
-        "显示附近医院列表",
-        "显示医院名称、距离、地址",
-        "支持拨打电话",
-        "支持导航",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": "第四批 - 设备和急救"
-    },
-    {
-      "id": "US-017",
-      "title": "AED地图页面",
-      "description": "作为用户，我希望查看AED设备地图，以便在紧急情况下找到AED",
-      "acceptanceCriteria": [
-        "显示 AED 设备地图",
-        "显示当前位置",
-        "显示附近 AED 位置",
-        "支持导航到 AED",
-        "使用占位符地图（不集成真实地图 SDK）",
-        "使用温暖守护设计风格",
-        "支持无障碍功能"
-      ],
-      "priority": 16,
-      "passes": true,
-      "notes": "第四批 - 设备和急救，使用占位符"
+      "priority": 2,
+      "passes": false,
+      "notes": "与根目录 prd.json US-P12 客户端侧重一致；后端见 backend/prd.json。"
     }
   ]
 }

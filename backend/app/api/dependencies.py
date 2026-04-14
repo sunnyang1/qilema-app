@@ -11,10 +11,20 @@ try:
     from typing import Annotated
 except ImportError:
     from typing_extensions import Annotated
+
 from typing import TypeVar
+
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 from app.core.container import get_container
 from app.core.database import get_db
+from app.core.security import (
+    get_current_active_user,
+    get_current_admin,
+    get_current_user,
+)
+from app.models.user import User
 from app.services.aed_service import AEDService
 from app.services.alert_service import AlertService
 from app.services.anomaly_service import AnomalyService
@@ -30,8 +40,6 @@ from app.services.medication_service import MedicationService
 from app.services.notification import NotificationService
 from app.services.sos_service import SOSService
 from app.services.user_service import UserService
-from fastapi import Depends
-from sqlalchemy.orm import Session
 
 # 类型变量用于泛型服务
 cT = TypeVar("T")
@@ -409,6 +417,18 @@ def get_notification_service(
 NotificationServiceDep = Annotated[
     NotificationService, Depends(get_notification_service)
 ]
+
+
+# ========== 当前用户依赖 ==========
+
+# 使用 Annotated 模式的当前用户依赖
+CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+# 使用 Annotated 模式的当前活跃用户依赖（验证账号状态）
+CurrentActiveUserDep = Annotated[User, Depends(get_current_active_user)]
+
+# 使用 Annotated 模式的管理员用户依赖
+CurrentAdminDep = Annotated[User, Depends(get_current_admin)]
 
 
 # ========== 从容器获取服务的便捷函数 ==========

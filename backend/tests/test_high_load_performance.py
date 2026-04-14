@@ -7,9 +7,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import patch
 
 import pytest
+from conftest import TEST_CONFIG
+
 from app.models.notification_model import Notification
 from app.services.notification_service import NotificationService
-from conftest import TEST_CONFIG
 
 
 class TestHighLoadPerformance:

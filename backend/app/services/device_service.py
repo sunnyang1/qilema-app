@@ -7,6 +7,9 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import desc, func, or_
+from sqlalchemy.orm import Session
+
 from app.models.device import Device
 from app.models.device_data import DeviceData, DeviceThreshold
 from app.schemas.device import (
@@ -20,8 +23,6 @@ from app.schemas.device import (
     DeviceUpdate,
 )
 from app.services.base_service import BaseService
-from sqlalchemy import desc, func, or_
-from sqlalchemy.orm import Session
 
 
 class DeviceService(BaseService[Device]):

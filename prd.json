@@ -1,167 +1,285 @@
 {
-  "project": "qilema-full-project-refactoring",
+  "project": "qilema-app",
+  "productName": "起了吗 App",
+  "productVersion": "1.1",
+  "sourceDocument": "docs/prd.md",
   "branchName": "ralph/full-project-refactoring",
-  "description": "Comprehensive refactoring of the entire Qilema medical health application, including backend and frontend architecture optimization",
+  "description": "面向独居人群的紧急医疗与安全应用；产品需求以 docs/prd.md v1.1 为准。backend/prd.json、mobile/prd.json 与本文用户故事一致，仅 project/description 区分包范围。",
   "userStories": [
     {
-      "id": "US-001",
-      "title": "优化后端项目结构",
-      "description": "分析当前后端目录结构并创建标准的Python项目布局",
+      "id": "US-P01",
+      "title": "用户认证与安全",
+      "description": "注册/登录与身份验证，支撑各业务模块访问控制（文档 §2.1、§4.1 JWT + OAuth2）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "分析backend目录的当前结构",
-        "创建标准的Python项目布局（config/, models/, services/, routes/等）",
-        "分离配置、模型、服务、路由等模块",
-        "添加适当的__init__.py文件",
-        "确保导入路径清晰一致",
-        "运行pytest确保现有功能正常"
+        "用户可完成注册与登录流程",
+        "接口层使用 JWT + OAuth2 约定（与后端技术规范一致）",
+        "敏感操作需有效凭证，未授权访问被拒绝"
       ],
       "priority": 1,
       "passes": false,
-      "notes": ""
+      "notes": "文档 Phase 1 MVP 列为已完成；以端到端/API 验证为准。"
     },
     {
-      "id": "US-002",
-      "title": "实现依赖注入和接口抽象",
-      "description": "创建服务抽象层和依赖注入容器",
+      "id": "US-P02",
+      "title": "每日签到打卡",
+      "description": "用户每日确认安全状态，系统记录签到时间（文档 §2.2 功能1）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "创建服务抽象层（接口）",
-        "实现依赖注入容器",
-        "解耦具体实现和接口",
-        "提高代码的可测试性",
-        "支持多环境配置",
-        "编写单元测试验证依赖注入功能"
+        "用户可通过操作完成当日签到",
+        "签到成功后状态更新并持久化到服务端",
+        "同一天仅首次签到有效",
+        "可查询签到历史记录"
       ],
       "priority": 1,
       "passes": false,
-      "notes": ""
+      "notes": "文档 Phase 1 MVP 列为已完成。"
     },
     {
-      "id": "US-003",
-      "title": "优化数据库模型和迁移",
-      "description": "分析现有数据库模型并优化模型关系",
+      "id": "US-P03",
+      "title": "异常预警机制",
+      "description": "连续未签到超阈值时自动触发预警并通知紧急联系人（文档 §2.2 功能2）。",
+      "prdPhase": "MVP",
       "acceptanceCriteria": [
-        "分析现有数据库模型",
-        "优化模型关系和外键约束",
-        "创建数据库迁移脚本",
-        "添加索引优化查询性能",
-        "实现模型验证和约束",
-        "运行现有测试确保数据完整性"
+        "用户可配置预警时间阈值",
+        "超过阈值未签到时自动触发预警流程",
+        "预警可通过多种渠道送达联系人"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P04",
+      "title": "SOS 紧急求助",
+      "description": "一键发起求助，附带位置等信息（文档 §2.2 功能3）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "SOS 需防误触（如长按约 3 秒）",
+        "触发后可获取并发送当前位置",
+        "求助通知可通过多种渠道发送"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P05",
+      "title": "紧急联系人管理",
+      "description": "维护 1～10 名联系人，优先级与通知渠道（文档 §2.2 功能4）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "可添加、编辑、删除紧急联系人（数量在 1～10）",
+        "可设置通知优先级",
+        "可为联系人选择通知渠道"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 MVP 列为已完成。"
+    },
+    {
+      "id": "US-P06",
+      "title": "消息通知模块",
+      "description": "预警、SOS、系统等消息触达用户与联系人（文档 §2.1 架构、Phase 1 短信）。",
+      "prdPhase": "MVP",
+      "acceptanceCriteria": [
+        "关键事件（签到异常、SOS 等）可产生通知任务",
+        "至少支持文档所述的一种可靠渠道（如短信）并可扩展",
+        "通知失败时有可观测的降级或重试策略（与实现一致即可）"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "文档 Phase 1 含短信通知。"
+    },
+    {
+      "id": "US-P07",
+      "title": "健康档案管理",
+      "description": "基础信息、病史、用药、过敏等；敏感数据保护（文档 §2.2 功能5、§3.1 HealthRecord）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "用户可维护完整健康档案信息",
+        "支持多条病史、用药、过敏记录",
+        "健康相关敏感数据加密存储与传输符合项目安全约定"
       ],
       "priority": 2,
       "passes": false,
-      "notes": ""
+      "notes": "文档 Phase 2 增强版（进行中）。"
     },
     {
-      "id": "US-004",
-      "title": "重构API路由和中间件",
-      "description": "统一API路由结构并实现认证中间件",
+      "id": "US-P08",
+      "title": "智能设备联动",
+      "description": "绑定手环/手表等，展示生理数据并参与异常预警（文档 §2.2 功能6）。",
+      "prdPhase": "Phase2",
       "acceptanceCriteria": [
-        "统一API路由结构",
-        "实现认证和授权中间件",
-        "添加请求验证和错误处理",
-        "优化响应格式和状态码",
-        "实现API版本控制",
-        "测试所有API端点正常工作"
+        "用户可绑定支持的智能手环/手表类设备",
+        "可展示实时或准实时生理数据",
+        "异常生理数据可触发预警流程"
       ],
       "priority": 2,
       "passes": false,
-      "notes": ""
+      "notes": "文档 Phase 2；与生理数据监测、异常预警相关。"
     },
     {
-      "id": "US-005",
-      "title": "实现服务层和业务逻辑分离",
-      "description": "将业务逻辑从控制器分离到服务层",
+      "id": "US-P09",
+      "title": "急救资源对接",
+      "description": "120、医院、AED 等资源信息与导航能力（文档 §2.2 功能7、§5 Phase 2/3）。",
+      "prdPhase": "Phase2",
       "acceptanceCriteria": [
-        "将业务逻辑从控制器分离到服务层",
-        "创建统一的异常处理机制",
-        "实现事务管理",
-        "添加日志记录和监控",
-        "优化性能关键路径",
-        "编写服务层单元测试"
+        "提供一键拨打 120 能力（在平台允许范围内）",
+        "可展示周边急救资源（含地图能力）",
+        "支持导航至医院/AED（文档 Phase 3 对 AED 导航有进一步规划）"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2 含地图与 120；Phase 3 含 AED 地图与导航、与 120 深度对接等规划。"
+    },
+    {
+      "id": "US-P10",
+      "title": "用户设置与个性化",
+      "description": "偏好、通知、展示等配置（文档 Phase 2）。",
+      "prdPhase": "Phase2",
+      "acceptanceCriteria": [
+        "用户可修改与体验相关的关键设置项",
+        "设置持久化并在重启后生效",
+        "与预警阈值、通知渠道等配置不冲突或有一致性校验"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "文档 Phase 2 增强版。"
+    },
+    {
+      "id": "US-P11",
+      "title": "Phase 3：急救协同与知识扩展",
+      "description": "与 120 协同、救护车追踪、AED/知识库/用药提醒等规划能力（文档 §5 Phase 3）。",
+      "prdPhase": "Phase3",
+      "acceptanceCriteria": [
+        "与 120 急救中心对接方案可落地评估（接口/合规）",
+        "急救车实时位置追踪（若立项则定义最小可用范围）",
+        "AED 设备地图与导航、急救知识库、用药提醒等按路线图拆分迭代"
       ],
       "priority": 3,
       "passes": false,
-      "notes": ""
+      "notes": "文档 Phase 3 完整版（规划中）；宜拆为子故事后再验收入口。"
     },
     {
-      "id": "US-006",
-      "title": "添加后端单元测试",
-      "description": "创建测试基础架构并编写完整测试套件",
+      "id": "US-P12",
+      "title": "技术基线与工程化（跨功能）",
+      "description": "文档 §4 技术栈、§4.2 服务层模式；前后端共享的 CI/CD 与可观测性要求（各包见 backend/mobile prd.json 中 US-P12 细化）。",
+      "prdPhase": "CrossCutting",
       "acceptanceCriteria": [
-        "创建测试基础架构",
-        "编写模型测试",
-        "编写服务层测试",
-        "编写API端点测试",
-        "实现测试数据工厂",
-        "测试覆盖率>80%"
+        "后端：Python/FastAPI/SQLAlchemy/Redis/PostgreSQL 等与 docs/prd.md §4.1 一致或偏差已文档化；核心服务符合 §4.2 BaseService[T] 模式",
+        "客户端：Expo/React Native 技术栈与仓库约定一致（含路由与发布通道）",
+        "仓库级 CI/CD（如 GitHub Actions）可复现构建、测试与质量门禁",
+        "运行时可观测性：后端监控（如 Prometheus/Grafana）与客户端性能/稳定性基线按环境逐步落地"
       ],
-      "priority": 3,
+      "priority": 2,
       "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-007",
-      "title": "实现配置管理",
-      "description": "创建多环境配置系统和配置验证",
-      "acceptanceCriteria": [
-        "创建多环境配置系统",
-        "实现配置验证",
-        "添加敏感信息加密",
-        "支持Docker环境变量",
-        "创建配置文档",
-        "测试不同环境配置加载"
-      ],
-      "priority": 4,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-008",
-      "title": "优化性能和缓存",
-      "description": "分析性能瓶颈并实现Redis缓存",
-      "acceptanceCriteria": [
-        "分析性能瓶颈",
-        "实现Redis缓存",
-        "添加查询优化",
-        "实现连接池",
-        "添加性能监控",
-        "性能测试通过"
-      ],
-      "priority": 4,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-009",
-      "title": "实现健康检查和监控",
-      "description": "添加健康检查端点和监控仪表板",
-      "acceptanceCriteria": [
-        "添加健康检查端点",
-        "实现指标收集",
-        "添加错误追踪",
-        "创建监控仪表板",
-        "实现告警机制",
-        "验证监控功能正常"
-      ],
-      "priority": 5,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-010",
-      "title": "创建部署和CI/CD配置",
-      "description": "优化Docker配置并实现CI/CD流水线",
-      "acceptanceCriteria": [
-        "优化Dockerfile",
-        "创建docker-compose配置",
-        "实现GitHub Actions CI",
-        "添加自动化测试和部署",
-        "创建部署文档",
-        "CI/CD流水线运行成功"
-      ],
-      "priority": 5,
-      "passes": false,
-      "notes": ""
+      "notes": "全栈横切；backend/prd.json、mobile/prd.json 的 US-P12 分别写实施侧重。"
     }
-  ]
+  ],
+  "refactorProgram": {
+    "id": "RP-PRD-v1.1",
+    "strategy": "strangler-doc-first",
+    "planDocument": "tasks/prd-global-refactor.md",
+    "status": "complete",
+    "currentWave": "R-W6",
+    "waves": [
+      {
+        "id": "R-W1",
+        "title": "文档与 PRD 模块映射基线",
+        "deliverables": [
+          "backend/docs 与 mobile 文档中建立 docs/prd.md §2.1 模块 ↔ 代码路径对照（详见 planDocument）",
+          "自 docs/prd.md 或 AGENTS.md 可导航到该对照"
+        ],
+        "passes": true
+      },
+      {
+        "id": "R-W2",
+        "title": "API 面按模块可导航",
+        "deliverables": [
+          "OpenAPI 标签或路由注册处与 PRD 模块命名一致",
+          "核心回归 pytest 通过"
+        ],
+        "passes": true
+      },
+      {
+        "id": "R-W3",
+        "title": "MVP 域服务与路由追踪",
+        "deliverables": [
+          "US-P01～P06 各有主路由+主服务追踪说明",
+          "缺口列入 backlog"
+        ],
+        "passes": true
+      },
+      {
+        "id": "R-W4",
+        "title": "Phase2 域边界与示例代码收敛",
+        "deliverables": [
+          "US-P07～P10 边界声明",
+          "example_* 等示例路径有弃用或归属说明"
+        ],
+        "passes": true
+      },
+      {
+        "id": "R-W5",
+        "title": "客户端 feature 结构试点",
+        "deliverables": [
+          "单模块试点 features/ 或等价约定且不破坏 expo-router"
+        ],
+        "passes": true
+      },
+      {
+        "id": "R-W6",
+        "title": "横切工程化（US-P12）对齐",
+        "deliverables": [
+          "CI、监控、客户端 perf 与文档交叉引用更新"
+        ],
+        "passes": true
+      }
+    ]
+  },
+  "improvementProgram": {
+    "id": "IP-post-RW6",
+    "strategy": "incremental-hardening",
+    "planDocument": "tasks/prd-post-refactor-improvements.md",
+    "status": "complete",
+    "currentWave": "I-W4",
+    "waves": [
+      {
+        "id": "I-W1",
+        "title": "CI 前端 tsc 硬门禁",
+        "deliverables": [
+          "ci.yml frontend-lint 中 pnpm tsc --noEmit 失败则 job 失败",
+          "mobile/client 本地 tsc 与 CI 一致绿"
+        ],
+        "passes": true
+      },
+      {
+        "id": "I-W2",
+        "title": "AlertService 对外 REST 与追踪文档更新",
+        "deliverables": [
+          "至少一条路由注入 AlertServiceDep 并具备 pytest",
+          "MVP_SERVICE_TRACE 中 P0 backlog 可关闭或降级为已跟踪"
+        ],
+        "passes": true
+      },
+      {
+        "id": "I-W3",
+        "title": "联系人详情与 emergency-contacts API 对齐",
+        "deliverables": [
+          "contact-detail 使用与 contacts 服务一致的 canonical 路径与类型",
+          "tsc 通过"
+        ],
+        "passes": true
+      },
+      {
+        "id": "I-W4",
+        "title": "progress 与 refactor 完成态叙事收敛",
+        "deliverables": [
+          "progress.txt 明确以根 prd.json refactorProgram 为准；阶段4/5 历史段落不误导"
+        ],
+        "passes": true
+      }
+    ]
+  }
 }

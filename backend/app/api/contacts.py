@@ -2,25 +2,31 @@
 紧急联系人API路由
 
 使用 ApiResponseBuilder 统一构建响应
+使用 Annotated 依赖注入模式 (FastAPI 0.135.x)
 """
 
-from app.api.dependencies import get_emergency_contact_service
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
+from fastapi import APIRouter, HTTPException, status
+
+from app.api.dependencies import CurrentUserDep, EmergencyContactServiceDep
+from app.api.openapi_tags import TAG_EMERGENCY_CONTACTS
 from app.core.exceptions import NotFoundException
 from app.core.response_builder import ApiResponseBuilder
-from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.emergency_contact import EmergencyContactCreate, EmergencyContactUpdate
-from app.services.emergency_contact_service import EmergencyContactService
-from fastapi import APIRouter, Depends, HTTPException, status
 
-router = APIRouter(tags=["紧急联系人"])
+router = APIRouter(tags=[TAG_EMERGENCY_CONTACTS])
 
 
 @router.post("/", summary="创建紧急联系人")
 async def create_emergency_contact(
     contact_data: EmergencyContactCreate,
-    current_user: User = Depends(get_current_user),
-    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    current_user: CurrentUserDep,
+    service: EmergencyContactServiceDep,
 ):
     """
     创建紧急联系人
@@ -65,8 +71,8 @@ async def create_emergency_contact(
 
 @router.get("/", summary="获取紧急联系人列表")
 async def get_emergency_contacts(
-    current_user: User = Depends(get_current_user),
-    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    current_user: CurrentUserDep,
+    service: EmergencyContactServiceDep,
 ):
     """获取当前用户的紧急联系人列表"""
     contacts = service.get_emergency_contacts(current_user.user_id)
@@ -96,8 +102,8 @@ async def get_emergency_contacts(
 @router.get("/{contact_id}", summary="获取紧急联系人详情")
 async def get_emergency_contact(
     contact_id: int,
-    current_user: User = Depends(get_current_user),
-    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    current_user: CurrentUserDep,
+    service: EmergencyContactServiceDep,
 ):
     """获取紧急联系人详情"""
     contact = service.get_emergency_contact(contact_id, current_user.user_id)
@@ -129,8 +135,8 @@ async def get_emergency_contact(
 async def update_emergency_contact(
     contact_id: int,
     update_data: EmergencyContactUpdate,
-    current_user: User = Depends(get_current_user),
-    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    current_user: CurrentUserDep,
+    service: EmergencyContactServiceDep,
 ):
     """
     更新紧急联系人
@@ -166,8 +172,8 @@ async def update_emergency_contact(
 @router.delete("/{contact_id}", summary="删除紧急联系人")
 async def delete_emergency_contact(
     contact_id: int,
-    current_user: User = Depends(get_current_user),
-    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    current_user: CurrentUserDep,
+    service: EmergencyContactServiceDep,
 ):
     """删除紧急联系人"""
     success = service.delete_emergency_contact(contact_id, current_user.user_id)
@@ -181,8 +187,8 @@ async def delete_emergency_contact(
 @router.put("/{contact_id}/set-primary", summary="设置主要紧急联系人")
 async def set_primary_contact(
     contact_id: int,
-    current_user: User = Depends(get_current_user),
-    service: EmergencyContactService = Depends(get_emergency_contact_service),
+    current_user: CurrentUserDep,
+    service: EmergencyContactServiceDep,
 ):
     """设置指定联系人为主要紧急联系人"""
     contact = service.set_primary_contact(contact_id, current_user.user_id)

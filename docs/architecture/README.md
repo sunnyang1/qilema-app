@@ -22,14 +22,16 @@
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 前端 | React Native |
-| 后端 | Python FastAPI |
-| 数据库 | PostgreSQL |
-| 缓存 | Redis |
-| 反向代理 | Nginx |
-| 部署 | Docker, GitHub Actions |
+
+| 层级   | 技术                     |
+| ---- | ---------------------- |
+| 前端   | React Native           |
+| 后端   | Python FastAPI         |
+| 数据库  | PostgreSQL             |
+| 缓存   | Redis                  |
+| 反向代理 | Nginx                  |
+| 部署   | Docker, GitHub Actions |
+
 
 ## 更多信息
 

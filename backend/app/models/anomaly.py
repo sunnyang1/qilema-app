@@ -6,12 +6,13 @@
 
 import enum
 
-from app.models.base_mixin import BaseModelMixin
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship as db_relationship
 from sqlalchemy.sql import func
+
+from app.models.base_mixin import BaseModelMixin
 
 from ..core.database import Base
 

@@ -5,6 +5,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+
 from app.core.cache import cache, cache_clear, cache_result, invalidate_cache
 
 
