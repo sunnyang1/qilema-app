@@ -12,7 +12,7 @@ try:
 except ImportError:
     from typing_extensions import Annotated
 
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -40,6 +40,13 @@ from app.services.medication_service import MedicationService
 from app.services.notification import NotificationService
 from app.services.sos_service import SOSService
 from app.services.user_service import UserService
+
+if TYPE_CHECKING:
+    from app.services.medication_service import (
+        MedicationLogService,
+        MedicationReminderService,
+        MedicationScheduleService,
+    )
 
 # 类型变量用于泛型服务
 cT = TypeVar("T")

@@ -12,6 +12,10 @@ from app.core.database import Base
 from app.models.base_mixin import BaseModelMixin
 
 if TYPE_CHECKING:
+    from app.models.anomaly import Anomaly
+    from app.models.device_data import DeviceData
+    from app.models.device_threshold import DeviceThreshold
+    from app.models.health_trend import ActivityPattern, HealthTrend
     from app.models.user import User
 
 
