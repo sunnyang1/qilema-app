@@ -99,6 +99,6 @@
     "reassure": "^1.4.1",
     "tsx": "^4.21.0",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.32.1"
+    "typescript-eslint": "^8.58.2"
   }
 }
