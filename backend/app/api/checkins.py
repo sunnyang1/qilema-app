@@ -9,7 +9,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
 from app.api.dependencies import AsyncDbSession, CurrentUserDep
 from app.api.openapi_tags import TAG_CHECKIN_MONITOR
@@ -26,6 +26,7 @@ router = APIRouter(tags=[TAG_CHECKIN_MONITOR])
 @router.post("/")
 @limiter.limit(STANDARD_LIMIT)
 async def create_checkin(
+    request: Request,
     checkin_data: CheckInCreate,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
@@ -63,6 +64,7 @@ async def create_checkin(
 @router.get("/history")
 @limiter.limit(STANDARD_LIMIT)
 async def get_checkin_history(
+    request: Request,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
     days: int = Query(30, ge=1, le=365, description="查询天数"),
@@ -84,6 +86,7 @@ async def get_checkin_history(
 @router.get("/stats")
 @limiter.limit(STANDARD_LIMIT)
 async def get_checkin_stats(
+    request: Request,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
     days: int = Query(30, ge=1, le=365, description="统计天数"),
@@ -115,6 +118,7 @@ async def get_checkin_stats(
 @router.post("/status")
 @limiter.limit(STANDARD_LIMIT)
 async def get_checkin_status(
+    request: Request,
     query: CheckInDateQuery,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
@@ -147,6 +151,7 @@ async def get_checkin_status(
 @router.get("/today")
 @limiter.limit(STANDARD_LIMIT)
 async def get_today_checkin_status(
+    request: Request,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
 ):

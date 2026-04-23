@@ -9,7 +9,7 @@ SOS紧急求助API路由 (Phase 2 异步化)
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app.api.dependencies import AsyncDbSession, CurrentUserDep
 from app.api.openapi_tags import TAG_SOS
@@ -25,6 +25,7 @@ router = APIRouter(tags=[TAG_SOS])
 @router.post("/", summary="发起SOS求助")
 @limiter.limit(SOS_LIMIT)
 async def create_sos(
+    request: Request,
     latitude: float,
     longitude: float,
     current_user: CurrentUserDep,
@@ -76,6 +77,7 @@ async def create_sos(
 @router.get("/", summary="获取SOS记录")
 @limiter.limit(STANDARD_LIMIT)
 async def get_sos_requests(
+    request: Request,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
     skip: int = 0,
@@ -96,6 +98,7 @@ async def get_sos_requests(
 @router.get("/{sos_id}", summary="获取SOS详情")
 @limiter.limit(STANDARD_LIMIT)
 async def get_sos(
+    request: Request,
     sos_id: str,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
@@ -113,6 +116,7 @@ async def get_sos(
 @router.put("/{sos_id}/cancel", summary="取消SOS求助")
 @limiter.limit(STANDARD_LIMIT)
 async def cancel_sos(
+    request: Request,
     sos_id: str,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
@@ -136,6 +140,7 @@ async def cancel_sos(
 @router.put("/{sos_id}/resolve", summary="解决SOS求助")
 @limiter.limit(STANDARD_LIMIT)
 async def resolve_sos(
+    request: Request,
     sos_id: str,
     resolution: dict,
     current_user: CurrentUserDep,

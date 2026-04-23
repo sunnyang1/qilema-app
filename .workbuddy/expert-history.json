@@ -51,7 +51,27 @@
         "usedAt": 1776941320472,
         "industryId": "02-Engineering"
       }
+    ],
+    "7373a2a416ca4e5e8c1969f95308b084": [
+      {
+        "expertId": "CodeReviewExpert",
+        "name": "火眼眼",
+        "profession": "代码审查专家",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/CodeReviewExpert/CodeReviewExpert.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/CodeReviewExpert/CodeReviewExpert_zh.md",
+        "usedAt": 1776968801368,
+        "industryId": "02-Engineering"
+      },
+      {
+        "expertId": "MobileApplicationDeveloper",
+        "name": "掌中灵",
+        "profession": "移动应用开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/MobileApplicationDeveloper/MobileApplicationDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/MobileApplicationDeveloper/MobileApplicationDeveloper_zh.md",
+        "usedAt": 1776941320472,
+        "industryId": "02-Engineering"
+      }
     ]
   },
-  "lastUpdated": 1776952802779
+  "lastUpdated": 1776968833606
 }

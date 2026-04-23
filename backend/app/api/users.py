@@ -6,7 +6,7 @@
 使用 AsyncSession + UserRepository 实现真正的异步数据库操作
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.dependencies import AsyncDbSession, CurrentUserDep
 from app.api.openapi_tags import TAG_USER_SETTINGS
@@ -36,6 +36,7 @@ def _require_self_or_admin(current_user: User, target_user_id: str) -> None:
 @router.post("/register", summary="用户注册")
 @limiter.limit(STRICT_LIMIT)
 async def register(
+    request: Request,
     user_data: UserRegisterRequest,
     db: AsyncDbSession,
 ):
@@ -65,7 +66,7 @@ async def register(
 
 @router.get("/me", summary="获取当前用户信息")
 @limiter.limit(STANDARD_LIMIT)
-async def get_user_me(current_user: CurrentUserDep):
+async def get_user_me(request: Request, current_user: CurrentUserDep):
     """获取当前登录用户信息"""
     return ApiResponseBuilder.success(data=current_user.to_dict())
 
@@ -73,6 +74,7 @@ async def get_user_me(current_user: CurrentUserDep):
 @router.get("/{user_id}", summary="获取用户信息")
 @limiter.limit(STANDARD_LIMIT)
 async def get_user(
+    request: Request,
     user_id: str,
     current_user: CurrentUserDep,
     db: AsyncDbSession,
@@ -90,6 +92,7 @@ async def get_user(
 @router.put("/{user_id}", summary="更新用户信息")
 @limiter.limit(STANDARD_LIMIT)
 async def update_user(
+    request: Request,
     user_id: str,
     update_data: UserUpdate,
     current_user: CurrentUserDep,
