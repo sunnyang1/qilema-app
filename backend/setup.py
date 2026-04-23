@@ -12,7 +12,7 @@ setup(
         "uvicorn[standard]==0.24.0",
         "sqlalchemy==2.0.23",
         "psycopg2-binary==2.9.9",
-        "redis==5.0.1",
+        "redis==7.0.1",
         "pydantic==2.5.0",
         "pydantic-settings==2.1.0",
         "python-jose[cryptography]==3.3.0",
