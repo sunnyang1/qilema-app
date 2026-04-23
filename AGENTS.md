@@ -1,549 +1,383 @@
-# AGENTS.md - 项目知识库
+<!-- AGENTS.md - Project Knowledge Base for AI Coding Agents -->
 
-**说明**：本文件为长期技术约定与示例索引；**执行状态与验收**以根目录 **`prd.json`**（`userStories`、`refactorProgram`、`improvementProgram` 均已 **complete**）及 **`docs/prd.md`** 为准。下文 **「Stage 4」** 等章节是**实现指南**，不代表当前仍有一项名为「阶段 4」的开放工程单（历史进度见 **`progress.txt`** 归档段）。
+**Note**: This file provides project-wide context for AI coding agents. All information is derived from actual source files and configurations, not assumptions. The project primarily uses **Chinese** for comments and documentation.
 
-## Stage 4: 模型层优化指南 (2026-03-18)
+---
 
-### 关联加载策略
+## Project Overview
 
-根据使用频率选择合适的 `lazy` 模式：
+**Qilema App (起了吗 App)** is an emergency medical assistance platform targeting people living alone (elderly care / solo dwellers). Core features:
 
-```python
-# 1. 高频/大数据量 - lazy='dynamic'（返回 Query 对象）
-checkins: Mapped[List["CheckIn"]] = relationship(
-    "CheckIn", back_populates="user", lazy="dynamic"
-)
+- **Daily Check-in** — Users confirm their safety status via daily check-ins
+- **Anomaly Alerts** — Automatic alerts triggered when check-in is overdue
+- **SOS Emergency** — One-tap emergency signal with automatic location retrieval
+- **Emergency Contacts** — Add and manage emergency contacts
+- **Health Records** — Medical history, medications, allergies
+- **Medication Reminders** — Scheduled reminders with logging
+- **Emergency Resources** — Nearby hospitals and AED device locations
+- **Knowledge Base** — First-aid articles and categories
 
-# 2. 中频/小数据量 - lazy='select'（默认）
-emergency_contacts: Mapped[List["EmergencyContact"]] = relationship(
-    "EmergencyContact", back_populates="user"
-)
+**Repository**: `https://github.com/sunnyang1/qilema-app.git`
+**License**: MIT
 
-# 3. 一对一/总是需要 - lazy='joined'（立即加载）
-alert_settings: Mapped[Optional["AlertSetting"]] = relationship(
-    "AlertSetting", back_populates="user", uselist=False, lazy="joined"
-)
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | Python 3.8–3.12 + FastAPI 0.104.1 + SQLAlchemy 2.0.23 + Pydantic v2 |
+| Mobile | React Native 0.81.5 + Expo 54.0.33 + TypeScript |
+| Database | PostgreSQL 15 (prod) / SQLite (dev) + Redis 7 |
+| Deployment | Docker + Docker Compose + Nginx + Kubernetes manifests |
+| CI/CD | GitHub Actions |
+
+---
+
+## Project Structure
+
 ```
-
-### 数据库索引优化
-
-添加复合索引优化查询性能：
-
-```python
-from sqlalchemy import Index
-
-class User(Base):
-    __tablename__ = "users"
-
-    __table_args__ = (
-        Index("idx_users_phone_created", "phone", "created_at"),
-        Index("idx_users_last_sign_in", "last_sign_in"),
-    )
-```
-
-### to_dict() 性能优化
-
-预定义关联关系列表，避免运行时 inspect：
-
-```python
-class User(Base):
-    # 预定义关联关系名称（类级别 frozenset）
-    _RELATIONSHIP_NAMES = frozenset([
-        "emergency_contacts", "checkins", "alerts", ...
-    ])
-
-    def to_dict(self, exclude=None, include=None, include_relations=None):
-        default_exclude = ["password_hash"]
-
-        # 支持选择性包含关联关系
-        relations_to_exclude = set(self._RELATIONSHIP_NAMES)
-        if include_relations:
-            relations_to_exclude -= set(include_relations)
-
-        default_exclude.extend(relations_to_exclude)
-        # ...
-```
-
-### 模型字段验证
-
-使用 `@validates` 装饰器进行字段验证：
-
-```python
-from sqlalchemy.orm import validates
-
-class User(Base):
-    @validates("phone")
-    def validate_phone(self, key: str, phone: str) -> str:
-        if not re.match(r"^1[3-9]\d{9}$", phone):
-            raise ValueError(f"无效的手机号格式: {phone}")
-        return phone
-```
-
-### lazy='dynamic' + cascade 注意事项
-
-SQLAlchemy 2.x 中 `lazy='dynamic'` 与 `cascade='delete-orphan'` 组合有兼容性问题：
-
-```python
-# 解决方案 1: 使用 lazy='select' 替代 dynamic
-# 适合需要级联删除的关系
-checkins: Mapped[List["CheckIn"]] = relationship(
-    "CheckIn", back_populates="user",
-    cascade="all, delete-orphan", lazy="select"  # 使用 select 而非 dynamic
-)
-
-# 解决方案 2: 移除 cascade，改为手动清理
-# 适合大数据量表，保留历史记录
-notifications: Mapped[List["Notification"]] = relationship(
-    "Notification", back_populates="user",
-    lazy="dynamic"  # 不使用 cascade
-)
-
-# 在删除用户前手动清理
-def cleanup_dynamic_relations(self, db_session):
-    for notification in self.notifications:
-        db_session.delete(notification)
+qilema-app/
+├── backend/                  # Python FastAPI backend
+│   ├── main.py               # FastAPI entry point (lifespan context manager)
+│   ├── app/
+│   │   ├── api/              # API routers (Annotated dependency injection)
+│   │   ├── core/             # Config, DB, cache, security, middleware, exceptions
+│   │   ├── models/           # SQLAlchemy 2.x models (with BaseModelMixin)
+│   │   ├── schemas/          # Pydantic v2 validation/serialization models
+│   │   └── services/         # Business service layer (notification subpackage)
+│   ├── tests/                # pytest test suite
+│   ├── migrations/           # DB migrations
+│   ├── pyproject.toml        # Python project config (deps, black, isort, mypy, pytest)
+│   ├── requirements.txt      # Runtime dependencies
+│   └── Dockerfile            # Multi-stage build (non-root user)
+├── mobile/                   # React Native mobile (pnpm workspace)
+│   ├── client/               # Expo app source (file-based routing)
+│   ├── server/               # Production server build
+│   └── package.json          # Workspace root config
+├── nginx/                    # Nginx reverse proxy
+├── k8s/                      # Kubernetes deployment manifests
+├── scripts/                  # Ops scripts
+├── docs/                     # Project docs (architecture, deployment, dev, CI/CD)
+├── docker-compose.yml        # Base services (postgres + redis + backend + nginx)
+├── docker-compose.dev.yml    # Dev overrides (hot reload, relaxed resources)
+├── docker-compose.prod.yml   # Prod overrides (strict resources, persistence)
+└── .github/workflows/        # GitHub Actions
 ```
 
 ---
 
-## API/SDK 标准升级指南 (2026-03-17)
+## Backend Architecture
 
-### SQLAlchemy 2.x 迁移
+### Entry Point & Startup
 
-#### 数据库基类
-```python
-# SQLAlchemy 1.x (旧方式 - 不推荐)
-from sqlalchemy.ext.declarative import declarative_base
-Base = declarative_base()
+- **Main entry**: `backend/main.py`
+- **Startup commands**:
+  ```bash
+  cd backend
+  uvicorn main:app --reload
+  # or
+  python -m uvicorn main:app --reload --env-file .env.dev
+  ```
+- Uses `lifespan` async context manager (FastAPI 0.135.x style); do NOT use `@app.on_event("startup")`.
+- Health check endpoints: `GET /health` and `GET /api/v1/health`.
 
-# SQLAlchemy 2.x (新方式 - 推荐)
-from sqlalchemy.orm import DeclarativeBase
+### Core Modules (`app/core/`)
 
-class Base(DeclarativeBase):
-    pass
-```
+| Module | Responsibility |
+|--------|----------------|
+| `config.py` | `Settings` class via `pydantic-settings`; loads `.env` / `.env.testing`; includes production security validations |
+| `database.py` | SQLAlchemy 2.x `DeclarativeBase`, engine/session manager; supports SQLite (NullPool) and PostgreSQL (QueuePool) |
+| `security.py` | JWT, password hashing, current user dependencies (`get_current_user` / `get_current_active_user` / `get_current_admin`) |
+| `cache.py` / `cache_mixin.py` / `cache_config.py` | Redis cache wrappers, cache decorators, `CacheMixin` |
+| `query_builder.py` | Chainable `QueryBuilder` + `paginate()` helper |
+| `middleware.py` | Request logging, request ID, encoding fix middleware |
+| `error_handlers.py` | Global exception handlers |
+| `response_builder.py` | Unified API response format wrapper |
+| `prometheus_metrics.py` | Prometheus `/metrics` endpoint |
 
-#### 模型定义
-```python
-# SQLAlchemy 1.x
-from sqlalchemy import Column, Integer, String
+### Model Layer (`app/models/`)
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50))
+- Base class: `app.core.database.Base` (`DeclarativeBase`)
+- Universal mixin: `BaseModelMixin` providing `to_dict()`, `to_schema()`, `from_dict()`
+- Key entities: `User`, `CheckIn`, `Alert`, `SOSRequest`, `EmergencyContact`, `HealthRecord`, `Device`, `DeviceData`, `MedicationReminderSchedule`, `Notification`, `EmergencyCenter`, `EmergencyResource`, `KnowledgeArticle`, `Anomaly`, etc.
+- `models/__init__.py` imports models in dependency order to avoid circular references.
+- Modern models should use `Mapped[]` type annotations + `mapped_column()` (SQLAlchemy 2.x style).
 
-# SQLAlchemy 2.x - 使用 Mapped[] 类型注解
-from sqlalchemy.orm import Mapped, mapped_column
+### Schema Layer (`app/schemas/`)
 
-class User(Base):
-    __tablename__ = "users"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50))
-```
+- Pydantic v2 schemas only.
+- Use `model_config = {"from_attributes": True}` instead of deprecated `orm_mode = True`.
+- Correct inheritance order for generics: `class ListResponse(BaseModel, Generic[T])` (NOT `Generic[T], BaseModel`).
 
-参考: `backend/app/models/example_modern.py`
+### Service Layer (`app/services/`)
 
-### FastAPI 0.135.x 迁移
+- `BaseService[ModelType]` in `base_service.py` provides generic CRUD + Redis caching + `QueryBuilder` integration.
+- Domain services: `UserService`, `CheckInService`, `SOSService`, `EmergencyContactService`, `HealthRecordService`, `DeviceService`, `AlertService`, `MedicationService`, `AnomalyService`, `AEDService`, `EmergencyCenterService`, `KnowledgeBaseService`, `HealthReportService`, etc.
+- Notification services are grouped under `services/notification/`:
+  - `notification_facade.py` — main facade
+  - `notification_sender_service.py`
+  - `notification_template_service.py`
+  - `circuit_breaker_service.py`
+  - `notification_stats_service.py`
 
-#### Lifespan 上下文管理器
-```python
-# 旧方式 (不推荐)
-@app.on_event("startup")
-async def startup_event():
-    init_db()
+### API Layer (`app/api/`)
 
-# 新方式 (推荐)
-from contextlib import asynccontextmanager
+- Router modules per domain: `users.py`, `auth.py`, `checkins.py`, `contacts.py`, `sos_requests.py`, `health_records.py`, `medications.py`, `alerts.py`, `devices.py`, `notifications.py`, `emergency_centers.py`, `emergency_resources.py`, `knowledge.py`, `anomalies.py`, `aed.py`, `health_reports.py`.
+- Dependencies defined in `dependencies.py` using `Annotated[..., Depends(...)]` pattern.
+- Example:
+  ```python
+  DbSession = Annotated[Session, Depends(get_db)]
+  UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+  ```
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 启动逻辑
-    init_db()
-    yield
-    # 关闭逻辑
+---
 
-app = FastAPI(lifespan=lifespan)
-```
+## Mobile Architecture (`mobile/`)
 
-#### Annotated 依赖注入模式
-```python
-# 在 dependencies.py 中定义预类型
-from typing import Annotated
+- **Package manager**: pnpm 9 (monorepo workspace)
+- **Client framework**: Expo 54.0.33 + React Native 0.81.5 + TypeScript
+- **Router**: Expo Router (file-based routing)
+- **Entry**: `mobile/client/app/_layout.tsx`
+- **Key commands**:
+  ```bash
+  cd mobile
+  pnpm install
+  cd client
+  pnpm start        # expo start --web --clear
+  pnpm test         # jest
+  pnpm lint         # expo lint
+  pnpm test:perf    # reassure performance tests
+  ```
+- Client uses path alias `@/*` mapped to `./*`.
+- Main directories:
+  - `app/` — routes and screens
+  - `components/` — reusable UI components
+  - `services/` — API service modules (`auth.ts`, `sos.ts`, `contacts.ts`, `checkin.ts`, `storage.ts`)
+  - `hooks/` — custom React hooks (`useColorScheme`, `useTheme`, `useSafeRouter`)
+  - `contexts/` — React contexts (`AuthContext`)
+  - `constants/` — app constants and themes
+  - `utils/` — utilities (`api.ts`, `auth-interceptor.ts`)
+  - `features/` — feature-based modules
 
-DbSession = Annotated[Session, Depends(get_db)]
-UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+---
 
-# API 中使用
-@router.get("/users")
-async def list_users(
-    db: DbSession,  # 简洁用法
-    page: Annotated[int, Query(ge=1)] = 1,
-):
-    ...
-```
+## Build & Development Commands
 
-参考: `backend/app/api/example_modern.py`
+### Backend
 
-### 使用 get-api-docs skill
-
-获取最新 API 文档：
 ```bash
-# 搜索文档
-chub search fastapi --json
-chub search sqlalchemy --json
+cd backend
 
-# 获取文档
-chub get fastapi/package --lang py
-chub get sqlalchemy/orm --lang py
+# Install dependencies
+pip install -r requirements.txt
+
+# Run dev server
+uvicorn main:app --reload
+
+# Run tests
+pytest tests/ -v --cov=app --cov-report=term
+
+# Run specific tests
+python -m pytest tests/test_user_service.py tests/test_cache_mixin.py -v
+
+# Code formatting
+black .
+isort .
+flake8
+mypy app/
 ```
 
----
+### Mobile
 
-## 代码问题修复记录 (2026-03-17)
-
-### 问题 1: 循环导入和未定义类型
-**文件**: `app/services/notification_service.py`
-
-**问题**:
-- 循环导入 (`anomaly_service` → `notification_service` → `anomaly_service`)
-- `NotificationServiceConfig` 未定义
-- `SendNotificationRequest` 未定义
-
-**解决方案**:
-```python
-# 简化文件，仅保留重新导出
-from app.services.notification.notification_facade import NotificationService
-
-__all__ = ["NotificationService", ...]
-```
-
-### 问题 2: Pydantic v2 继承顺序警告
-**文件**: `app/core/schemas.py`
-
-**问题**:
-```python
-# 错误顺序
-class ListResponse(Generic[T], BaseModel):  # Warning!
-```
-
-**解决方案**:
-```python
-# 正确顺序: BaseModel 必须在 Generic 之前
-class ListResponse(BaseModel, Generic[T]):  # OK
-```
-
-### 问题 3: 已弃用的 orm_mode
-**文件**: `app/schemas/notification.py`, `app/schemas/user_setting.py`
-
-**问题**:
-```python
-class Config:
-    orm_mode = True  # Pydantic v2 已弃用
-```
-
-**解决方案**:
-```python
-model_config = {"from_attributes": True}  # Pydantic v2 推荐
-```
-
----
-
-## 服务层重构 - 最佳实践
-
-### 阶段4: 模型层优化
-
-#### 关联加载策略
-```python
-# 高频/大数据量 - 使用 lazy='dynamic'（返回 Query 对象）
-checkins = db_relationship("CheckIn", lazy="dynamic")
-
-# 中频/小数据量 - 使用 lazy='select'（默认）
-emergency_contacts = db_relationship("EmergencyContact", lazy="select")
-
-# 一对一/总是需要 - 使用 lazy='joined'（立即加载）
-health_record = db_relationship("HealthRecord", lazy="joined", uselist=False)
-```
-
-#### 数据库索引
-```python
-__table_args__ = (
-    Index("idx_users_phone_created", "phone", "created_at"),
-    Index("idx_users_last_sign_in", "last_sign_in"),
-)
-```
-
-#### to_dict() 优化
-```python
-# 预定义关联关系列表，避免运行时 inspect
-_RELATIONSHIP_NAMES = frozenset(["emergency_contacts", "checkins", ...])
-
-# 支持选择性包含关联关系
-def to_dict(self, include_relations: Optional[List[str]] = None) -> dict:
-    ...
-
-# 便捷方法：包含指定关联关系
-def to_dict_with_relations(self, relations: List[str]) -> dict:
-    ...
-```
-
-### 阶段5: 代码复用优化
-
-#### CacheMixin 使用
-```python
-from app.core.cache_mixin import CacheMixin
-
-class UserService(BaseService[User], CacheMixin):
-    cache_prefix = "user"
-    cache_ttl = 300
-
-    def get_by_id(self, user_id: str):
-        # 1. 尝试从缓存获取
-        cache_key = self._make_key(f"id:{user_id}")
-        cached = self._get(cache_key)
-        if cached:
-            return cached
-
-        # 2. 查询数据库
-        user = ...
-
-        # 3. 写入缓存
-        self._set(cache_key, user)
-        return user
-```
-
-#### QueryBuilder 使用
-```python
-from app.core.query_builder import QueryBuilder, paginate
-
-# 方法1: 使用 QueryBuilder
-builder = QueryBuilder(db.query(User), User)
-result = (
-    builder.filter(status='active')
-    .where_like('name', f'%{keyword}%')
-    .order_by('created_at', desc=True)
-    .paginate(page=1, per_page=20)
-    .execute()
-)
-
-# 方法2: 使用便捷函数
-pagination = paginate(query, page=1, per_page=20)
-```
-
-#### 统一缓存失效
-```python
-def _invalidate_user_caches(self, user_id: str, phone: Optional[str] = None):
-    """失效用户相关缓存"""
-    self.invalidate_entity_cache(f"id:{user_id}")
-    if phone:
-        self.invalidate_entity_cache(f"phone:{phone}")
-    self._invalidate_list_cache()
-    self._invalidate_pattern("search:*")
-```
-
----
-
-## CI/CD 流程 (Consolidated)
-
-### 文件结构
-
-```
-.github/workflows/
-├── ci.yml          # 代码检查、测试、lint
-├── build.yml       # 构建镜像、安全扫描
-├── deploy.yml      # 部署到 staging/production
-└── pr-checks.yml   # PR 标题检查、依赖审查
-
-docker-compose.yml          # 基础服务定义
-docker-compose.dev.yml      # 开发环境覆盖
-docker-compose.prod.yml     # 生产环境覆盖
-```
-
-### 使用方式
-
-**开发环境**:
 ```bash
+cd mobile
+pnpm install
+cd client
+
+# Start dev server
+pnpm start
+
+# Run tests
+pnpm test
+pnpm test:perf
+
+# Lint
+pnpm lint
+pnpm tsc --noEmit
+```
+
+### Docker Compose
+
+```bash
+# Development
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-```
 
-**生产环境**:
-```bash
+# Production
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-### Workflow 触发规则
+### Pre-commit (repository root)
 
-| Workflow | 触发条件 | 说明 |
-|----------|----------|------|
-| ci.yml | PR, push to main/develop | 运行测试、lint |
-| build.yml | PR, push to main, tag v* | 构建镜像、安全扫描 |
-| deploy.yml | push to main, tag v*, manual | 部署 staging/production |
-| pr-checks.yml | PR opened/edited | 标题检查、依赖审查 |
-
-### 已弃用文件
-
-以下文件已标记弃用，将在未来版本中移除：
-- `docker-compose.override.yml` → 使用 `docker-compose.dev.yml`
-- `docker-compose.staging.yml` → 使用 `docker-compose.prod.yml` + env vars
-- `docker-compose.test.yml` → 使用 `docker-compose.yml`
-- `build-consolidated.yml`, `deploy-consolidated.yml`, etc. → 使用新 workflow
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
 ---
 
-## CI/CD 最佳实践
+## Code Style Guidelines
 
-### GitHub Actions Workflow 配置
-
-#### 1. 并发控制（必须）
-```yaml
-# 防止多个 workflow 同时运行
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-# 部署特殊配置（不能取消）
-concurrency:
-  group: deployment-${{ github.ref }}
-  cancel-in-progress: false
-```
-
-#### 2. 超时设置（必须）
-```yaml
-jobs:
-  job-name:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30  # 根据任务复杂度设置
-```
-
-#### 3. Action 版本管理
-```yaml
-# 推荐使用的稳定版本
-actions/checkout@v4
-actions/setup-python@v5
-actions/cache@v4
-actions/upload-artifact@v4
-codecov/codecov-action@v4
-github/codeql-action/upload-sarif@v3
-```
-
-#### 4. pre-commit 优化
-```yaml
-# 单独运行 pre-commit，避免在矩阵中重复
-jobs:
-  pre-commit:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Cache pre-commit
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      - name: Run pre-commit
-        run: |
-          pip install pre-commit
-          pre-commit run --all-files --show-diff-on-failure
-```
-
-#### 5. Docker 构建优化
-```yaml
-- name: Build and push
-  uses: docker/build-push-action@v5
-  with:
-    context: ./backend
-    push: ${{ github.event_name != 'pull_request' }}
-    tags: ${{ steps.meta.outputs.tags }}
-    cache-from: type=gha
-    cache-to: type=gha,mode=max
-```
-
-#### 6. 安全扫描配置
-```yaml
-- name: Run Trivy vulnerability scanner
-  uses: aquasecurity/trivy-action@master
-  with:
-    image-ref: your-image:latest
-    format: 'sarif'
-    output: 'trivy-results.sarif'
-    severity: 'CRITICAL,HIGH'  # 只关注严重问题
-    exit-code: '0'  # 不阻止构建
-    ignore-unfixed: true  # 忽略无修复版本的漏洞
-```
-
-#### 7. 条件执行
-```yaml
-# PR 不推送镜像
-push: ${{ github.event_name != 'pull_request' }}
-
-# Secret 存在时才通知
-if: always() && secrets.SLACK_WEBHOOK != ''
-```
-
-### PR 规范
-
-#### 标题格式（约定式提交）
-```
-feat: 添加用户登录功能
-fix: 修复数据库连接问题
-docs: 更新 API 文档
-refactor: 重构通知服务
-ci: 修复 GitHub Actions 配置
-```
-
-#### Workflow 检查
-- `pr-title-check.yml`: 自动验证 PR 标题格式
-- `dependency-review.yml`: 检查依赖安全漏洞
+- **Language**: Python code comments and docstrings are written in **Chinese**.
+- **Formatter**: Black, line length 88 (matching pyproject.toml).
+- **Import sorter**: isort with `profile = "black"`.
+- **Linter**: flake8 with `max-line-length=120` and ignores `E203,W503,E402,E501,F401,F541,F811,F841`.
+- **Type checker**: mypy with `disallow_untyped_defs = true`.
+- **SQLAlchemy 2.x**: Use `Mapped[int] = mapped_column(primary_key=True)` instead of `Column(Integer, primary_key=True)`.
+- **Pydantic v2**: Use `model_config = {"from_attributes": True}`; correct generic inheritance order.
+- **FastAPI dependencies**: Prefer `Annotated[..., Depends(...)]` style.
 
 ---
 
-## 设计原则
+## Testing Strategy
 
-### 代码设计
-1. **关联加载策略**：按使用频率选择 lazy 模式
-   - 高频/大数据量：dynamic
-   - 中频/小数据量：select
-   - 一对一/必需要：joined
+### Backend Tests (`backend/tests/`)
 
-2. **缓存策略**：
-   - 单个实体：长期缓存（5分钟+）
-   - 列表数据：短期缓存（60秒）
-   - 数据变更时主动失效
+- **Framework**: pytest with `pytest-asyncio`, `pytest-cov`, `httpx`.
+- **Config**: `pyproject.toml` `[tool.pytest.ini_options]`; `conftest.py` provides `db` fixture using SQLite in-memory.
+- **Markers**:
+  - `slow` — slow tests (deselect with `-m "not slow"`)
+  - `integration` — integration tests
+  - `smoke`, `regression`, `stress`, `full` — defined in `conftest.py`
+- **Coverage**: source = `app`; omits `tests/`, `migrations/`, `__pycache__/`.
+- **Test categories present**:
+  - Unit tests for models, services, cache, query builder, config
+  - API compliance & response format tests
+  - Integration tests for notification pipeline
+  - Performance / load tests
+  - Security tests (secret key, encryption, CORS)
+  - Encoding / middleware tests
 
-3. **查询优化**：
-   - 使用 QueryBuilder 替代原始 SQLAlchemy 查询
-   - 分页查询使用 QueryBuilder.paginate()
-   - 复杂条件使用链式调用
+### Mobile Tests (`mobile/client/`)
 
-### CI/CD 设计
-1. **并发控制**：所有 workflow 必须配置 concurrency
-2. **超时设置**：所有 job 必须配置 timeout-minutes
-3. **版本管理**：定期检查并升级 action 版本
-4. **安全优先**：安全扫描不阻止构建但报告问题
-5. **条件执行**：根据事件类型和 secrets  availability 控制步骤
+- **Framework**: Jest with `jest-expo` preset.
+- **Performance**: Reassure for React Native render performance.
+- Setup file: `jest.setup.js`.
 
-## 测试
+---
 
-```bash
-# 运行核心测试
-python -m pytest tests/test_user_model.py tests/test_user_service.py -v
+## CI/CD Pipeline
 
-# 运行 CacheMixin 测试
-python -m pytest tests/unit/core/test_cache_mixin.py -v
+Located in `.github/workflows/`:
 
-# 运行 QueryBuilder 测试
-python -m pytest tests/unit/core/test_query_builder.py -v
-```
+| Workflow | Triggers | Purpose |
+|----------|----------|---------|
+| `ci.yml` | PR / push to `main`, `develop` | pre-commit, backend tests (matrix 3.10/3.11/3.12), frontend lint, frontend tests |
+| `build.yml` | PR / push to `main` / tags `v*` | Validate compose, build & push Docker images (backend + nginx), Trivy security scan |
+| `deploy.yml` | push to `main` / tags `v*` / manual | SSH deploy to staging (auto) or production (tag), DB backup, smoke test, rollback on failure |
+| `pr-checks.yml` | PR | Dependency review |
+| `pr-title-check.yml` | PR | Conventional Commits title validation |
 
-## CI/CD 测试
+**Deployment behavior**:
+- `main` branch → automatic staging deployment
+- `v*` tag → automatic production deployment
+- Production deploy creates a DB backup before migration and supports rollback on failure.
 
-```bash
-# 本地验证 workflow 语法
-python -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"
+---
 
-# 使用 act 本地运行 workflow（需要安装 act）
-act -j pre-commit
-```
+## Deployment Architecture
+
+### Docker Compose
+
+- **Base** (`docker-compose.yml`): PostgreSQL 15, Redis 7, Backend (FastAPI on 8000), Nginx (80/443).
+- **Dev** (`docker-compose.dev.yml`): Source mount for hot reload, SQLite allowed, DEBUG=True, test secrets.
+- **Prod** (`docker-compose.prod.yml`): Strict resource limits, persistent named volumes, AOF enabled for Redis, DEBUG=False.
+
+### Kubernetes (`k8s/`)
+
+Manifests for: namespace, backend deployment/service/HPA/configmap/secret, nginx deployment/service/configmap, ingress, postgres deployment/service/pvc/configmap/secret, redis deployment/service/pvc/configmap.
+
+### Nginx (`nginx/`)
+
+- Custom `nginx.conf` + `conf.d/backend.conf`
+- SSL certs in `nginx/ssl/`
+- Health check endpoint configured
+
+---
+
+## Security Considerations
+
+- **SECRET_KEY**: Minimum 64 bytes; production requires strong random key with 3+ character types. Generate via `python backend/scripts/generate_secret_key.py`.
+- **CORS**: Strict validation in production — wildcards (`*`) are rejected for origins, methods, and headers.
+- **DEBUG**: Forbidden in production; `Settings` validator raises `ValueError` if `ENVIRONMENT=production` and `DEBUG=True`.
+- **Secrets scanning**: pre-commit hooks include `detect-secrets` (with `.secrets.baseline`) and `gitleaks` (with `.gitleaks-baseline.json`).
+- **Docker**: Backend image runs as non-root user (`appuser`, UID 1001); multi-stage build minimizes attack surface.
+- **Rate limiting**: `slowapi` configured with default `200/minute`.
+- **Encryption**: `ENCRYPTION_KEY` for sensitive data encryption at rest.
+
+---
+
+## Key Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `backend/pyproject.toml` | Project metadata, dependencies, black/isort/mypy/pytest/coverage configs |
+| `backend/requirements.txt` | Runtime Python dependencies (single source for Docker) |
+| `backend/config.dev.yaml` | Dev YAML config (DB=SQLite, debug logging, simulated notifications) |
+| `backend/config.prod.yaml` | Prod YAML config |
+| `mobile/client/package.json` | Expo client deps & scripts |
+| `mobile/tsconfig.json` | TypeScript base config extending `expo/tsconfig.base` |
+| `docker-compose.yml` / `.dev.yml` / `.prod.yml` | Orchestration per environment |
+| `.pre-commit-config.yaml` | Git hooks: secrets detection, black, isort, flake8, yamllint |
+| `.env` / `.env.dev` / `.env.testing` | Environment variables (not committed) |
+
+---
+
+## Development Conventions
+
+### Database & Models
+- Use SQLAlchemy 2.x `DeclarativeBase` and `Mapped[]` annotations.
+- Add composite indexes in `__table_args__` for query-heavy fields.
+- Choose lazy loading strategy by usage frequency:
+  - High freq / large data: `lazy="dynamic"`
+  - Medium freq / small data: `lazy="select"` (default)
+  - One-to-one / always needed: `lazy="joined"`
+- Note: `lazy="dynamic"` + `cascade="delete-orphan"` has compatibility issues in SQLAlchemy 2.x; prefer `lazy="select"` when cascade is needed, or clean up manually.
+
+### Caching
+- `BaseService` includes built-in Redis caching for `get_by_id`, `create_record`, `update_record`, `delete_record`.
+- Cache key pattern: `{cache_prefix}:{pk_column}:{id_value}`.
+- Use `CacheMixin` for custom cache invalidation logic.
+
+### Services
+- Inherit from `BaseService[ModelType]` and set `model_class`, `cache_prefix`, `cache_ttl`.
+- Use `QueryBuilder` for complex list queries instead of raw SQLAlchemy.
+- Use `BaseService.transaction(db)` context manager for multi-step operations.
+
+### API Responses
+- Use `response_builder.py` for consistent envelope format:
+  ```json
+  { "code": 200, "message": "OK", "data": { ... } }
+  ```
+
+### Notifications
+- Notification services are facade-based under `services/notification/`.
+- Supports simulated adapters (configurable success rate/delay) for dev/testing.
+- Circuit breaker and degradation strategies are configurable via `Settings`.
+
+---
+
+## Important Notes for Agents
+
+1. **Do not assume English for comments** — the codebase uses Chinese extensively in docstrings and inline comments.
+2. **Do not use `@app.on_event("startup")`** — use `lifespan` context manager in `main.py`.
+3. **Do not use Pydantic v1 patterns** — no `orm_mode = True`, no `.dict()`, no `.json()`; use `model_config`, `model_dump`, `model_dump_json`.
+4. **Do not use SQLAlchemy 1.x patterns** — no `declarative_base()`, no `Column(...)` without `Mapped[]` in new files.
+5. **Requirements single source of truth**: `requirements.txt` is used by Docker; `pyproject.toml` is used for development tooling. Keep them in sync when adding packages.
+6. **Never commit secrets** — the repo has aggressive pre-commit hooks and baseline files for secrets detection.
+7. **PR title format** must follow Conventional Commits (e.g., `feat:`, `fix:`, `refactor:`, `docs:`, `ci:`) — enforced by `pr-title-check.yml`.
+
+---
+
+*Last updated: 2026-04-23*

@@ -5,7 +5,17 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    desc,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -19,6 +29,12 @@ class Alert(Base, BaseModelMixin):
     """预警模型 (SQLAlchemy 2.x)"""
 
     __tablename__ = "alerts"
+
+    __table_args__ = (
+        Index(
+            "idx_alerts_user_status", "user_id", "status", desc("created_at")
+        ),  # For user alert queries with status filter (recent first)
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     alert_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)

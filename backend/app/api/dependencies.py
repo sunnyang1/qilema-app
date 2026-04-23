@@ -15,8 +15,10 @@ except ImportError:
 from typing import TYPE_CHECKING, TypeVar
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app.core.async_database import get_async_db
 from app.core.container import get_container
 from app.core.database import get_db
 from app.core.security import (
@@ -67,6 +69,9 @@ def get_db_session() -> Session:
 
 # 标准数据库会话依赖，使用 Annotated 模式
 DbSession = Annotated[Session, Depends(get_db)]
+
+# 异步数据库会话依赖（Phase 2 新增）
+AsyncDbSession = Annotated[AsyncSession, Depends(get_async_db)]
 
 
 # ========== 服务依赖工厂函数 ==========

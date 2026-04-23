@@ -2,7 +2,17 @@
 设备数据SQLAlchemy模型
 """
 
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    desc,
+)
 from sqlalchemy.orm import relationship as db_relationship
 
 from app.core.database import Base
@@ -13,6 +23,12 @@ class DeviceData(Base, BaseModelMixin):
     """设备数据模型"""
 
     __tablename__ = "device_data"
+
+    __table_args__ = (
+        Index(
+            "idx_device_data_device_time", "device_id", desc("data_timestamp")
+        ),  # For time-series device data queries
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="自增ID")
     data_id = Column(String(36), unique=True, index=True, comment="数据ID")

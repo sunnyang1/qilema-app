@@ -39,7 +39,7 @@ class BaseService(Generic[ModelType]):
         缓存策略说明:
         - 使用字典形式缓存模型数据
         - 不尝试重建SQLAlchemy对象（不可靠且复杂）
-        - 缓存命中时从数据库重新查询对象（利用SQLAlchemy的identity map优化）
+        - 缓存命中时利用 Session.get() 优先查 identity map，避免重复 SQL 查询
         - 缓存失效时直接从数据库查询
 
         Args:
@@ -55,11 +55,17 @@ class BaseService(Generic[ModelType]):
 
         cache_key = f"{cls.cache_prefix}:{pk_column}:{id_value}"
 
-        # 检查缓存（仅用于判断数据是否存在，不尝试重建对象）
+        # 检查缓存
         cached_data = get_cached(cache_key)
         cache_exists = cached_data is not None
 
-        # 查询数据库
+        # 修复：缓存命中时，优先使用 Session.get() 查 identity map，避免重复 SQL
+        if cache_exists:
+            result = db.get(cls.model_class, id_value)
+            if result is not None:
+                return result
+
+        # 缓存未命中或 identity map 未命中，执行查询
         query = db.query(cls.model_class)
         if hasattr(cls.model_class, pk_column):
             query = query.filter(getattr(cls.model_class, pk_column) == id_value)
@@ -510,6 +516,66 @@ class BaseService(Generic[ModelType]):
                 query = query.order_by(asc(order_column))
 
         return paginate(query, page, per_page)
+
+    # ========== 异步方法变体 (Phase 1: 为 Phase 2 全面异步化做准备) ==========
+
+    @classmethod
+    async def aget_by_id(
+        cls, db: Session, id_value: Any, pk_column: str = "id"
+    ) -> Optional[ModelType]:
+        """异步获取记录（兼容层，当前调用同步实现）"""
+        return cls.get_by_id(db, id_value, pk_column)
+
+    @classmethod
+    async def aget_by_field(
+        cls, db: Session, field_name: str, field_value: Any
+    ) -> Optional[ModelType]:
+        """异步根据字段值获取单条记录"""
+        return cls.get_by_field(db, field_name, field_value)
+
+    @classmethod
+    async def alist_records(
+        cls,
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str = None,
+        order_desc: bool = True,
+        **filters,
+    ) -> List[ModelType]:
+        """异步获取记录列表"""
+        return cls.list_records(db, skip, limit, order_by, order_desc, **filters)
+
+    @classmethod
+    async def acreate_record(cls, db: Session, data: Dict[str, Any]) -> ModelType:
+        """异步创建记录"""
+        return cls.create_record(db, data)
+
+    @classmethod
+    async def aupdate_record(
+        cls, db: Session, id_value: Any, data: Dict[str, Any], pk_column: str = "id"
+    ) -> Optional[ModelType]:
+        """异步更新记录"""
+        return cls.update_record(db, id_value, data, pk_column)
+
+    @classmethod
+    async def adelete_record(
+        cls, db: Session, id_value: Any, pk_column: str = "id"
+    ) -> bool:
+        """异步删除记录"""
+        return cls.delete_record(db, id_value, pk_column)
+
+    @classmethod
+    async def aget_by_ids(
+        cls, db: Session, ids: List[Any], pk_column: str = "id"
+    ) -> List[ModelType]:
+        """异步根据多个ID获取记录"""
+        return cls.get_by_ids(db, ids, pk_column)
+
+    @classmethod
+    async def acount_records(cls, db: Session, **filters) -> int:
+        """异步统计记录数量"""
+        return cls.count_records(db, **filters)
 
     @staticmethod
     @contextmanager

@@ -8,7 +8,7 @@ import re
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, desc
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.models.base_mixin import BaseModelMixin
@@ -28,8 +28,8 @@ class CheckIn(Base, BaseModelMixin):
     __table_args__ = (
         Index("ix_checkins_user_date", "user_id", "checkin_date", unique=True),
         Index(
-            "idx_checkins_user_created", "user_id", "created_at"
-        ),  # For user checkin history queries
+            "idx_checkins_user_created", "user_id", desc("created_at")
+        ),  # For user checkin history queries (DESC for recent first)
         Index("idx_checkins_status", "status"),  # For filtering by status
     )
 

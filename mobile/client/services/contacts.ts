@@ -1,15 +1,10 @@
 import { apiClient } from '@/utils/api';
 import { authService } from '@/services/auth';
+import { ApiEnvelope, unwrapData } from '@/services/types';
+import type { EmergencyContact } from '@/services/types';
 
-/** 与 FastAPI ApiResponseBuilder.success 一致的外层结构 */
-type ApiEnvelope<T> = { code: number; message: string; data: T; timestamp?: number };
-
-function unwrap<T>(body: unknown): T {
-  if (body !== null && typeof body === 'object' && 'data' in body) {
-    return (body as ApiEnvelope<T>).data;
-  }
-  throw new Error('无效的 API 响应格式');
-}
+// 从统一接口重新导出，保持外部消费者无需改路径
+export type { EmergencyContact } from '@/services/types';
 
 function normalizeChannels(raw: Record<string, unknown>): string[] {
   const n = raw.notify_channels ?? raw.notification_channels;
@@ -39,21 +34,6 @@ function mapContact(raw: Record<string, unknown>): EmergencyContact {
   };
 }
 
-export interface EmergencyContact {
-  /** 数据库主键，对应 GET/PUT/DELETE `/api/v1/contacts/{id}` */
-  id: number;
-  contactId: string;
-  userId: string;
-  name: string;
-  phone: string;
-  relationship: string;
-  priority: number;
-  notificationChannels: string[];
-  isDefault: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface CreateContactDto {
   name: string;
   phone: string;
@@ -80,7 +60,7 @@ export const contactsService = {
       const raw = await apiClient.get<
         ApiEnvelope<{ total: number; contacts: Record<string, unknown>[] }>
       >(`${CONTACTS_BASE}/`);
-      const data = unwrap<{ total: number; contacts: Record<string, unknown>[] }>(raw);
+      const data = unwrapData<{ total: number; contacts: Record<string, unknown>[] }>(raw);
       return (data.contacts ?? []).map((c) => mapContact(c));
     } catch (error) {
       console.error('获取紧急联系人列表失败:', error);
@@ -96,7 +76,7 @@ export const contactsService = {
       const raw = await apiClient.get<ApiEnvelope<Record<string, unknown>>>(
         `${CONTACTS_BASE}/${encodeURIComponent(contactId)}`
       );
-      return mapContact(unwrap(raw) as Record<string, unknown>);
+      return mapContact(unwrapData(raw) as Record<string, unknown>);
     } catch (error) {
       console.error('获取紧急联系人失败:', error);
       throw error;
@@ -118,7 +98,7 @@ export const contactsService = {
         is_primary: data.isDefault ?? false,
         priority: data.priority,
       });
-      return mapContact(unwrap(raw) as Record<string, unknown>);
+      return mapContact(unwrapData(raw) as Record<string, unknown>);
     } catch (error) {
       console.error('创建紧急联系人失败:', error);
       throw error;
@@ -147,7 +127,7 @@ export const contactsService = {
         `${CONTACTS_BASE}/${encodeURIComponent(contactId)}`,
         payload
       );
-      return mapContact(unwrap(raw) as Record<string, unknown>);
+      return mapContact(unwrapData(raw) as Record<string, unknown>);
     } catch (error) {
       console.error('更新紧急联系人失败:', error);
       throw error;
@@ -170,7 +150,7 @@ export const contactsService = {
       const raw = await apiClient.put<ApiEnvelope<Record<string, unknown>>>(
         `${CONTACTS_BASE}/${encodeURIComponent(contactId)}/set-primary`
       );
-      return mapContact(unwrap(raw) as Record<string, unknown>);
+      return mapContact(unwrapData(raw) as Record<string, unknown>);
     } catch (error) {
       console.error('设置默认联系人失败:', error);
       throw error;

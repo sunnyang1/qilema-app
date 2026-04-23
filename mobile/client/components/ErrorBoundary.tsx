@@ -4,7 +4,7 @@
  */
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme-warm';
+import { lightColors, typography, spacing, borderRadius } from '@/design-system';
 
 interface Props {
   children: ReactNode;
@@ -22,64 +22,64 @@ interface State {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.backgroundRoot,
+    backgroundColor: lightColors.backgroundRoot,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: spacing.xl,
   },
   icon: {
     fontSize: 64,
-    marginBottom: Spacing.lg,
+    marginBottom: spacing.lg,
   },
   title: {
-    ...Typography.h2,
-    color: Colors.textPrimary,
+    ...typography.h2,
+    color: lightColors.textPrimary,
     textAlign: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: spacing.md,
   },
   message: {
-    ...Typography.body,
-    color: Colors.textSecondary,
+    ...typography.body,
+    color: lightColors.textSecondary,
     textAlign: 'center',
-    marginBottom: Spacing.xl,
+    marginBottom: spacing.xl,
     lineHeight: 24,
   },
   errorDetails: {
-    backgroundColor: Colors.backgroundTertiary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.xl,
+    backgroundColor: lightColors.backgroundTertiary,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
     width: '100%',
     maxHeight: 200,
   },
   errorText: {
-    ...Typography.small,
-    color: Colors.error,
+    ...typography.small,
+    color: lightColors.error,
     fontFamily: 'monospace',
   },
   button: {
-    backgroundColor: Colors.primary,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.xl,
+    backgroundColor: lightColors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.xl,
     minWidth: 200,
     alignItems: 'center',
   },
   buttonText: {
-    ...Typography.bodyMedium,
-    color: Colors.backgroundDefault,
+    ...typography.bodyMedium,
+    color: lightColors.backgroundDefault,
   },
   secondaryButton: {
-    marginTop: Spacing.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   secondaryButtonText: {
-    ...Typography.body,
-    color: Colors.textSecondary,
+    ...typography.body,
+    color: lightColors.textSecondary,
   },
 });
 

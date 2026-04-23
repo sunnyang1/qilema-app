@@ -15,13 +15,15 @@ import {
 import { FontAwesome6 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Colors,
-  Spacing,
-  BorderRadius,
-  Typography,
-  Shadows,
-  Animation,
-} from '@/constants/theme-warm';
+  lightColors,
+  spacing,
+  borderRadius,
+  typography,
+  animation,
+} from '@/design-system';
+import { createShadows } from '@/design-system';
+
+const shadows = createShadows(lightColors.shadow, lightColors.shadowStrong);
 
 const { width } = Dimensions.get('window');
 
@@ -49,12 +51,12 @@ export const Toast: React.FC<ToastProps> = ({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: Animation.fast,
+        duration: animation.fast,
         useNativeDriver: true,
       }),
       Animated.timing(translateY, {
         toValue: -100,
-        duration: Animation.fast,
+        duration: animation.fast,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -67,7 +69,7 @@ export const Toast: React.FC<ToastProps> = ({
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: Animation.normal,
+          duration: animation.normal,
           useNativeDriver: true,
         }),
         Animated.spring(translateY, {
@@ -94,26 +96,26 @@ export const Toast: React.FC<ToastProps> = ({
         return {
           gradient: ['#43A047', '#66BB6A'],
           icon: 'check-circle',
-          bgColor: Colors.success,
+          bgColor: lightColors.success,
         };
       case 'error':
         return {
           gradient: ['#D32F2F', '#E64A19'],
           icon: 'circle-exclamation',
-          bgColor: Colors.error,
+          bgColor: lightColors.error,
         };
       case 'warning':
         return {
           gradient: ['#F57C00', '#FF8A65'],
           icon: 'triangle-exclamation',
-          bgColor: Colors.warning,
+          bgColor: lightColors.warning,
         };
       case 'info':
       default:
         return {
           gradient: ['#1976D2', '#42A5F5'],
           icon: 'circle-info',
-          bgColor: Colors.info,
+          bgColor: lightColors.info,
         };
     }
   };
@@ -149,33 +151,33 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 30,
-    left: Spacing.lg,
-    right: Spacing.lg,
+    left: spacing.lg,
+    right: spacing.lg,
     zIndex: 1000,
-    ...Shadows.strong,
+    ...shadows.strong,
   },
 
   toastContent: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
-    gap: Spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    gap: spacing.md,
     minHeight: 56,
   },
 
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: BorderRadius.lg,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   message: {
-    ...Typography.bodyMedium,
-    color: Colors.textPrimary,
+    ...typography.bodyMedium,
+    color: lightColors.textPrimary,
     flex: 1,
   },
 });

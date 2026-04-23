@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import type { CreateStylesTheme } from '@/design-system';
 import Toast from 'react-native-toast-message';
 
 interface SOSStatusParams {
@@ -304,7 +305,7 @@ export default function SOSStatusScreen() {
   );
 }
 
-const createStyles = (theme: any) => StyleSheet.create({
+const createStyles = (theme: CreateStylesTheme) => StyleSheet.create({
   container: {
     flex: 1,
   },

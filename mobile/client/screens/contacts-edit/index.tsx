@@ -15,19 +15,21 @@ import {
   AccessibilityInfo,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { ThemedText } from '@/components/ThemedText';
 import { FontAwesome6 } from '@expo/vector-icons';
 import {
-  Colors,
-  Spacing,
-  BorderRadius,
-  Typography,
-  Shadows,
-  HitSlop,
-} from '@/constants/theme-warm';
+  spacing,
+  borderRadius,
+  typography,
+  hitSlop,
+} from '@/design-system';
+import { createShadows } from '@/design-system';
+import { useTheme } from '@/hooks/useTheme';
+import type { CreateStylesTheme } from '@/design-system';
 import { contactsService, EmergencyContact } from '@/services/contacts';
 import Toast from 'react-native-toast-message';
 
@@ -52,15 +54,15 @@ const RELATIONSHIPS = [
   '其他',
 ];
 
-const styles = StyleSheet.create({
+const createStyles = (theme: CreateStylesTheme, shadows: ReturnType<typeof createShadows>) => StyleSheet.create({
   // 头部
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
   },
 
   headerTextBlock: {
@@ -69,204 +71,204 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    ...Typography.h1,
-    color: Colors.textPrimary,
+    ...typography.h1,
+    color: theme.textPrimary,
   },
 
   headerSubtitle: {
-    ...Typography.small,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
+    ...typography.small,
+    color: theme.textSecondary,
+    marginTop: spacing.xs,
   },
 
   cancelButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
   },
 
   cancelButtonText: {
-    ...Typography.bodyMedium,
-    color: Colors.textSecondary,
+    ...typography.bodyMedium,
+    color: theme.textSecondary,
   },
 
   // 表单容器
   formContainer: {
     flex: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing['5xl'],
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing['5xl'],
   },
   formLead: {
-    ...Typography.small,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
+    ...typography.small,
+    color: theme.textSecondary,
+    marginBottom: spacing.lg,
   },
 
   // 表单项
   formGroup: {
-    marginBottom: Spacing.xl,
+    marginBottom: spacing.xl,
   },
 
   formLabel: {
-    ...Typography.bodyMedium,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
+    ...typography.bodyMedium,
+    color: theme.textPrimary,
+    marginBottom: spacing.sm,
   },
 
   formLabelRequired: {
-    color: Colors.error,
+    color: theme.error,
   },
 
   // 输入框
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundTertiary,
-    borderRadius: BorderRadius.xl,
-    paddingHorizontal: Spacing.lg,
+    backgroundColor: theme.backgroundTertiary,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.lg,
     height: 56,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: theme.border,
   },
 
   inputContainerError: {
-    borderColor: Colors.error,
+    borderColor: theme.error,
   },
 
   inputContainerFocused: {
-    borderColor: Colors.primary,
+    borderColor: theme.primary,
     borderWidth: 2,
   },
 
   inputIcon: {
     fontSize: 20,
-    color: Colors.textMuted,
-    marginRight: Spacing.md,
+    color: theme.textMuted,
+    marginRight: spacing.md,
   },
 
   input: {
     flex: 1,
-    ...Typography.body,
-    color: Colors.textPrimary,
+    ...typography.body,
+    color: theme.textPrimary,
   },
 
   inputPlaceholder: {
-    color: Colors.textMuted,
+    color: theme.textMuted,
   },
 
   errorText: {
-    ...Typography.small,
-    color: Colors.error,
-    marginTop: Spacing.xs,
+    ...typography.small,
+    color: theme.error,
+    marginTop: spacing.xs,
   },
 
   // 下拉选择
   dropdownContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundTertiary,
-    borderRadius: BorderRadius.xl,
-    paddingHorizontal: Spacing.lg,
+    backgroundColor: theme.backgroundTertiary,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.lg,
     height: 56,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: theme.border,
     justifyContent: 'space-between',
   },
 
   dropdownText: {
-    ...Typography.body,
-    color: Colors.textPrimary,
+    ...typography.body,
+    color: theme.textPrimary,
     flex: 1,
   },
 
   dropdownPlaceholder: {
-    color: Colors.textMuted,
+    color: theme.textMuted,
   },
 
   dropdownIcon: {
     fontSize: 16,
-    color: Colors.textMuted,
+    color: theme.textMuted,
   },
 
   // 优先级按钮组
   priorityContainer: {
     flexDirection: 'row',
-    gap: Spacing.sm,
-    marginTop: Spacing.sm,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
 
   priorityButton: {
     flex: 1,
     height: 48,
-    borderRadius: BorderRadius.lg,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: Colors.border,
-    backgroundColor: Colors.backgroundDefault,
+    borderColor: theme.border,
+    backgroundColor: theme.backgroundDefault,
   },
 
   priorityButtonSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
 
   priorityButtonText: {
-    ...Typography.bodyMedium,
-    color: Colors.textPrimary,
+    ...typography.bodyMedium,
+    color: theme.textPrimary,
   },
 
   priorityButtonTextSelected: {
-    color: Colors.backgroundDefault,
+    color: theme.backgroundDefault,
     fontWeight: 'bold',
   },
 
   // 通知渠道选项
   notificationContainer: {
-    marginTop: Spacing.sm,
+    marginTop: spacing.sm,
   },
 
   notificationOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    backgroundColor: Colors.backgroundDefault,
-    borderRadius: BorderRadius.xl,
-    marginBottom: Spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: theme.backgroundDefault,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: theme.border,
   },
 
   notificationOptionSelected: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: theme.primaryLight,
+    borderColor: theme.primary,
   },
 
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: BorderRadius.lg,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: theme.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
+    marginRight: spacing.md,
   },
 
   checkboxSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
 
   checkboxIcon: {
     fontSize: 14,
-    color: Colors.backgroundDefault,
+    color: theme.backgroundDefault,
   },
 
   notificationText: {
-    ...Typography.body,
-    color: Colors.textPrimary,
+    ...typography.body,
+    color: theme.textPrimary,
     flex: 1,
   },
 
@@ -276,27 +278,81 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.xl,
-    paddingHorizontal: Spacing.xl,
-    marginTop: Spacing.xl,
-    ...Shadows.medium,
+    backgroundColor: theme.primary,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.xl,
+    ...shadows.medium,
   },
 
   saveButtonDisabled: {
-    backgroundColor: Colors.disabled,
+    backgroundColor: theme.disabled,
   },
 
   saveButtonText: {
-    ...Typography.bodyMedium,
-    color: Colors.backgroundDefault,
+    ...typography.bodyMedium,
+    color: theme.backgroundDefault,
     fontWeight: 'bold',
+  },
+});
+
+const createPickerStyles = (theme: CreateStylesTheme, shadows: ReturnType<typeof createShadows>) => StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  container: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: theme.backgroundDefault,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    ...shadows.strong,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.borderLight,
+  },
+  list: {
+    maxHeight: 320,
+  },
+  option: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.borderLight,
+  },
+  optionSelected: {
+    backgroundColor: theme.primaryLight,
+  },
+  optionText: {
+    ...typography.body,
+    color: theme.textPrimary,
+  },
+  optionTextSelected: {
+    ...typography.bodyMedium,
+    color: theme.primary,
   },
 });
 
 export default function ContactEditPage() {
   const router = useSafeRouter();
   const params = useSafeSearchParams<{ contactId?: string }>();
+  const { theme, isDark } = useTheme();
+  const shadows = createShadows(theme.shadow, theme.shadowStrong);
+  const s = createStyles(theme, shadows);
+  const ps = createPickerStyles(theme, shadows);
 
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
@@ -307,6 +363,7 @@ export default function ContactEditPage() {
   const [nameError, setNameError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showRelationshipPicker, setShowRelationshipPicker] = useState(false);
 
   // 检测屏幕阅读器状态
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
@@ -450,36 +507,35 @@ export default function ContactEditPage() {
   // 选择关系
   const handleSelectRelationship = (index: number) => {
     setRelationship(index);
-    // TODO: 显示关系选择器
   };
 
   return (
-    <Screen backgroundColor={Colors.backgroundRoot}>
+    <Screen backgroundColor={theme.backgroundRoot}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* 头部 */}
-        <View style={styles.header} accessible accessibilityLabel="编辑联系人页面">
+        <View style={s.header} accessible accessibilityLabel="编辑联系人页面">
           <TouchableOpacity
-            style={styles.cancelButton}
+            style={s.cancelButton}
             onPress={handleCancel}
             activeOpacity={0.75}
-            hitSlop={HitSlop.medium}
+            hitSlop={hitSlop.medium}
             accessible
             accessibilityLabel="取消"
             accessibilityHint="点击取消编辑并返回"
             accessibilityRole="button"
           >
-            <ThemedText variant="bodyMedium" color={Colors.textSecondary} style={styles.cancelButtonText}>
+            <ThemedText variant="bodyMedium" color={theme.textSecondary} style={s.cancelButtonText}>
               取消
             </ThemedText>
           </TouchableOpacity>
-          <View style={styles.headerTextBlock}>
-            <ThemedText variant="h1" color={Colors.textPrimary} style={styles.headerTitle}>
+          <View style={s.headerTextBlock}>
+            <ThemedText variant="h1" color={theme.textPrimary} style={s.headerTitle}>
               {isEditing ? '编辑联系人' : '添加联系人'}
             </ThemedText>
-            <ThemedText variant="small" color={Colors.textSecondary} style={styles.headerSubtitle}>
+            <ThemedText variant="small" color={theme.textSecondary} style={s.headerSubtitle}>
               紧急时可第一时间通知对方
             </ThemedText>
           </View>
@@ -487,19 +543,19 @@ export default function ContactEditPage() {
         </View>
 
         {/* 表单 */}
-        <ScrollView style={styles.formContainer}>
-          <ThemedText variant="small" color={Colors.textSecondary} style={styles.formLead}>
+        <ScrollView style={s.formContainer}>
+          <ThemedText variant="small" color={theme.textSecondary} style={s.formLead}>
             标注 * 的字段为必填项
           </ThemedText>
           {/* 姓名 */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>
-              姓名 <Text style={styles.formLabelRequired}>*</Text>
+          <View style={s.formGroup}>
+            <Text style={s.formLabel}>
+              姓名 <Text style={s.formLabelRequired}>*</Text>
             </Text>
             <View
               style={[
-                styles.inputContainer,
-                nameError ? styles.inputContainerError : null,
+                s.inputContainer,
+                nameError ? s.inputContainerError : null,
               ]}
               accessible
               accessibilityLabel="姓名输入框"
@@ -509,31 +565,31 @@ export default function ContactEditPage() {
               <FontAwesome6
                 name="user"
                 size={20}
-                color={Colors.textMuted}
-                style={styles.inputIcon}
+                color={theme.textMuted}
+                style={s.inputIcon}
               />
               <TextInput
-                style={styles.input}
+                style={s.input}
                 placeholder="请输入姓名"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={theme.textMuted}
                 value={name}
                 onChangeText={setName}
                 onFocus={() => setNameError('')}
                 accessibilityLabel="姓名"
               />
             </View>
-            {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
+            {nameError ? <Text style={s.errorText}>{nameError}</Text> : null}
           </View>
 
           {/* 手机号 */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>
-              手机号 <Text style={styles.formLabelRequired}>*</Text>
+          <View style={s.formGroup}>
+            <Text style={s.formLabel}>
+              手机号 <Text style={s.formLabelRequired}>*</Text>
             </Text>
             <View
               style={[
-                styles.inputContainer,
-                phoneError ? styles.inputContainerError : null,
+                s.inputContainer,
+                phoneError ? s.inputContainerError : null,
               ]}
               accessible
               accessibilityLabel="手机号输入框"
@@ -543,13 +599,13 @@ export default function ContactEditPage() {
               <FontAwesome6
                 name="phone"
                 size={20}
-                color={Colors.textMuted}
-                style={styles.inputIcon}
+                color={theme.textMuted}
+                style={s.inputIcon}
               />
               <TextInput
-                style={styles.input}
+                style={s.input}
                 placeholder="请输入手机号"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={theme.textMuted}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -557,17 +613,17 @@ export default function ContactEditPage() {
                 accessibilityLabel="手机号"
               />
             </View>
-            {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
+            {phoneError ? <Text style={s.errorText}>{phoneError}</Text> : null}
           </View>
 
           {/* 关系 */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>关系</Text>
+          <View style={s.formGroup}>
+            <Text style={s.formLabel}>关系</Text>
             <TouchableOpacity
-              style={styles.dropdownContainer}
-              onPress={() => handleSelectRelationship(relationship)}
+              style={s.dropdownContainer}
+              onPress={() => setShowRelationshipPicker(true)}
               activeOpacity={0.85}
-              hitSlop={HitSlop.small}
+              hitSlop={hitSlop.small}
               accessible
               accessibilityLabel={`关系：${RELATIONSHIPS[relationship]}`}
               accessibilityHint="点击选择联系人关系"
@@ -575,8 +631,8 @@ export default function ContactEditPage() {
             >
               <Text
                 style={[
-                  styles.dropdownText,
-                  RELATIONSHIPS[relationship] ? null : styles.dropdownPlaceholder,
+                  s.dropdownText,
+                  RELATIONSHIPS[relationship] ? null : s.dropdownPlaceholder,
                 ]}
               >
                 {RELATIONSHIPS[relationship] || '请选择关系'}
@@ -584,26 +640,26 @@ export default function ContactEditPage() {
               <FontAwesome6
                 name="chevron-down"
                 size={16}
-                color={Colors.textMuted}
-                style={styles.dropdownIcon}
+                color={theme.textMuted}
+                style={s.dropdownIcon}
               />
             </TouchableOpacity>
           </View>
 
           {/* 优先级 */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>优先级</Text>
-            <View style={styles.priorityContainer} accessible accessibilityLabel="优先级选择">
+          <View style={s.formGroup}>
+            <Text style={s.formLabel}>优先级</Text>
+            <View style={s.priorityContainer} accessible accessibilityLabel="优先级选择">
               {[1, 2, 3, 4, 5].map((p) => (
                 <TouchableOpacity
                   key={p}
                   style={[
-                    styles.priorityButton,
-                    priority === p ? styles.priorityButtonSelected : null,
+                    s.priorityButton,
+                    priority === p ? s.priorityButtonSelected : null,
                   ]}
                   onPress={() => setPriority(p)}
                   activeOpacity={0.85}
-                  hitSlop={HitSlop.small}
+                  hitSlop={hitSlop.small}
                   accessible
                   accessibilityLabel={`优先级 ${p}`}
                   accessibilityHint={priority === p ? '已选择' : '点击选择'}
@@ -612,8 +668,8 @@ export default function ContactEditPage() {
                 >
                   <Text
                     style={[
-                      styles.priorityButtonText,
-                      priority === p ? styles.priorityButtonTextSelected : null,
+                      s.priorityButtonText,
+                      priority === p ? s.priorityButtonTextSelected : null,
                     ]}
                   >
                     {p}
@@ -624,19 +680,19 @@ export default function ContactEditPage() {
           </View>
 
           {/* 通知渠道 */}
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>通知渠道</Text>
-            <View style={styles.notificationContainer}>
+          <View style={s.formGroup}>
+            <Text style={s.formLabel}>通知渠道</Text>
+            <View style={s.notificationContainer}>
               {['app', 'sms', 'phone'].map((channel) => (
                 <TouchableOpacity
                   key={channel}
                   style={[
-                    styles.notificationOption,
-                    notificationChannels.includes(channel) ? styles.notificationOptionSelected : null,
+                    s.notificationOption,
+                    notificationChannels.includes(channel) ? s.notificationOptionSelected : null,
                   ]}
                   onPress={() => toggleNotificationChannel(channel)}
                   activeOpacity={0.85}
-                  hitSlop={HitSlop.small}
+                  hitSlop={hitSlop.small}
                   accessible
                   accessibilityLabel={
                     channel === 'app' ? 'App推送' : channel === 'sms' ? '短信' : '电话'
@@ -649,20 +705,20 @@ export default function ContactEditPage() {
                 >
                   <View
                     style={[
-                      styles.checkbox,
-                      notificationChannels.includes(channel) ? styles.checkboxSelected : null,
+                      s.checkbox,
+                      notificationChannels.includes(channel) ? s.checkboxSelected : null,
                     ]}
                   >
                     {notificationChannels.includes(channel) ? (
                       <FontAwesome6
                         name="check"
                         size={14}
-                        color={Colors.backgroundDefault}
-                        style={styles.checkboxIcon}
+                        color={theme.backgroundDefault}
+                        style={s.checkboxIcon}
                       />
                     ) : null}
                   </View>
-                  <Text style={styles.notificationText}>
+                  <Text style={s.notificationText}>
                     {channel === 'app' ? 'App推送' : channel === 'sms' ? '短信' : '电话'}
                   </Text>
                 </TouchableOpacity>
@@ -673,13 +729,13 @@ export default function ContactEditPage() {
           {/* 保存按钮 */}
           <TouchableOpacity
             style={[
-              styles.saveButton,
-              isSaving ? styles.saveButtonDisabled : null,
+              s.saveButton,
+              isSaving ? s.saveButtonDisabled : null,
             ]}
             onPress={handleSave}
             disabled={isSaving}
             activeOpacity={0.88}
-            hitSlop={HitSlop.medium}
+            hitSlop={hitSlop.medium}
             accessible
             accessibilityLabel="保存联系人"
             accessibilityHint="点击保存联系人信息"
@@ -687,15 +743,72 @@ export default function ContactEditPage() {
             accessibilityState={{ disabled: isSaving }}
           >
             {isSaving ? (
-              <ActivityIndicator color={Colors.backgroundDefault} />
+              <ActivityIndicator color={theme.backgroundDefault} />
             ) : (
-              <ThemedText variant="bodyMedium" color={Colors.backgroundDefault} style={styles.saveButtonText}>
+              <ThemedText variant="bodyMedium" color={theme.backgroundDefault} style={s.saveButtonText}>
                 保存
               </ThemedText>
             )}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 关系选择器 Modal */}
+      <Modal
+        visible={showRelationshipPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRelationshipPicker(false)}
+      >
+        <TouchableOpacity
+          style={ps.overlay}
+          activeOpacity={1}
+          onPress={() => setShowRelationshipPicker(false)}
+        >
+          <View style={ps.container}>
+            <View style={ps.header}>
+              <ThemedText variant="title" color={theme.textPrimary}>选择关系</ThemedText>
+              <TouchableOpacity
+                onPress={() => setShowRelationshipPicker(false)}
+                hitSlop={hitSlop.medium}
+                accessibilityRole="button"
+                accessibilityLabel="关闭"
+              >
+                <FontAwesome6 name="xmark" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={ps.list} showsVerticalScrollIndicator={false}>
+              {RELATIONSHIPS.map((rel, idx) => (
+                <TouchableOpacity
+                  key={rel}
+                  style={[
+                    ps.option,
+                    idx === relationship && ps.optionSelected,
+                  ]}
+                  onPress={() => {
+                    handleSelectRelationship(idx);
+                    setShowRelationshipPicker(false);
+                  }}
+                  activeOpacity={0.75}
+                  accessibilityRole="radio"
+                  accessibilityLabel={rel}
+                  accessibilityState={{ selected: idx === relationship }}
+                >
+                  <Text style={[
+                    ps.optionText,
+                    idx === relationship && ps.optionTextSelected,
+                  ]}>
+                    {rel}
+                  </Text>
+                  {idx === relationship && (
+                    <FontAwesome6 name="check" size={16} color={theme.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </Screen>
   );
 }

@@ -8,16 +8,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient, APIError } from '@/utils/api';
 import { StorageKeys } from '@/constants/app';
-
-/** FastAPI ApiResponseBuilder 外层结构 */
-type ApiEnvelope<T> = { code: number; message: string; data: T; timestamp?: number };
-
-function unwrapData<T>(body: unknown): T {
-  if (body !== null && typeof body === 'object' && 'data' in body) {
-    return (body as ApiEnvelope<T>).data;
-  }
-  throw new Error('无效的 API 响应格式');
-}
+import { ApiEnvelope, unwrapData } from '@/services/types';
 
 // 用户信息接口（与后端 `/auth/login` 返回的 user 对象对齐）
 export interface UserInfo {

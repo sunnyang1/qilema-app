@@ -91,8 +91,9 @@ const KeyboardAwareScrollable = ({
   contentInsetBehaviorIOS,
 }: KeyboardAwareProps) => {
   // 获取原始组件的 props
-  const childAttrs: any = (element as any).props || {};
-  const originStyle = childAttrs['contentContainerStyle'];
+  const childAttrs = (element as React.ReactElement<any, any>).props || {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const originStyle = (childAttrs as any)['contentContainerStyle'];
   const styleArray = Array.isArray(originStyle) ? originStyle : originStyle ? [originStyle] : [];
   const merged = Object.assign({}, ...styleArray);
   const currentPB = typeof merged.paddingBottom === 'number' ? merged.paddingBottom : 0;
@@ -101,7 +102,8 @@ const KeyboardAwareScrollable = ({
   const enhancedContentStyle = [{ ...merged, paddingBottom: currentPB + extraPadding }];
 
   // 基础配置 props，用于传递给 KeyboardAware 组件
-  const commonProps = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const commonProps: Record<string, any> = {
     ...childAttrs,
     contentContainerStyle: enhancedContentStyle,
     keyboardShouldPersistTaps: childAttrs['keyboardShouldPersistTaps'] ?? 'handled',
@@ -121,15 +123,18 @@ const KeyboardAwareScrollable = ({
   // 根据组件类型返回对应的 KeyboardAware 版本
   // 注意：不再使用 KeyboardAvoidingView，直接替换为增强版 ScrollView
   if (t === ScrollView) {
-    return <KeyboardAwareScrollView {...commonProps} />;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return <KeyboardAwareScrollView {...(commonProps as any)} />;
   }
 
   if (t === FlatList) {
-    return <KeyboardAwareFlatList {...commonProps} />;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return <KeyboardAwareFlatList {...(commonProps as any)} />;
   }
 
   if (t === SectionList) {
-    return <KeyboardAwareSectionList {...commonProps} />;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return <KeyboardAwareSectionList {...(commonProps as any)} />;
   }
 
   // 理论上不应运行到这里，如果是非标准组件则原样返回，仅修改样式

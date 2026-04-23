@@ -16,10 +16,12 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     Time,
+    desc,
 )
 from sqlalchemy.orm import relationship
 
@@ -154,6 +156,12 @@ class MedicationReminderSchedule(Base, BaseModelMixin):
     """用药计划模型"""
 
     __tablename__ = "medication_reminder_schedules"
+
+    __table_args__ = (
+        Index(
+            "idx_medication_schedules_user_active", "user_id", "is_active"
+        ),  # For active schedule lookups
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(

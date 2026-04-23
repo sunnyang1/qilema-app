@@ -118,22 +118,24 @@ def init_db():
 def check_database_health(engine_url: Optional[str] = None) -> bool:
     """检查数据库健康状态
 
+    修复：复用已有 engine 实例，避免每次调用创建新 engine 导致连接泄露。
+
     Args:
-        engine_url: 数据库连接字符串，如果为None则使用settings.DATABASE_URL
+        engine_url: 数据库连接字符串，如果为None则使用已有的 engine 实例
 
     Returns:
         bool: 数据库是否健康
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
     try:
-        engine = get_engine(engine_url)
-        with engine.connect() as conn:
-            # 执行简单查询测试连接
+        # 修复：复用全局 engine，避免重复创建连接池
+        target_engine = engine if engine_url is None else get_engine(engine_url)
+        with target_engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             row = result.fetchone()
             return row is not None and row[0] == 1
     except Exception as e:
-        print(f"数据库健康检查失败: {e}")
+        logger.error(f"数据库健康检查失败: {e}")
         return False
-    finally:
-        if "engine" in locals():
-            engine.dispose()

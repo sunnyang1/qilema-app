@@ -76,6 +76,19 @@ active_users_total = Gauge("active_users_total", "Number of active users")
 
 healthcheck_status = Gauge("healthcheck_status", "Health check status", ["service"])
 
+# Phase 4: 扩展指标 — 通知、消息队列、连接池
+notification_sent_total = Counter(
+    "notification_sent_total", "通知发送总数", ["channel", "status"]
+)
+
+db_pool_checked_out = Gauge("db_pool_checked_out", "当前活跃数据库连接数")
+
+queue_backlog = Gauge("queue_backlog_messages", "消息队列积压数量", ["stream"])
+
+cache_operations_total = Counter(
+    "cache_operations_total", "缓存操作总数", ["operation", "result"]
+)
+
 # 系统资源指标
 cpu_usage_percent = Gauge("cpu_usage_percent", "CPU usage percentage")
 
@@ -186,3 +199,49 @@ class BusinessMetrics:
     def update_healthcheck(service: str, status: int):
         """更新健康检查状态"""
         healthcheck_status.labels(service=service).set(status)
+
+
+class NotificationMetrics:
+    """Phase 4: 通知发送指标记录器"""
+
+    @staticmethod
+    def record_sent(channel: str, status: str):
+        """记录通知发送指标"""
+        notification_sent_total.labels(channel=channel, status=status).inc()
+
+
+class QueueMetrics:
+    """Phase 4: 消息队列指标记录器"""
+
+    @staticmethod
+    def update_backlog(stream: str, count: int):
+        """更新队列积压数量"""
+        queue_backlog.labels(stream=stream).set(count)
+
+
+class PoolMetrics:
+    """Phase 4: 数据库连接池指标记录器"""
+
+    @staticmethod
+    def update_checked_out(count: int):
+        """更新活跃连接数"""
+        db_pool_checked_out.set(count)
+
+
+class CacheMetrics:
+    """Phase 4: 缓存操作指标记录器"""
+
+    @staticmethod
+    def record_hit():
+        """记录缓存命中"""
+        cache_operations_total.labels(operation="get", result="hit").inc()
+
+    @staticmethod
+    def record_miss():
+        """记录缓存未命中"""
+        cache_operations_total.labels(operation="get", result="miss").inc()
+
+    @staticmethod
+    def record_set():
+        """记录缓存写入"""
+        cache_operations_total.labels(operation="set", result="success").inc()

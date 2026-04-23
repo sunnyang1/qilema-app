@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Boolean, DateTime
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text, desc
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -43,9 +43,12 @@ class SOSRequest(Base, BaseModelMixin):
 
     __table_args__ = (
         Index(
-            "idx_sos_user_triggered", "user_id", "trigger_time"
-        ),  # For user SOS history
+            "idx_sos_user_triggered", "user_id", desc("trigger_time")
+        ),  # For user SOS history (DESC for recent first)
         Index("idx_sos_status", "status"),  # For filtering by status
+        Index(
+            "idx_sos_user_status_time", "user_id", "status", desc("trigger_time")
+        ),  # For filtering user SOS by status + time
     )
 
     id: Mapped[int] = mapped_column(

@@ -4,24 +4,20 @@
  * 温暖守护风格
  */
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import {
-  Colors,
-  Spacing,
-  BorderRadius,
-} from '@/constants/theme-warm';
+import { View, StyleSheet, ViewStyle } from 'react-native';
+import { lightColors, spacing, borderRadius as borderRadiusTokens } from '@/design-system';
 
 interface SkeletonProps {
   width?: number | string;
   height?: number;
-  borderRadius?: number;
-  style?: any;
+  radius?: number;
+  style?: ViewStyle;
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({
   width = '100%',
   height = 20,
-  borderRadius = BorderRadius.sm,
+  radius = borderRadiusTokens.sm,
   style,
 }) => {
   return (
@@ -29,9 +25,9 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       style={[
         styles.skeleton,
         {
-          width,
+          width: width as any,
           height,
-          borderRadius,
+          borderRadius: radius,
         },
         style,
       ]}
@@ -40,14 +36,14 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 };
 
 interface SkeletonCardProps {
-  style?: any;
+  style?: ViewStyle;
 }
 
 export const SkeletonCard: React.FC<SkeletonCardProps> = ({ style }) => {
   return (
     <View style={[styles.card, style]}>
       <View style={styles.cardHeader}>
-        <Skeleton width={48} height={48} borderRadius={BorderRadius.full} />
+        <Skeleton width={48} height={48} radius={borderRadiusTokens.full} />
         <View style={styles.cardHeaderContent}>
           <Skeleton width={100} height={18} />
           <Skeleton width={60} height={14} />
@@ -61,7 +57,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({ style }) => {
 
 interface SkeletonGridProps {
   count?: number;
-  style?: any;
+  style?: ViewStyle;
 }
 
 export const SkeletonGrid: React.FC<SkeletonGridProps> = ({ count = 4, style }) => {
@@ -69,7 +65,7 @@ export const SkeletonGrid: React.FC<SkeletonGridProps> = ({ count = 4, style }) 
     <View style={[styles.gridContainer, style]}>
       {Array.from({ length: count }).map((_, index) => (
         <View key={index} style={styles.gridItem}>
-          <Skeleton width={48} height={48} borderRadius={BorderRadius.xl} />
+          <Skeleton width={48} height={48} radius={borderRadiusTokens.xl} />
           <Skeleton width={80} height={14} />
         </View>
       ))}
@@ -79,33 +75,33 @@ export const SkeletonGrid: React.FC<SkeletonGridProps> = ({ count = 4, style }) 
 
 const styles = StyleSheet.create({
   skeleton: {
-    backgroundColor: Colors.backgroundTertiary,
+    backgroundColor: lightColors.backgroundTertiary,
     opacity: 0.6,
   },
 
   card: {
-    backgroundColor: Colors.backgroundDefault,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
+    backgroundColor: lightColors.backgroundDefault,
+    borderRadius: borderRadiusTokens.xl,
+    padding: spacing.lg,
+    gap: spacing.sm,
   },
 
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
-    marginBottom: Spacing.md,
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
 
   cardHeaderContent: {
     flex: 1,
-    gap: Spacing.xs,
+    gap: spacing.xs,
   },
 
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
+    gap: spacing.md,
   },
 
   gridItem: {
@@ -113,10 +109,10 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.backgroundDefault,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
+    gap: spacing.sm,
+    backgroundColor: lightColors.backgroundDefault,
+    borderRadius: borderRadiusTokens.xl,
+    padding: spacing.lg,
   },
 });
 

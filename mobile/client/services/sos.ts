@@ -1,5 +1,7 @@
 import { apiClient } from '@/utils/api';
 import { contactsService } from '@/services/contacts';
+import type { EmergencyContact } from '@/services/types';
+export type { EmergencyContact } from '@/services/types';
 import * as Location from 'expo-location';
 
 // SOS 请求状态
@@ -18,16 +20,6 @@ export interface SOSRequest {
   updatedAt: string;
   contactsNotified: number[];
   emergencyServicesNotified: boolean;
-}
-
-export interface EmergencyContact {
-  id: string;
-  name: string;
-  relation: string;
-  phone: string;
-  email?: string;
-  priority: number;
-  isDefault: boolean;
 }
 
 const STORAGE_KEY = 'sos_current_request';
@@ -110,20 +102,8 @@ export const sosService = {
    * 获取紧急联系人列表
    */
   async getEmergencyContacts(): Promise<EmergencyContact[]> {
-    try {
-      const list = await contactsService.getContacts();
-      return list.map((c) => ({
-        id: c.contactId,
-        name: c.name,
-        relation: c.relationship,
-        phone: c.phone,
-        priority: c.priority,
-        isDefault: c.isDefault,
-      }));
-    } catch (error) {
-      console.error('获取紧急联系人列表失败:', error);
-      throw error;
-    }
+    // EmergencyContact 接口已统一，直接返回 contactsService 结果
+    return contactsService.getContacts();
   },
 
   /**

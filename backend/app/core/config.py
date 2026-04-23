@@ -196,6 +196,21 @@ class Settings(BaseSettings):
             raise ValueError("生产环境不能开启DEBUG模式")
         return self
 
+    @model_validator(mode="after")
+    def validate_production_database(self):
+        """验证生产环境必须使用 PostgreSQL
+
+        SQLite 使用 NullPool 不支持并发连接，禁止用于生产环境。
+        """
+        if self.ENVIRONMENT == "production":
+            if "sqlite" in self.DATABASE_URL.lower():
+                raise ValueError(
+                    "生产环境禁止使用 SQLite 数据库。"
+                    "请配置 PostgreSQL 数据库连接，"
+                    "例如: postgresql://user:pass@host:5432/qilema"
+                )
+        return self
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v, info) -> List[str]:

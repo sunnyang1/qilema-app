@@ -6,24 +6,23 @@ FastAPI应用主入口 (FastAPI 0.135.x 规范)
 - 使用 Annotated[..., Depends(...)] 模式
 """
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from app.api import api_router
 from app.core.config import settings, setup_logging
 from app.core.database import init_db
 from app.core.error_handlers import register_exception_handlers
+from app.core.limiter import limiter
+from app.core.message_queue import MessageQueue
 from app.core.middleware import setup_middleware
 from app.core.prometheus_metrics import app_info, metrics
-
-# 创建速率限制器
-limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 
 @asynccontextmanager
@@ -169,6 +168,88 @@ async def health_check_v1():
             "redis": "connected" if redis_healthy else "disconnected",
         },
     }
+
+
+@app.get("/health/detailed", tags=["monitoring"])
+async def detailed_health():
+    """Phase 4: 详细健康检查
+
+    检查所有组件状态：数据库、Redis、消息队列、Worker。
+    返回结构化状态，便于监控系统集成。
+    """
+    import asyncio
+    from datetime import datetime
+
+    from app.core.async_database import check_async_database_health
+    from app.core.database import check_database_health
+    from app.core.message_queue import MessageQueue
+    from app.core.prometheus_metrics import BusinessMetrics
+    from app.core.redis import check_redis_health
+
+    checks = await asyncio.gather(
+        _safe_check(check_database_health),
+        _safe_check(check_redis_health),
+        _safe_check(check_async_database_health),
+        _safe_check(_check_queue_health),
+        return_exceptions=True,
+    )
+
+    db_ok, redis_ok, async_db_ok, queue_ok = [
+        c if not isinstance(c, Exception) else False for c in checks
+    ]
+
+    # 核心服务必须健康，Worker 降级不影响整体状态
+    core_healthy = db_ok and redis_ok and async_db_ok
+    status = "healthy" if core_healthy else "degraded"
+
+    # 更新 Prometheus 指标
+    BusinessMetrics.update_healthcheck("database", 1 if db_ok else 0)
+    BusinessMetrics.update_healthcheck("redis", 1 if redis_ok else 0)
+    BusinessMetrics.update_healthcheck("async_db", 1 if async_db_ok else 0)
+    BusinessMetrics.update_healthcheck("queue", 1 if queue_ok else 0)
+
+    return {
+        "status": status,
+        "components": {
+            "database": {
+                "status": "up" if db_ok else "down",
+                "type": "sync",
+            },
+            "redis": {
+                "status": "up" if redis_ok else "down",
+            },
+            "async_database": {
+                "status": "up" if async_db_ok else "down",
+                "type": "async",
+            },
+            "message_queue": {
+                "status": "up" if queue_ok else "down",
+                "type": "redis_streams",
+            },
+        },
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+async def _safe_check(check_func):
+    """安全执行健康检查，捕获异常"""
+    try:
+        if asyncio.iscoroutinefunction(check_func):
+            return await check_func()
+        return check_func()
+    except Exception:
+        return False
+
+
+async def _check_queue_health() -> bool:
+    """检查消息队列健康状态"""
+    try:
+        queue = MessageQueue()
+        client = await queue.redis
+        await client.ping()
+        return True
+    except Exception:
+        return False
 
 
 if __name__ == "__main__":
