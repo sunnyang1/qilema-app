@@ -6,7 +6,7 @@ import { LogBox } from 'react-native';
 import { enableFreeze } from 'react-native-screens';
 import Toast from 'react-native-toast-message';
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ColorSchemeProvider } from '@/hooks/useColorScheme';
+import { ThemeProvider } from '@/design-system';
 import { RouteGuard } from '@/components/RouteGuard';
 
 LogBox.ignoreLogs([
@@ -18,7 +18,7 @@ enableFreeze(true);
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <ColorSchemeProvider>
+      <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <StatusBar style="auto"></StatusBar>
           <RouteGuard />
@@ -72,7 +72,7 @@ export default function RootLayout() {
           </Stack>
           <Toast />
         </GestureHandlerRootView>
-      </ColorSchemeProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
